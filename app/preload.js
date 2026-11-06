@@ -9,7 +9,14 @@ contextBridge.exposeInMainWorld('ssadesk', {
   janela: acao => ipcRenderer.send('janela', acao),
   chamada: {
     abrir: dados => ipcRenderer.send('abrir-chamada', dados),
-    janela: acao => ipcRenderer.send('janela-chamada', acao)
+    janela: acao => ipcRenderer.send('janela-chamada', acao),
+    enviarMidia: (tipo, buf) => ipcRenderer.send('chamada-midia', tipo, buf),
+    controle: obj => ipcRenderer.send('chamada-controle', obj),
+    onMidia: cb => ipcRenderer.on('chamada-midia', (_e, tipo, dados) => cb(tipo, dados)),
+    onEstado: cb => ipcRenderer.on('chamada-estado', (_e, s) => cb(s)),
+    estadoAtual: () => ipcRenderer.invoke('chamada-estado-atual'),
+    onRemoto: cb => ipcRenderer.on('chamada-remoto', (_e, s) => cb(s)),
+    onQuadroChave: cb => ipcRenderer.on('chamada-quadro-chave', () => cb())
   },
   chat: {
     abrir: () => ipcRenderer.send('chat-abrir'),

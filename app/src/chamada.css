@@ -14,7 +14,7 @@ body { background: #000; color: #fff; font-family: var(--font); -webkit-font-smo
 button { font: inherit; color: inherit; border: 0; background: none; cursor: default; }
 
 /* Vídeo do outro lado */
-#remoto { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #000; }
+#remoto { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
 .aguardando { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: clamp(2px, 1.6vmin, 10px); padding-bottom: 14vmin;
   background: radial-gradient(120% 90% at 50% 20%, #1c2a44 0%, #0b0d12 60%, #050506 100%); transition: opacity .6s var(--ease); }
 .aguardando.oculto { opacity: 0; pointer-events: none; }

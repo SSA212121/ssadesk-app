@@ -7,6 +7,7 @@ const path = require('path')
 const { spawn, execFileSync } = require('child_process')
 
 const ARP = 'HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\SSADesk'
+const RUN = 'HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run'
 const INNO_ARP = 'HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{6B1F4C2E-8D3A-4E7B-9A51-5A1D35C0A001}_is1'
 const PS = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
 const PUBLIC_DESKTOP = path.join(process.env.PUBLIC || 'C:\\Users\\Public', 'Desktop')
@@ -109,6 +110,8 @@ async function registrar (dir, versao) {
     ['NoModify', 'REG_DWORD', '1'], ['NoRepair', 'REG_DWORD', '1']
   ]
   for (const [n, t, v] of vals) execFileSync('reg.exe', ['add', ARP, '/v', n, '/t', t, '/d', v, '/f'], { windowsHide: true })
+  // Inicia com o Windows, em segundo plano (ícone perto do relógio), para receber chamadas de vídeo
+  execFileSync('reg.exe', ['add', RUN, '/v', 'SSADesk', '/t', 'REG_SZ', '/d', `\"${exe}\" --segundo-plano`, '/f'], { windowsHide: true })
 }
 
 // Passos mostrados na tela (o índice é o que a interface recebe)
@@ -167,6 +170,7 @@ async function desinstalar (dir) {
   fs.rmSync(path.join(PUBLIC_DESKTOP, 'SSADesk.lnk'), { force: true })
   fs.rmSync(path.join(START_MENU, 'SSADesk.lnk'), { force: true })
   try { execFileSync('reg.exe', ['delete', ARP, '/f'], { windowsHide: true }) } catch {}
+  try { execFileSync('reg.exe', ['delete', RUN, '/v', 'SSADesk', '/f'], { windowsHide: true }) } catch {}
   // A pasta (inclusive este programa) é apagada logo depois que esta janela fechar
   if (!ehPastaSSADesk(dir)) return
   spawn('cmd.exe', ['/c', `ping -n 4 127.0.0.1 >nul & rmdir /s /q "${dir}"`], { detached: true, stdio: 'ignore', windowsHide: true }).unref()

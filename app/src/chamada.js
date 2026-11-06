@@ -1,7 +1,7 @@
 // SSADesk — chamada de vídeo durante o acesso remoto.
 // Janela pequena e flutuante. Cada lado liga o PRÓPRIO microfone/câmera quando quiser (começam desligados).
 // A imagem do outro lado ocupa a janela; a sua aparece num quadradinho arrastável e redimensionável.
-// A conexão com o outro computador (WebRTC pelo túnel P2P) entra na Fase 6.
+// Áudio/vídeo/chat vão e vêm pelo canal P2P próprio (midia.js + canal.js no processo principal), sem servidor.
 const $ = id => document.getElementById(id)
 const api = window.ssadesk
 const params = new URLSearchParams(location.search)
@@ -34,14 +34,20 @@ async function alternar (tipo, botao, nomeOn, nomeOff) {
   botao.disabled = true
   try {
     if (ligado(tipo)) { desligar(tipo); aviso(nomeOff) } else { await ligar(tipo); aviso(nomeOn) }
-  } catch {
+  } catch (e) {
+    console.log('falha ao ligar ' + tipo + ': ' + (e && e.message))
     aviso(tipo === 'video' ? 'Câmera indisponível' : 'Microfone indisponível')
   }
   botao.disabled = false
   botao.setAttribute('aria-pressed', String(ligado(tipo)))
   atualizarPip()
-  // Fase 6: aqui as faixas serão enviadas/retiradas da conexão com o outro computador
+  // Envia (ou para de enviar) ao outro computador
+  const M = window.ssadeskMidia
+  if (tipo === 'video') { if (ligado('video')) M.iniciarVideo($('local')); else M.pararVideo() }
+  if (tipo === 'audio') { if (ligado('audio')) await M.iniciarAudio(new MediaStream(local.getAudioTracks())); else M.pararAudio() }
+  informarEstado()
 }
+function informarEstado () { api.chamada.controle({ t: 'estado', mic: ligado('audio'), cam: ligado('video') }) }
 $('mic').addEventListener('click', () => alternar('audio', $('mic'), 'Microfone ligado', 'Microfone desligado'))
 $('cam').addEventListener('click', () => alternar('video', $('cam'), 'Câmera ligada', 'Câmera desligada'))
 
@@ -51,6 +57,7 @@ function atualizarPip () {
 }
 
 function encerrar () {
+  window.ssadeskMidia.pararVideo(); window.ssadeskMidia.pararAudio()
   local.getTracks().forEach(t => t.stop())
   api.chamada.janela('fechar')
 }
@@ -146,3 +153,31 @@ addEventListener('keydown', e => {
 
 posicionar()
 atualizarPip()
+
+// ---------- Estado da chamada (vem do processo principal) ----------
+window.ssadeskMidia.ligar($('remoto'))
+let inicio = 0; let relogio = null; let remotoCam = false
+const textos = { aguardando: 'Aguardando o outro lado', procurando: 'Chamando…', conectado: 'Câmera desligada', encerrada: 'Chamada encerrada' }
+function mostrarPlaceholder () { $('aguardando').classList.toggle('oculto', remotoCam) }
+function aplicarEstado (s) {
+  if (s.nome) $('nome').textContent = s.nome
+  $('estado').textContent = textos[s.fase] || ''
+  document.body.dataset.fase = s.fase
+  if (s.fase === 'conectado') {
+    informarEstado(); window.ssadeskMidia.pedirQuadroChave()
+    if (params.get('autoteste') === '1' && !aplicarEstado.testado) { aplicarEstado.testado = true; setTimeout(() => { $('cam').click(); $('mic').click() }, 1500) }
+    if (!inicio) { inicio = Date.now(); relogio = setInterval(() => { const s = Math.floor((Date.now() - inicio) / 1000); $('tempo').textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') }, 1000) }
+  } else {
+    if (s.fase === 'encerrada') { clearInterval(relogio); inicio = 0; $('tempo').textContent = ''; remotoCam = false; window.ssadeskMidia.pararRecebimento(); mostrarPlaceholder() }
+  }
+}
+api.chamada.onEstado(aplicarEstado)
+api.chamada.estadoAtual().then(aplicarEstado) // estado que chegou antes de a janela terminar de abrir
+api.chamada.onRemoto(({ mic, cam }) => {
+  remotoCam = cam
+  if (!cam) window.ssadeskMidia.pararRecebimento()
+  $('estado').textContent = cam ? '' : (mic ? 'Microfone ligado · câmera desligada' : textos.conectado)
+  mostrarPlaceholder()
+})
+window.addEventListener('ssadesk-video-remoto', () => { if (!remotoCam) { remotoCam = true; mostrarPlaceholder() } })
+api.chamada.onQuadroChave(() => window.ssadeskMidia.pedirQuadroChave())

@@ -15,6 +15,13 @@ const arg = n => { const a = process.argv.find(x => x.startsWith('--' + n)); ret
 const MODO = arg('instalar') ? 'instalar' : arg('desinstalar') ? 'desinstalar' : 'app'
 const PAYLOAD = typeof arg('payload') === 'string' ? arg('payload').replace(/^"|"$/g, '') : null
 const motor = isWin ? require('./instalador') : null
+// --segundo-plano: inicia com o Windows, sem janela, só com o ícone perto do relógio (para receber chamadas)
+const SEGUNDO_PLANO = !!arg('segundo-plano')
+
+// Perfil separado (só para testes automáticos com duas cópias do app na mesma máquina)
+if (process.env.SSADESK_PERFIL) app.setPath('userData', process.env.SSADESK_PERFIL)
+// Uma única instância do app: abrir de novo só mostra o painel
+if (MODO === 'app' && !process.env.SSADESK_SNAPSHOT && !app.requestSingleInstanceLock()) app.exit(0)
 
 // Pasta de instalação do SSADesk (onde ficam código, chave, RustDesk e túnel)
 function installDir () {
@@ -79,20 +86,69 @@ function abrirChamada (dados = {}) {
     ...(isMac ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 16, y: 16 } } : {}),
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true }
   })
-  callWin.loadFile(path.join(__dirname, 'src', 'chamada.html'), { query: { platform: process.platform, nome: dados.nome || '', demo: process.env.SSADESK_DEMO ? '1' : '' } })
+  callWin.loadFile(path.join(__dirname, 'src', 'chamada.html'), { query: { platform: process.platform, nome: dados.nome || '', demo: process.env.SSADESK_DEMO ? '1' : '', autoteste: process.env.SSADESK_AUTOTESTE ? '1' : '' } })
   callWin.once('ready-to-show', () => {
     if (process.env.SSADESK_SNAPSHOT && process.env.SSADESK_CALL) return snapshot(callWin)
-    callWin.show()
+    callWin.showInactive() // aparece sem roubar o foco de quem está trabalhando
+    enviarEstadoChamada()
   })
+  if (process.env.SSADESK_LOG) callWin.webContents.on('console-message', (_e, _l, msg) => fs.appendFileSync(process.env.SSADESK_LOG, msg + '\n'))
   callWin.setAlwaysOnTop(true, 'floating')
   callWin.on('closed', () => {
     callWin = null
+    if (canal) canal.encerrar()
     // Fim da chamada: fecha o chat e apaga a conversa
     if (chatWin && !chatWin.isDestroyed()) { chatWin.destroy() }
     chatWin = null; mensagens.length = 0
   })
+  // Quem acessa: liga para o outro computador pela chave de internet dele
+  if (dados.chave && canal) { estadoChamada = { fase: 'procurando', nome: dados.nome || '' }; canal.chamar(dados.chave) }
 }
-ipcMain.on('abrir-chamada', (_e, dados) => abrirChamada(dados))
+ipcMain.on('abrir-chamada', (_e, dados) => {
+  dados = dados || {}
+  // Sem chave informada: usa a do último computador acessado pela internet
+  if (!dados.chave) dados.chave = loadPrefs().ultimaChave || ''
+  abrirChamada(dados)
+})
+
+// ---------- Canal P2P da chamada (vídeo, áudio, chat) ----------
+let canal = null
+let estadoChamada = { fase: 'aguardando', nome: '' }
+function enviarEstadoChamada () { if (callWin && !callWin.isDestroyed()) callWin.webContents.send('chamada-estado', estadoChamada) }
+
+function iniciarCanal () {
+  if (canal || MODO !== 'app') return
+  try {
+    const Hyperswarm = require('hyperswarm')
+    const { Canal } = require('./canal')
+    canal = new Canal(Hyperswarm)
+  } catch (e) { console.error('canal P2P indisponível:', e.message); return }
+
+  canal.on('estado', fase => { estadoChamada = { ...estadoChamada, fase }; enviarEstadoChamada() })
+  canal.on('conectado', ({ recebida }) => {
+    estadoChamada = { ...estadoChamada, fase: 'conectado' }
+    if (process.env.SSADESK_FOTO_CHAMADA) setTimeout(async () => { if (callWin) fs.writeFileSync(process.env.SSADESK_FOTO_CHAMADA, (await callWin.webContents.capturePage()).toPNG()) }, 15000)
+    if (recebida) abrirChamada({ nome: 'Chamada' }) // o outro lado chamou: a janelinha aparece sozinha
+    enviarEstadoChamada()
+  })
+  canal.on('desconectado', () => { estadoChamada = { ...estadoChamada, fase: 'encerrada' }; enviarEstadoChamada() })
+  canal.on('controle', msg => {
+    if (msg.t === 'ola') { estadoChamada = { ...estadoChamada, nome: String(msg.nome || '').slice(0, 60) }; enviarEstadoChamada() }
+    if (msg.t === 'chat') receberMensagem(msg.texto)
+    if (msg.t === 'estado' && callWin && !callWin.isDestroyed()) callWin.webContents.send('chamada-remoto', { mic: !!msg.mic, cam: !!msg.cam })
+    if (msg.t === 'quadro-chave' && callWin && !callWin.isDestroyed()) callWin.webContents.send('chamada-quadro-chave')
+    if (msg.t === 'tchau') { estadoChamada = { ...estadoChamada, fase: 'encerrada' }; enviarEstadoChamada() }
+  })
+  canal.on('midia', (tipo, dados) => {
+    if (callWin && !callWin.isDestroyed()) callWin.webContents.send('chamada-midia', tipo, dados)
+  })
+  // Fica disponível para receber chamadas pela própria chave de internet
+  const minha = readText(path.join(DIR, 'chave-internet.txt'))
+  if (minha) canal.escutar(minha).catch(() => {})
+}
+ipcMain.handle('chamada-estado-atual', () => estadoChamada)
+ipcMain.on('chamada-midia', (_e, tipo, dados) => { if (canal) canal.midia(tipo, Buffer.from(dados)) })
+ipcMain.on('chamada-controle', (_e, obj) => { if (canal && obj && typeof obj === 'object') canal.controle(obj) })
 
 // ---------- Chat de texto (janela própria, flutuante e redimensionável) ----------
 // A conversa fica aqui no processo principal: guardar a janela não apaga nada.
@@ -141,8 +197,9 @@ ipcMain.handle('chat-historico', () => mensagens)
 ipcMain.on('chat-enviar', (_e, texto) => {
   if (!String(texto || '').trim()) return
   registrar(texto, 'eu')
-  // Fase 6: enviar ao outro computador. Modo demonstração: responde sozinho para testar.
+  // Envia ao outro computador pelo canal P2P. Modo demonstração: responde sozinho para testar.
   if (process.env.SSADESK_DEMO) setTimeout(() => receberMensagem('Recebi: ' + texto), 1400)
+  else if (canal) canal.controle({ t: 'chat', texto: String(texto).slice(0, 2000) })
 })
 ipcMain.on('chat-janela', (_e, acao) => {
   if (!chatWin || chatWin.isDestroyed()) return
@@ -242,6 +299,7 @@ ipcMain.handle('conectar', async (_e, destinoBruto) => {
       }
       if (!(await waitPort(port, 20000))) return { ok: false, msg: 'Não foi possível abrir o túnel.' }
       abrirRustDesk('127.0.0.1:' + port)
+      savePrefs({ ...loadPrefs(), ultimaChave: destino.toLowerCase() }) // a chamada de vídeo usa esta chave
       return { ok: true, msg: 'Conectando. A primeira vez leva alguns segundos.' }
     }
     if (/^[0-9a-zA-Z.:\-[\]%]+$/.test(destino)) {
@@ -298,13 +356,41 @@ ipcMain.handle('setup-desinstalar', async () => {
 })
 
 // Câmera e microfone: liberados só para as páginas do próprio app
-if (process.env.SSADESK_SNAPSHOT) app.commandLine.appendSwitch('use-fake-device-for-media-stream')
+if (process.env.SSADESK_SNAPSHOT || process.env.SSADESK_FAKE) app.commandLine.appendSwitch('use-fake-device-for-media-stream')
+// A voz do outro lado toca sem precisar de clique
+app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
 app.whenReady().then(() => {
   const { session } = require('electron')
   const proprio = url => String(url || '').startsWith('file://')
   session.defaultSession.setPermissionRequestHandler((wc, perm, cb) => cb(['media', 'clipboard-sanitized-write'].includes(perm) && proprio(wc.getURL())))
   session.defaultSession.setPermissionCheckHandler((wc, perm) => perm === 'media' && proprio(wc && wc.getURL()))
   if (process.env.SSADESK_CALL) { abrirChamada({ nome: 'Lages' }); return }
-  createWindow()
+  if (process.env.SSADESK_CHAMAR) { iniciarCanal(); abrirChamada({ chave: process.env.SSADESK_CHAMAR, nome: 'Teste' }); return }
+  if (MODO !== 'app') { createWindow(); return }
+  iniciarCanal()
+  criarBandeja()
+  if (!SEGUNDO_PLANO) createWindow()
 })
-app.on('window-all-closed', () => app.quit())
+
+// ---------- Ícone perto do relógio (o SSADesk continua disponível para chamadas) ----------
+let bandeja = null
+function mostrarPainel () {
+  if (win && !win.isDestroyed()) { win.show(); win.focus() } else createWindow()
+}
+function criarBandeja () {
+  if (bandeja || process.env.SSADESK_SNAPSHOT) return
+  const { Tray, Menu, nativeImage } = require('electron')
+  bandeja = new Tray(nativeImage.createFromPath(path.join(__dirname, 'assets', isWin ? 'icon.ico' : 'icon.png')).resize({ width: 16, height: 16 }))
+  bandeja.setToolTip('SSADesk — disponível')
+  bandeja.setContextMenu(Menu.buildFromTemplate([
+    { label: 'Abrir SSADesk', click: mostrarPainel },
+    { label: 'Chamada de vídeo', click: () => abrirChamada({ chave: loadPrefs().ultimaChave || '' }) },
+    { type: 'separator' },
+    { label: 'Sair do SSADesk', click: () => { app.exit(0) } }
+  ]))
+  bandeja.on('click', mostrarPainel)
+}
+app.on('second-instance', () => { if (MODO === 'app') mostrarPainel() })
+// Fechar o painel não encerra o app: ele segue no ícone perto do relógio para receber chamadas
+app.on('window-all-closed', () => { if (MODO !== 'app' || !bandeja) app.quit() })
+app.on('before-quit', () => { if (canal) canal.destruir() })

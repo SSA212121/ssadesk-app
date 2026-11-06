@@ -25,7 +25,7 @@ $LocalPort = 21126   # hbbs local (usa 21125, 21126, 21128)
 $taskName  = "SSADesk-local"
 $fwName    = "SSADesk conexao direta TCP $Port"
 $oldTasks  = "SSADesk-hbbs", "SSADesk-hbbr", $taskName, "SSADesk-rede", "SSADesk-p2p"
-$oldFw     = "SSADesk TCP 21115-21119", "SSADesk UDP 21116", $fwName, "SSADesk bloqueio componente local", "SSADesk tunel P2P"
+$oldFw     = "SSADesk TCP 21115-21119", "SSADesk UDP 21116", $fwName, "SSADesk bloqueio componente local", "SSADesk tunel P2P", "SSADesk chamada P2P"
 
 # Limpa estado anterior (inclusive da versão antiga com servidor de Lages)
 foreach ($t in $oldTasks) {
@@ -127,6 +127,8 @@ $a = New-ScheduledTaskAction -Execute "$env:SystemRoot\System32\cmd.exe" -Argume
 Register-ScheduledTask -TaskName "SSADesk-p2p" -Action $a -Trigger (New-ScheduledTaskTrigger -AtStartup) -Settings $settings -Principal $principal -Force | Out-Null
 Start-ScheduledTask -TaskName "SSADesk-p2p"
 New-NetFirewallRule -DisplayName "SSADesk tunel P2P" -Direction Inbound -Action Allow -Program $node | Out-Null
+# Chamada de vídeo/chat: o app SSADesk usa a mesma rede P2P (sem pedir permissão ao usuário)
+New-NetFirewallRule -DisplayName "SSADesk chamada P2P" -Direction Inbound -Action Allow -Program (Join-Path $InstallDir "app\SSADesk.exe") | Out-Null
 $p2pKey = ""
 for ($i = 0; $i -lt 40 -and -not $p2pKey; $i++) {
     Start-Sleep 1

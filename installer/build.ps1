@@ -83,6 +83,10 @@ Rename-Item "$appOut\electron.exe" "SSADesk.exe"
 New-Item -ItemType Directory -Force "$appOut\resources\app" | Out-Null
 Copy-Item "$appSrc\main.js", "$appSrc\preload.js", "$appSrc\instalador.js", "$appSrc\package.json" "$appOut\resources\app\"
 Copy-Item "$appSrc\src", "$appSrc\assets" "$appOut\resources\app\" -Recurse
+Copy-Item "$appSrc\canal.js" "$appOut\resources\app\"
+# Dependências de produção (rede P2P da chamada); electron e rcedit são só de build
+robocopy "$appSrc\node_modules" "$appOut\resources\app\node_modules" /E /NFL /NDL /NJH /NJS /NP /XD electron rcedit @types | Out-Null
+if ($LASTEXITCODE -ge 8) { throw "robocopy falhou ($LASTEXITCODE)" }
 & "$appSrc\node_modules\rcedit\bin\rcedit-x64.exe" "$appOut\SSADesk.exe" --set-icon "$here\assets\ssadesk.ico" `
     --set-version-string "ProductName" "SSADesk" --set-version-string "FileDescription" "SSADesk" `
     --set-version-string "CompanyName" "SSA Comercio" --set-file-version $version --set-product-version $version
