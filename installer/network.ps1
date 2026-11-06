@@ -29,7 +29,7 @@ function Get-UPnP {
 
 if ($Remove) {
     $c = Get-UPnP
-    if ($c) { try { $c.Remove($Port, "TCP") } catch {} }
+    if ($c) { try { $c.Remove($Port, "TCP") } catch {}; try { $c.Remove(21130, "UDP") } catch {} }
     exit 0
 }
 
@@ -62,6 +62,9 @@ if ($c -and $v4) {
         $null = $c.Add($Port, "TCP", $Port, $v4, $true, $Desc)
         $m = $c | Where-Object { $_.ExternalPort -eq $Port -and $_.Protocol -eq "TCP" } | Select-Object -First 1
         if ($m) { $upnp = "ok"; $wan = $m.ExternalIPAddress } else { $upnp = "recusado" }
+        # Porta UDP da rede P2P do SSADesk (21130): com ela aberta, este computador recebe conexões diretas
+        try { $c.Remove(21130, "UDP") } catch {}
+        try { $null = $c.Add(21130, "UDP", 21130, $v4, $true, "SSADesk P2P") } catch {}
     } catch { $upnp = "recusado" }
 }
 

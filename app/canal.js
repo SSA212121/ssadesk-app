@@ -14,21 +14,91 @@ const soDigitos = c => String(c || '').replace(/\D/g, '')
 const topicoChave = chave => crypto.createHash('sha256').update('ssadesk-chamada:' + String(chave).toLowerCase()).digest()
 const topicoCodigo = codigo => crypto.createHash('sha256').update('ssadesk-codigo:' + soDigitos(codigo)).digest()
 
+// Retransmissores SSADesk se anunciam neste tópico (rede de retransmissão sem servidor central)
+const TOPICO_RETRANSMISSORES = crypto.createHash('sha256').update('ssadesk-retransmissores-v1').digest()
+const PORTA_P2P = 21130 // porta UDP fixa: permite abrir no roteador (UPnP) e ficar alcançável direto
+
+// Confere (de forma síncrona) se a porta UDP está livre, abrindo e fechando um socket de teste
+function portaUdpLivre (porta) {
+  try { require('child_process').execFileSync(process.execPath, ['-e', 'const s=require("dgram").createSocket("udp4");s.on("error",()=>process.exit(1));s.bind(' + porta + ',()=>{s.close();process.exit(0)})'], { env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }, timeout: 3000, windowsHide: true }); return true } catch { return false }
+}
+
 class Canal extends EventEmitter {
-  constructor (Hyperswarm) {
+  // opcoes: { chaveRetransmissor (seed 32 bytes), retransmitir (bool), forcarRetransmissao (bool, testes), retransmissoresExtra ([hex]) }
+  constructor (Hyperswarm, opcoes = {}) {
     super()
     this.Hyperswarm = Hyperswarm
+    this.opcoes = opcoes
     this.swarm = null
     this.conexao = null // uma sessão por vez
     this.escutas = new Set()
     this.procurando = null
+    this.retransmissores = new Set((opcoes.retransmissoresExtra || []).filter(k => /^[0-9a-f]{64}$/i.test(k)))
+    this.meuRetransmissor = null
   }
 
   _swarm () {
     if (this.swarm) return this.swarm
-    this.swarm = new this.Hyperswarm()
+    const base = {
+      // Se o furo direto falhar (ex.: dois lados em 4G/5G com NAT aleatório), passa pela retransmissão
+      relayThrough: (forcar, swarm) => {
+        if (!(forcar || this.opcoes.forcarRetransmissao || swarm.dht.randomized)) return null
+        return this.escolherRetransmissor()
+      }
+    }
+    // Porta UDP fixa (abrível no roteador). Se estiver ocupada, a rede nunca ficaria pronta: confere antes e usa outra.
+    const porta = this.opcoes.porta === undefined ? PORTA_P2P : this.opcoes.porta
+    this.swarm = new this.Hyperswarm(porta && portaUdpLivre(porta) ? { ...base, port: porta } : base)
     this.swarm.on('connection', (sock, info) => this._nova(sock, info))
+    this._iniciarRetransmissao().catch(() => {})
     return this.swarm
+  }
+
+  // ---------- Rede de retransmissão ----------
+  escolherRetransmissor () {
+    const lista = [...this.retransmissores].filter(k => !this.meuRetransmissor || k !== this.meuRetransmissor)
+    return lista.length ? Buffer.from(lista[Math.floor(Math.random() * lista.length)], 'hex') : null
+  }
+
+  async _iniciarRetransmissao () {
+    const dht = this.swarm.dht
+    await dht.ready()
+    // Descobre retransmissores já existentes (e atualiza a cada 10 min)
+    const descobrir = async () => {
+      try {
+        for await (const d of dht.lookup(TOPICO_RETRANSMISSORES)) {
+          for (const p of (d.peers || [])) if (p.publicKey) this.retransmissores.add(p.publicKey.toString('hex'))
+          if (this.retransmissores.size > 40) break
+        }
+      } catch {}
+    }
+    descobrir(); setInterval(descobrir, 10 * 60 * 1000).unref()
+
+    // Vira retransmissor se a rede deste computador permite (NAT não aleatório) e o ajuste estiver ligado
+    if (this.opcoes.retransmitir === false) return
+    await new Promise(r => setTimeout(r, 5000)) // tempo para o nó descobrir o tipo de NAT
+    if (dht.randomized) return
+    const BlindRelay = require('blind-relay')
+    const semente = this.opcoes.chaveRetransmissor && Buffer.from(this.opcoes.chaveRetransmissor, 'hex')
+    const par = require('hyperdht').keyPair(semente || undefined)
+    const relay = new BlindRelay.Server({ createStream: opts => dht.createRawStream({ ...opts, framed: true }) })
+    const servidor = dht.createServer({ shareLocalAddress: false }, socket => {
+      const sessao = relay.accept(socket, { id: socket.remotePublicKey })
+      sessao.on('error', () => {})
+      socket.on('error', () => {})
+    })
+    await servidor.listen(par)
+    this.meuRetransmissor = par.publicKey.toString('hex')
+    const anunciar = () => dht.announce(TOPICO_RETRANSMISSORES, par).finished().catch(() => {})
+    anunciar(); setInterval(anunciar, 10 * 60 * 1000).unref()
+    this.emit('retransmissor', this.meuRetransmissor)
+  }
+
+  // Diagnóstico de NAT deste computador (para a tela de rede)
+  tipoDeRede () {
+    const d = this.swarm && this.swarm.dht
+    if (!d) return null
+    return { firewalled: d.firewalled, randomized: d.randomized, host: d.host, port: d.port, retransmissores: this.retransmissores.size, souRetransmissor: !!this.meuRetransmissor }
   }
 
   // Fica disponível para ser encontrado pelo código (e pela chave de internet)
@@ -86,6 +156,7 @@ class Canal extends EventEmitter {
       this.emit('desconectado')
     }
     sock.on('close', fim)
+    if (process.env.SSADESK_LOG) { const rs = sock.rawStream; require('fs').appendFileSync(process.env.SSADESK_LOG, 'sessão via ' + (rs ? rs.remoteHost + ':' + rs.remotePort : '?') + '\n') }
     const quemChamou = !!info.client
     this.emit('conectado', { recebida: !quemChamou })
     if (quemChamou) this.pararProcura()
@@ -129,4 +200,4 @@ class Canal extends EventEmitter {
   async destruir () { if (this.swarm) await this.swarm.destroy().catch(() => {}) }
 }
 
-module.exports = { Canal, soDigitos, nomeComputador: () => os.hostname() }
+module.exports = { Canal, soDigitos, nomeComputador: () => os.hostname(), PORTA_P2P }

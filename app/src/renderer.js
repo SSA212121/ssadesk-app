@@ -67,6 +67,7 @@ async function abrirAjustes () {
   document.querySelectorAll('input[name=receber]').forEach(r => { r.checked = r.value === a.receber })
   document.querySelectorAll('[data-aj-perm]').forEach(c => { c.checked = !!a.permissoes[c.dataset.ajPerm] })
   $('ajIniciar').checked = a.iniciar
+  $('ajRetransmitir').checked = a.retransmitir
   document.body.classList.add('ajustes-aberto'); $('ajustes').setAttribute('aria-hidden', 'false')
 }
 function fecharAjustes () { document.body.classList.remove('ajustes-aberto'); $('ajustes').setAttribute('aria-hidden', 'true') }
@@ -78,7 +79,7 @@ addEventListener('keydown', e => { if (e.key === 'Escape') fecharAjustes() })
 $('ajustes').addEventListener('change', async () => {
   const receber = (document.querySelector('input[name=receber]:checked') || {}).value
   const permissoes = {}; document.querySelectorAll('[data-aj-perm]').forEach(c => { permissoes[c.dataset.ajPerm] = c.checked })
-  await api.ajustes.salvar({ receber, permissoes, iniciar: $('ajIniciar').checked })
+  await api.ajustes.salvar({ receber, permissoes, iniciar: $('ajIniciar').checked, retransmitir: $('ajRetransmitir').checked })
   toast('Ajustes salvos')
 })
 

@@ -133,7 +133,7 @@ const PERMISSOES_PADRAO = { controlar: true, arquivos: true, chamada: true, chat
 // receber: 'auto' (pergunta e libera sozinho em 15 s) | 'perguntar' (só com resposta) | 'direto' (sem janela; servidor sem ninguém)
 function ajustes () {
   const a = loadPrefs().ajustes || {}
-  return { receber: ['auto', 'perguntar', 'direto'].includes(a.receber) ? a.receber : 'auto', permissoes: { ...PERMISSOES_PADRAO, ...(a.permissoes || {}) }, iniciar: a.iniciar !== false }
+  return { receber: ['auto', 'perguntar', 'direto'].includes(a.receber) ? a.receber : 'auto', permissoes: { ...PERMISSOES_PADRAO, ...(a.permissoes || {}) }, iniciar: a.iniciar !== false, retransmitir: a.retransmitir !== false }
 }
 function aplicarInicioAutomatico () {
   if (!app.isPackaged || MODO !== 'app') return
@@ -146,7 +146,8 @@ ipcMain.handle('ajustes-salvar', (_e, novo) => {
   const a = {
     receber: ['auto', 'perguntar', 'direto'].includes(novo && novo.receber) ? novo.receber : atual.receber,
     permissoes: { ...atual.permissoes, ...((novo && novo.permissoes) || {}) },
-    iniciar: novo && typeof novo.iniciar === 'boolean' ? novo.iniciar : atual.iniciar
+    iniciar: novo && typeof novo.iniciar === 'boolean' ? novo.iniciar : atual.iniciar,
+    retransmitir: novo && typeof novo.retransmitir === 'boolean' ? novo.retransmitir : atual.retransmitir
   }
   savePrefs({ ...loadPrefs(), ajustes: a }); aplicarInicioAutomatico(); return a
 })
@@ -157,6 +158,23 @@ let pendente = null // conexão pelo código esperando a resposta do outro lado
 let arquivos = null
 let ultimoDestino = ''
 let modoAcordar = null
+let encerradoPeloUsuario = false
+// A sessão caiu (rede oscilou): tenta reconectar sozinho algumas vezes, sem reabrir a tela remota
+async function reconectar (codigo, nome) {
+  avisarBarraEstado('Reconectando…')
+  for (let i = 0; i < 6 && !encerradoPeloUsuario; i++) {
+    try {
+      await new Promise((resolve, reject) => {
+        const t = setTimeout(() => { pendente = null; canal.pararProcura(); reject(new Error('tempo')) }, 20000)
+        pendente = { resolve: v => { clearTimeout(t); resolve(v) }, reject: e => { clearTimeout(t); reject(e) } }
+        canal.procurar({ codigo })
+      })
+      sessao.codigo = codigo; avisarBarraEstado('Reconectado ✓'); abrirBarra(); return
+    } catch { await new Promise(r => setTimeout(r, 3000)) }
+  }
+  avisarBarraEstado('Conexão perdida')
+}
+function avisarBarraEstado (texto) { if (barraWin && !barraWin.isDestroyed()) barraWin.webContents.send('barra-estado', texto) }
 let ultimoDespertar = 0
 function enviarEstadoChamada () { if (callWin && !callWin.isDestroyed()) callWin.webContents.send('chamada-estado', estadoChamada) }
 function avisarPainel (canalNome, dados) { if (win && !win.isDestroyed()) win.webContents.send(canalNome, dados) }
@@ -178,7 +196,17 @@ function iniciarCanal () {
   try {
     const Hyperswarm = require('hyperswarm')
     const { Canal } = require('./canal')
-    canal = new Canal(Hyperswarm)
+    // Chave fixa do retransmissor deste computador (gerada uma vez)
+    let pr = loadPrefs()
+    if (!pr.chaveRetransmissor) { pr = { ...pr, chaveRetransmissor: require('crypto').randomBytes(32).toString('hex') }; savePrefs(pr) }
+    canal = new Canal(Hyperswarm, {
+      chaveRetransmissor: pr.chaveRetransmissor,
+      retransmitir: ajustes().retransmitir,
+      forcarRetransmissao: !!process.env.SSADESK_FORCAR_RETRANSMISSAO,
+      retransmissoresExtra: (process.env.SSADESK_RETRANSMISSORES || '').split(',').filter(Boolean),
+      porta: process.env.SSADESK_PORTA !== undefined ? Number(process.env.SSADESK_PORTA) : undefined
+    })
+    canal.on('retransmissor', k => { if (process.env.SSADESK_LOG) fs.appendFileSync(process.env.SSADESK_LOG, 'retransmissor: ' + k + '\n') })
   } catch (e) { console.error('canal P2P indisponível:', e.message); return }
 
   canal.on('conectado', ({ recebida }) => {
@@ -191,9 +219,11 @@ function iniciarCanal () {
     }
   })
   canal.on('desconectado', () => {
+    const caiu = sessao.ativa && sessao.papel === 'acessando' && !encerradoPeloUsuario && sessao.codigo
     sessao.ativa = false
+    if (caiu) setTimeout(() => reconectar(sessao.codigo, sessao.nome), 1000)
     if (arquivos) arquivos.sessaoEncerrada()
-    fecharBarra()
+    if (!caiu) fecharBarra()
     if (lousaWin && !lousaWin.isDestroyed()) lousaWin.destroy()
     estadoChamada = { ...estadoChamada, fase: 'encerrada' }; enviarEstadoChamada()
     if (pendente) { pendente.reject(new Error('O outro computador encerrou a conexão.')); pendente = null }
@@ -339,7 +369,7 @@ ipcMain.on('sessao-acao', (_e, acao) => {
   if (acao === 'tela') ipcMain.emit('abrir-chamada', null, { tela: true }) // transmitir minha tela
   if (acao === 'lousa') abrirLousa()
   if (acao === 'chat') abrirChatJanela()
-  if (acao === 'encerrar') { if (canal) canal.encerrar(); fecharBarra() }
+  if (acao === 'encerrar') { encerradoPeloUsuario = true; if (canal) canal.encerrar(); fecharBarra() }
 })
 ipcMain.handle('sessao-info', () => ({ nome: sessao.nome, ativa: sessao.ativa }))
 
@@ -414,9 +444,11 @@ async function tunelInterno (chave) {
     const dht = canal._swarm().dht
     await dht.ready()
     const remoto = Buffer.from(chave, 'hex')
-    const servidor = net.createServer({ allowHalfOpen: true }, local => {
-      const s = dht.connect(remoto, { reusableSocket: true })
-      local.pipe(s).pipe(local)
+    const servidor = net.createServer({ allowHalfOpen: true }, async local => {
+      local.pause()
+      let s
+      try { s = await conectarComRetransmissao(remoto) } catch { local.destroy(); return }
+      local.pipe(s).pipe(local); local.resume()
       const fim = () => { local.destroy(); s.destroy() }
       local.on('error', fim).on('close', fim); s.on('error', fim).on('close', fim)
     })
@@ -425,14 +457,40 @@ async function tunelInterno (chave) {
     return porta
   } catch { return 0 }
 }
-// Confirma que o caminho P2P até o outro computador abriu de verdade (e já deixa o caminho "furado")
-function abrirCaminhoP2P (chave, ms) {
+// Abre um caminho P2P até a chave: direto (furo de NAT); se falhar por NAT incompatível, pela retransmissão
+const ERROS_DE_FURO = ['HOLEPUNCH_ABORTED', 'HOLEPUNCH_DOUBLE_RANDOMIZED_NATS', 'CANNOT_HOLEPUNCH', 'REMOTE_NOT_HOLEPUNCHABLE', 'HOLEPUNCH_PROBE_TIMEOUT']
+const precisaRetransmissao = new Set() // chaves que já precisaram de retransmissão: vão direto por ela
+function abrirSocket (remoto, relay, ms) {
   return new Promise((resolve, reject) => {
-    const s = canal._swarm().dht.connect(Buffer.from(chave, 'hex'), { reusableSocket: true })
-    const t = setTimeout(() => { s.destroy(); reject(new Error('tempo')) }, ms)
+    const opts = { reusableSocket: true }
+    if (relay) opts.relayThrough = relay
+    if (relay && process.env.SSADESK_SO_RETRANSMISSAO) { opts.holepunch = () => false; opts.localConnection = false } // teste: proíbe direto/rede local
+    const s = canal._swarm().dht.connect(remoto, opts)
+    const t = setTimeout(() => { s.destroy(); reject(Object.assign(new Error('tempo'), { code: 'TEMPO' })) }, ms)
     s.on('error', e => { clearTimeout(t); reject(e) })
-    s.once('open', () => { clearTimeout(t); setTimeout(() => s.destroy(), 1500); resolve() })
+    s.once('open', () => {
+      clearTimeout(t)
+      if (process.env.SSADESK_LOG) setTimeout(() => { const rs = s.rawStream; fs.appendFileSync(process.env.SSADESK_LOG, 'caminho da tela via ' + (rs ? rs.remoteHost + ':' + rs.remotePort : '?') + (relay ? ' (pedido pela retransmissão)' : ' (direto)') + '\n') }, 1000)
+      resolve(s)
+    })
   })
+}
+async function conectarComRetransmissao (remoto, ms = 30000) {
+  const id = remoto.toString('hex')
+  const forcar = process.env.SSADESK_FORCAR_RETRANSMISSAO || precisaRetransmissao.has(id) || canal._swarm().dht.randomized
+  const relay = canal.escolherRetransmissor()
+  if (forcar && relay) return abrirSocket(remoto, relay, ms)
+  try { return await abrirSocket(remoto, null, ms) } catch (e) {
+    const r2 = canal.escolherRetransmissor()
+    if (!r2 || !(ERROS_DE_FURO.includes(e.code) || e.code === 'TEMPO')) throw e
+    precisaRetransmissao.add(id)
+    return abrirSocket(remoto, r2, ms)
+  }
+}
+// Confirma que o caminho P2P até o outro computador abriu de verdade (e já deixa o caminho "furado")
+async function abrirCaminhoP2P (chave, ms) {
+  const s = await conectarComRetransmissao(Buffer.from(chave, 'hex'), ms)
+  setTimeout(() => s.destroy(), 1500)
 }
 function testarTcp (host, porta, ms) {
   return new Promise((resolve, reject) => {
@@ -509,6 +567,7 @@ async function acordarComputador (codigo) {
 // Conectar pelo código (9 dígitos), como no AnyDesk
 async function conectarPorCodigo (codigo) {
   const { soDigitos } = require('./canal')
+  encerradoPeloUsuario = false
   if (!canal) throw new Error('A rede P2P não iniciou. Reabra o SSADesk.')
   if (soDigitos(codigo) === soDigitos(meuCodigo())) throw new Error('Este é o código deste computador.')
   if (canal.conectado()) { canal.encerrar(); await new Promise(r => setTimeout(r, 400)) }
@@ -522,6 +581,7 @@ async function conectarPorCodigo (codigo) {
   avisarPainel('conectar-status', 'Escolhendo o caminho mais rápido…')
   const destino = await melhorCaminho(resposta)
   ultimoDestino = destino
+  sessao.codigo = soDigitos(codigo)
   if (!process.env.SSADESK_CODIGO_TESTE) abrirRustDesk(destino)
   salvarNaBiblioteca(soDigitos(codigo), sessao.nome, sessao.remoto)
   avisarPainel('sessao', { ativa: true, nome: sessao.nome })

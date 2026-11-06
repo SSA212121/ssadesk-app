@@ -21,7 +21,8 @@ contextBridge.exposeInMainWorld('ssadesk', {
   sessao: {
     info: () => ipcRenderer.invoke('sessao-info'),
     acao: a => ipcRenderer.send('sessao-acao', a),
-    onAtualizar: cb => ipcRenderer.on('barra-sessao', (_e, s) => cb(s))
+    onAtualizar: cb => ipcRenderer.on('barra-sessao', (_e, s) => cb(s)),
+    onEstado: cb => ipcRenderer.on('barra-estado', (_e, t) => cb(t))
   },
   arquivos: {
     // Caminho real de um arquivo arrastado (o Electron não expõe mais File.path)

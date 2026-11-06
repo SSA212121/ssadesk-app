@@ -11,6 +11,7 @@ function mostrarNome (nome) {
 }
 mostrarNome(params.get('nome'))
 api.sessao.onAtualizar(s => mostrarNome(s.nome))
+api.sessao.onEstado(t => estado(t, /✓/.test(t)))
 
 document.querySelectorAll('[data-acao]').forEach(b => b.addEventListener('click', async () => {
   if (b.dataset.acao === 'arquivos') { const r = await api.arquivos.escolher(); if (r && r.ok === false && r.msg) estado(r.msg, true) } else api.sessao.acao(b.dataset.acao)

@@ -258,3 +258,7 @@ body.ajustes-aberto .folha { transform: none; }
 
 /* Desempenho: animações de fundo param com a janela escondida */
 html.oculto .ambient i, html.oculto .status.ok .dot::after { animation-play-state: paused; }
+
+.perms-aj li:has(.sub-aj) { height: auto; padding: 9px 0; }
+.perms-aj li > span { display: flex; flex-direction: column; }
+.sub-aj { font-size: 11.5px; color: var(--text-2); margin-top: 1px; }
