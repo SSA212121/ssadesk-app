@@ -13,7 +13,7 @@
 
 ## Fase 1 — Servidor RustDesk self-hosted (peso: 15%)
 - [x] `docker-compose.yml` com `hbbs` + `hbbr` (rustdesk-server)
-- [ ] Portas documentadas e liberadas (21115-21119 tcp, 21116 udp) — documentadas e automatizadas em `install-windows.ps1`; falta rodar em Lages + redirecionar no roteador
+- [ ] Portas documentadas e liberadas (21115-21119 tcp, 21116 udp) — documentadas e automatizadas no instalador `SSADesk-Servidor-Setup.exe`; falta instalar em Lages + redirecionar no roteador
 - [x] Servidor testado subindo localmente
 - [ ] Chave pública do servidor gerada e documentada em local seguro
 
@@ -61,3 +61,4 @@
 - 2026-11-06 — 5% — Git instalado (winget) e repositório inicializado (branch `main`); Fase 0 concluída
 - 2026-11-06 — 8,75% — `docker-compose.yml` (hbbs+hbbr, chave obrigatória) + `install-windows.ps1` nativo para Lages
 - 2026-11-06 — 12,5% — Servidor 1.1.16 testado localmente no notebook SSA-Atendimento: 5 portas ativas, chave gerada e exigida
+- 2026-11-06 — 12,5% — Script manual trocado por instalador de dois cliques (Inno Setup): `dist/SSADesk-Servidor-Setup.exe`, com escolha de disco e pedido do IP/DNS

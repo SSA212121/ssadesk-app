@@ -32,3 +32,6 @@ desktop.ini
 
 # --- Clones de referência do RustDesk (não fazem parte deste repositório) ---
 vendor/
+
+# Gerado pelo build do instalador
+server/installer/payload/

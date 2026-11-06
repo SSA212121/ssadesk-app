@@ -6,18 +6,20 @@ Base: [`rustdesk/rustdesk-server`](https://github.com/rustdesk/rustdesk-server) 
 
 ## Conteúdo
 
-- `install-windows.ps1`: **caminho recomendado para Lages** (Windows, sem Docker). Baixa o release oficial 1.1.16 (SHA-256 conferido), instala em `C:\SSADesk\server`, libera o firewall e cria tarefas que sobem com o Windows como SYSTEM e se reiniciam sozinhas em caso de falha.
+- `installer/`: **instalador de dois cliques para Lages** (`dist/SSADesk-Servidor-Setup.exe`, gerado por `installer/build.ps1`). Embute o rustdesk-server oficial 1.1.16 (SHA-256 conferido no build), deixa escolher o disco/pasta, pede o IP/DNS público, libera o firewall e cria tarefas que sobem com o Windows como SYSTEM e se reiniciam sozinhas. Não reinicia o computador nem mexe no InfoArte.
 - `docker-compose.yml`: alternativa para um host Linux/VPS (`network_mode: host` não funciona no Docker Desktop do Windows).
 - `.env.example`: modelo do `.env` para o compose.
 - `data/`: chaves e banco gerados pelo servidor (**ignorado pelo git**: contém a chave privada).
 
 ## Instalação em Lages (passo a passo)
 
-1. Copie a pasta `server/` para o servidor de Lages.
-2. PowerShell **como Administrador**:
-   `powershell -ExecutionPolicy Bypass -File .\install-windows.ps1 -PublicHost <IP-ou-DNS-público-de-Lages>`
-3. No **roteador** de Lages, redirecione TCP 21115-21119 e UDP 21116 para o IP interno do servidor.
-4. Copie a chave pública mostrada no fim do script para o cofre de senhas da empresa. Ela vai nos clientes nas Fases 2 e 3.
+1. Leve `SSADesk-Servidor-Setup.exe` para o servidor de Lages e dê dois cliques (pede permissão de administrador).
+2. Escolha o disco/pasta (padrão `C:\SSADesk\Servidor`), informe o IP/DNS público de Lages e avance. Leva menos de 1 minuto.
+3. No fim abre o `CHAVE-PUBLICA.txt`: guarde no cofre de senhas. Ele vai nos clientes nas Fases 2 e 3.
+4. No **roteador** de Lages, redirecione TCP 21115-21119 e UDP 21116 para o IP interno do servidor.
+
+Desinstalar: Painel de Controle → Programas. A pasta `data\` (chaves) é mantida, então reinstalar preserva a mesma chave.
+Rebuild do instalador: `powershell -ExecutionPolicy Bypass -File server\installer\build.ps1`.
 
 Teste rápido de fora da rede: `Test-NetConnection <host> -Port 21116`.
 
