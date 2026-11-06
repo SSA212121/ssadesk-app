@@ -1,11 +1,11 @@
-﻿; SSADesk: instalador único e igual para todos os computadores Windows.
+; SSADesk: instalador único e igual para todos os computadores Windows.
 ; Cada instalação acessa outros computadores e pode ser acessada, por conexão DIRETA (IPv4/IPv6),
 ; sem servidor central, VPS ou servidores de terceiros. Senha permanente obrigatória.
 ; Gerar com build.ps1 (baixa e confere os binários oficiais do RustDesk antes de compilar).
 ; Base: RustDesk (AGPL-3.0), binários oficiais sem modificação.
 
 #define AppName "SSADesk"
-#define AppVersion "2.2.0"
+#define AppVersion "2.3.0"
 
 [Setup]
 AppId={{6B1F4C2E-8D3A-4E7B-9A51-5A1D35C0A001}

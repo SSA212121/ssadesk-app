@@ -51,7 +51,7 @@ try { npm ci --ignore-scripts --no-audit --no-fund | Out-Null; if ($LASTEXITCODE
 New-Item -ItemType Directory -Force "$payload\p2p" | Out-Null
 Copy-Item (Get-Command node).Source "$payload\p2p\node.exe"
 Copy-Item "$p2pSrc\node_modules" "$payload\p2p\node_modules" -Recurse
-Copy-Item "$p2pSrc\package.json" "$payload\p2p\"
+Copy-Item "$p2pSrc\package.json", "$p2pSrc\cliente.js", "$p2pSrc\diagnostico.js" "$payload\p2p\"
 
 & $iscc /Qp "$payload\SSADesk.iss"
 if ($LASTEXITCODE -ne 0) { throw "ISCC falhou ($LASTEXITCODE)." }

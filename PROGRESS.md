@@ -54,6 +54,8 @@
 - [ ] Teste de estresse de conexão (24h+ sem queda)
 - [ ] Polimento visual fino (animações, micro-interações estilo Apple)
 - [ ] Ajustes de UX a partir do uso real do financeiro
+- [ ] Instalação sempre limpa: o instalador desinstala e apaga a versão anterior antes de instalar (pedido do usuário em 2026-11-06; hoje uma atualização por cima ainda pede "ignorar arquivo")
+- [ ] Revisar o atalho "Conectar pela internet" da v2.3 (abre o túnel antes do SSADesk): no teste pelo 4G não conectou; a v2.2 conectava, mas lenta
 
 ---
 
@@ -74,3 +76,4 @@
 - 2026-11-06 — 31,25% — Instalador 2.1: diagnóstico automático de rede (IPv4/IPv6, UPnP automático, detecção de CGNAT) na instalação e a cada hora, com resultado em linguagem simples; validado no notebook (detectou CGNAT)
 - 2026-11-06 — 31,25% — Instalador 2.2: túnel P2P (Hyperswarm/hypertele) embutido, liga com o Windows e gera "chave de internet"; atalho "Conectar pela internet". Testado em loop no notebook; aguardando teste real com segundo notebook no 4G
 - 2026-11-06 — 35% — Conexão pela internet funcionando: notebook no 4G → SSA-Atendimento (CGNAT) pelo túnel P2P, sem servidor; Fase 2 concluída (conexão inicial lenta, com várias tentativas)
+- 2026-11-06 — 35% — v2.3: cliente P2P próprio que abre o túnel antes do SSADesk (30 ms no teste local); no 4G não conectou e a atualização por cima pediu "ignorar arquivo". Ambos ficaram pendentes na Fase 7 a pedido do usuário
