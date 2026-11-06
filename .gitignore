@@ -1,0 +1,34 @@
+# --- Segredos do servidor RustDesk (NUNCA versionar) ---
+server/data/
+server/**/id_ed25519
+server/**/id_ed25519.pub
+*.key
+*.pem
+.env
+.env.*
+!.env.example
+secrets/
+
+# --- Node / Electron (videocall-app) ---
+node_modules/
+dist/
+out/
+build/
+release/
+*.log
+npm-debug.log*
+.npm/
+.cache/
+
+# --- Sistema operacional ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Editores ---
+.vscode/
+.idea/
+*.swp
+
+# --- Clones de referência do RustDesk (não fazem parte deste repositório) ---
+vendor/
