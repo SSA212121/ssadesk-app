@@ -63,6 +63,7 @@
 
 - [ ] **Vários caminhos ao mesmo tempo** (rede local, IPv6, túnel P2P), usa o que responder primeiro; investigar falha via 5G
 - [x] **Enviar arquivos arrastando** para a barrinha flutuante da sessão (ou botão direito → Enviar para → SSADesk) → Área de Trabalho do computador conectado; respeita a permissão "Enviar arquivos"; não sobrescreve; testado entre duas cópias (30 MB + pasta, íntegros)
+- [ ] **Copiar e colar arquivos (Ctrl+C / Ctrl+V) entre os computadores** durante o acesso (pedido 2026-11-06): recurso nativo do motor (cópia de arquivos pela área de transferência); deixar ligado por padrão e testar após compilar o motor
 - [ ] **Lousa digital no Modo My**: circular, escrever, desenhar; botão "Limpar tudo"; os dois usuários veem as anotações (pedido 2026-11-06). **Lousa pronta e testada** (caneta, marca-texto, borracha, 5 cores, modo mouse, Limpar tudo, sincronizada pela sessão P2P); falta ligá-la ao Modo My quando o motor estiver compilado
 - [x] **Transmitir a tela de quem conecta** (como Meet/Discord): botão na barrinha e na chamada; do outro lado abre na janela da chamada, redimensionável e em tela cheia; testado entre duas cópias
 
