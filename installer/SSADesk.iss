@@ -85,7 +85,7 @@ begin
   ExtractTemporaryFiles('{tmp}\pkg\app\*');
   ExtractTemporaryFiles('{tmp}\pkg\bin\*');
   ExtractTemporaryFiles('{tmp}\pkg\tools\*');
-  ExtractTemporaryFiles('{tmp}\pkg\rustdesk.msi');
+  ExtractTemporaryFiles('{tmp}\pkg\motor\*');
   ExtractTemporaryFiles('{tmp}\pkg\ssadesk.*');
   ExtractTemporaryFiles('{tmp}\pkg\LICENSE*');
   SaveStringToFile(ExpandConstant('{tmp}\pkg\pronto.flag'), '1', False);
@@ -93,7 +93,7 @@ begin
   if FileExists(ExpandConstant('{tmp}\pkg\ui-falhou.flag')) then
   begin
     DeleteFile(ExpandConstant('{tmp}\pkg\vivo.flag'));
-    Exec(ExpandConstant('{tmp}\pkg\app\SSADesk.exe'), '--instalar --payload="' + ExpandConstant('{tmp}\pkg') + '"',
+    Exec(ExpandConstant('{tmp}\pkg\app\SSADeskApp.exe'), '--instalar --payload="' + ExpandConstant('{tmp}\pkg') + '"',
          ExpandConstant('{tmp}\pkg'), SW_SHOW, ewNoWait, Code);
   end;  { 3. Mantém a pasta temporária enquanto a tela de instalação estiver aberta (sinal de vida a cada 2 s) }
   Vivo := ''; Parado := 0;

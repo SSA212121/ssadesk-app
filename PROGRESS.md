@@ -68,7 +68,7 @@
 - [ ] **Lousa digital no Modo My**: circular, escrever, desenhar; botão "Limpar tudo"; os dois usuários veem as anotações (pedido 2026-11-06). **Lousa pronta e testada** (caneta, marca-texto, borracha, 5 cores, modo mouse, Limpar tudo, sincronizada pela sessão P2P); falta ligá-la ao Modo My quando o motor estiver compilado
 - [x] **Transmitir a tela de quem conecta** (como Meet/Discord): botão na barrinha e na chamada; do outro lado abre na janela da chamada, redimensionável e em tela cheia; testado entre duas cópias
 
-- [ ] **Motor próprio (decisão 2026-11-06):** o SSADesk não instala nem usa o RustDesk separado. Agora: compilar o motor a partir do código-fonte do RustDesk com marca SSADesk, embutido no programa (licença AGPL: código-fonte do SSADesk público). Futuro: controle de tela 100% próprio (sem AGPL), pensando em comercializar.
+- [x] **Motor próprio (decisão 2026-11-06):** compilado (C:\dev\ssadesk-motor, ramo ssadesk) e embutido na v4.0 como SSADesk.exe + serviço "SSADesk"; sem RustDesk de terceiros; acesso remoto testado no notebook. o SSADesk não instala nem usa o RustDesk separado. Agora: compilar o motor a partir do código-fonte do RustDesk com marca SSADesk, embutido no programa (licença AGPL: código-fonte do SSADesk público). Futuro: controle de tela 100% próprio (sem AGPL), pensando em comercializar.
 - [x] Conectar pelo código: sessão P2P pelo código de 9 dígitos, pedido Permitir/Negar com permissões, nome opcional, vários caminhos ao mesmo tempo (testado entre duas cópias do app: 8,7 s)
 
 - [x] **Ajustes** no painel: ao receber conexão (Perguntar com liberação em 15 s / Sempre perguntar / Permitir direto, para servidores), permissões padrão e iniciar com o Windows

@@ -182,7 +182,7 @@ class JanelaSetup : Form
             {
                 // O resto do pacote ainda pode estar sendo extraído pelo envelope
                 for (int i = 0; i < 1200 && !File.Exists(Path.Combine(pkg, "pronto.flag")); i++) System.Threading.Thread.Sleep(200);
-                var psi = new ProcessStartInfo(Path.Combine(pkg, "app", "SSADesk.exe"),
+                var psi = new ProcessStartInfo(Path.Combine(pkg, "app", "SSADeskApp.exe"),
                     "\"" + Path.Combine(pkg, "app", "resources", "app", "instalar-cli.js") + "\"")
                 {
                     UseShellExecute = false, CreateNoWindow = true,

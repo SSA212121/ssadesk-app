@@ -4,16 +4,17 @@ Cada instalação é completa e igual em todos os computadores:
   - acessa outros computadores e pode ser acessada;
   - conexão DIRETA por IP (IPv4 e IPv6), porta TCP 21118, sem servidor central, VPS ou terceiros;
   - acesso desassistido só com senha permanente.
-Um hbbs local (só 127.0.0.1, portas 21125-21128, bloqueadas no firewall) serve apenas para o RustDesk
-ficar "pronto" sem tentar os servidores públicos do RustDesk.
+O motor de acesso remoto é o SSADesk.exe na raiz da instalação (compilado do código do RustDesk, com a
+marca SSADesk), registrado como serviço "SSADesk". Nenhum RustDesk de terceiros é instalado.
+Um hbbs local (só 127.0.0.1, portas 21125-21128, bloqueadas no firewall) serve apenas para o motor
+ficar "pronto" sem tentar servidores públicos.
 
-  -Mode install   : instala o RustDesk oficial (MSI), configura e grava código + endereços
-  -Mode uninstall : remove tudo (RustDesk, tarefa, firewall); mantém dados\ (chave local)
+  -Mode install   : cria o serviço do motor, configura e grava código + endereços
+  -Mode uninstall : remove tudo (serviço, tarefas, firewall); mantém dados\ (chave local)
 #>
 param(
     [Parameter(Mandatory = $true)][ValidateSet("install", "uninstall")][string]$Mode,
     [Parameter(Mandatory = $true)][string]$InstallDir,
-    [string]$Msi = "",
     [string]$PasswordFile = ""
 )
 $ErrorActionPreference = "Stop"
@@ -37,21 +38,26 @@ foreach ($t in $oldTasks) {
     }
 }
 Get-Process hbbs, hbbr -ErrorAction SilentlyContinue | Stop-Process -Force
-Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.Name -in 'node.exe', 'SSADesk.exe' -and $_.ExecutablePath -like "$InstallDir*" -and $_.CommandLine -match 'hypertele' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.Name -in 'node.exe', 'SSADeskApp.exe', 'SSADesk.exe' -and $_.ExecutablePath -like "$InstallDir*" -and $_.CommandLine -match 'hypertele' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 foreach ($f in $oldFw) { Get-NetFirewallRule -DisplayName $f -ErrorAction SilentlyContinue | Remove-NetFirewallRule }
 
-function Get-RustDeskProduct {
-    Get-ChildItem "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall", "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall" -ErrorAction SilentlyContinue |
-        Get-ItemProperty | Where-Object { $_.DisplayName -eq "RustDesk" -and $_.PSChildName -like "{*}" } | Select-Object -First 1
+$motor = Join-Path $InstallDir "SSADesk.exe"
+function Remover-Motor {
+    # Serviço do motor próprio + RustDesk de versões antigas do SSADesk (se houver)
+    foreach ($s in "SSADesk", "RustDesk") {
+        if (Get-Service $s -ErrorAction SilentlyContinue) { sc.exe stop $s | Out-Null; Start-Sleep 2; sc.exe delete $s | Out-Null }
+    }
+    Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.Name -eq 'SSADesk.exe' -and $_.ExecutablePath -eq $motor } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+    $velho = Get-ChildItem "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall" -ErrorAction SilentlyContinue | Get-ItemProperty | Where-Object { $_.DisplayName -eq "RustDesk" -and $_.PSChildName -like "{*}" } | Select-Object -First 1
+    if ($velho) { Start-Process msiexec.exe -ArgumentList "/x $($velho.PSChildName) /qn /norestart" -Wait }
+    if (Test-Path "HKLM:\Software\SSADesk") { Remove-Item "HKLM:\Software\SSADesk" -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
 if ($Mode -eq "uninstall") {
     & (Join-Path $InstallDir "tools\network.ps1") -InstallDir $InstallDir -Remove
-    $u = Get-RustDeskProduct
-    if ($u) { Start-Process msiexec.exe -ArgumentList "/x $($u.PSChildName) /qn /norestart" -Wait }
+    Remover-Motor
     Stop-Transcript | Out-Null; exit 0
 }
-
 if (-not (Test-Path $PasswordFile)) { throw "Senha não informada." }
 $password = (Get-Content $PasswordFile -Raw).Trim()
 Remove-Item $PasswordFile -Force
@@ -75,33 +81,41 @@ $key = (Get-Content $pub -Raw).Trim()
 New-NetFirewallRule -DisplayName "SSADesk bloqueio componente local" -Direction Inbound -Action Block -Program $hbbs | Out-Null
 
 Write-Host "ETAPA acesso"
-# 2. RustDesk oficial (MSI), na pasta escolhida
-$p = Start-Process msiexec.exe -ArgumentList "/i `"$Msi`" /qn /norestart INSTALLFOLDER=`"$InstallDir\RustDesk`" CREATESTARTMENUSHORTCUTS=1 CREATEDESKTOPSHORTCUTS=1 /l*v `"$InstallDir\msi.log`"" -Wait -PassThru
-if ($p.ExitCode -notin 0, 3010) { throw "Falha no MSI do RustDesk (código $($p.ExitCode)). Veja msi.log." }
-$exe = Join-Path $InstallDir "RustDesk\rustdesk.exe"
-if (-not (Test-Path $exe)) { $exe = (Get-ChildItem $InstallDir -Recurse -Filter rustdesk.exe | Select-Object -First 1).FullName }
-if (-not $exe) { throw "rustdesk.exe não encontrado após a instalação." }
-for ($i = 0; $i -lt 30 -and -not (Get-Service RustDesk -ErrorAction SilentlyContinue); $i++) { Start-Sleep 1 }
+# 2. Motor SSADesk como serviço do Windows (acesso mesmo sem ninguém logado, tela de login e UAC)
+Remover-Motor
+if (-not (Test-Path $motor)) { throw "Motor SSADesk.exe não encontrado em $InstallDir." }
+# Onde o motor está instalado (chave própria dele; sem isso ele não aceita configuração por linha de comando)
+New-Item "HKLM:\Software\SSADesk\InstallState\SSADesk" -Force | Out-Null
+Set-ItemProperty "HKLM:\Software\SSADesk\InstallState\SSADesk" -Name InstallLocation -Value $InstallDir
+$exe = $motor
+sc.exe create SSADesk binPath= "`"$motor`" --service" start= auto DisplayName= "SSADesk" | Out-Null
+sc.exe description SSADesk "Acesso remoto SSADesk (motor)" | Out-Null
+sc.exe failure SSADesk reset= 60 actions= restart/5000/restart/5000/restart/10000 | Out-Null
+sc.exe start SSADesk | Out-Null
+for ($i = 0; $i -lt 30 -and (Get-Service SSADesk -ErrorAction SilentlyContinue).Status -ne 'Running'; $i++) { Start-Sleep 1 }
+Start-Sleep 3
+function Set-Motor([string[]]$a) { & $exe @a | Out-Null }
 
-function Set-RustDesk([string[]]$a) { & $exe @a | Out-Null }
-
-# 3. Nunca usar servidores públicos do RustDesk: aponta para o componente local
-Set-RustDesk "--option", "custom-rendezvous-server", "127.0.0.1:$LocalPort"
-Set-RustDesk "--option", "relay-server", "127.0.0.1"
-Set-RustDesk "--option", "key", $key
-Set-RustDesk "--option", "api-server", "http://127.0.0.1"
+# 3. Nunca usar servidores públicos: aponta para o componente local
+Set-Motor "--option", "custom-rendezvous-server", "127.0.0.1:$LocalPort"
+Set-Motor "--option", "relay-server", "127.0.0.1"
+Set-Motor "--option", "key", $key
+Set-Motor "--option", "api-server", "http://127.0.0.1"
 # 4. Conexão direta por IP (IPv4 e IPv6)
-Set-RustDesk "--option", "direct-server", "Y"
-Set-RustDesk "--option", "direct-access-port", "$Port"
-Set-RustDesk "--option", "enable-lan-discovery", "Y"
+Set-Motor "--option", "direct-server", "Y"
+Set-Motor "--option", "direct-access-port", "$Port"
+Set-Motor "--option", "enable-lan-discovery", "Y"
 # 5. Acesso desassistido SOMENTE com senha permanente
-Set-RustDesk "--option", "verification-method", "use-permanent-password"
-Set-RustDesk "--option", "approve-mode", "password"
-Set-RustDesk "--password", $password
+Set-Motor "--option", "verification-method", "use-permanent-password"
+Set-Motor "--option", "approve-mode", "password"
+# Copiar e colar arquivos (Ctrl+C / Ctrl+V) entre os computadores; sem ícone extra do motor (o app já tem o seu)
+Set-Motor "--option", "enable-file-copy-paste", "Y"
+Set-Motor "--option", "hide-tray", "Y"
+Set-Motor "--password", $password
 $password = $null
 
 New-NetFirewallRule -DisplayName $fwName -Direction Inbound -Action Allow -Protocol TCP -LocalPort $Port -Program $exe | Out-Null
-Restart-Service RustDesk -ErrorAction SilentlyContinue
+Restart-Service SSADesk -ErrorAction SilentlyContinue
 
 # 6. Código único + endereços para conectar
 $id = ""
@@ -117,7 +131,7 @@ Write-Host "ETAPA tunel"
 #     A porta 21118 local é publicada na rede P2P com uma chave fixa deste computador.
 #     Quem tem a chave ainda precisa da senha permanente para entrar.
 # O túnel roda no motor do próprio app (SSADesk.exe no modo Node): nada de Node.js separado
-$node    = Join-Path $InstallDir "app\SSADesk.exe"
+$node    = Join-Path $InstallDir "app\SSADeskApp.exe"
 $mods    = Join-Path $InstallDir "app\resources\app\node_modules"
 $htServer = Join-Path $mods "hypertele\server.js"
 $p2pCfg  = Join-Path $data "p2p.json"
@@ -131,7 +145,7 @@ $a = New-ScheduledTaskAction -Execute "$env:SystemRoot\System32\cmd.exe" -Argume
 Register-ScheduledTask -TaskName "SSADesk-p2p" -Action $a -Trigger (New-ScheduledTaskTrigger -AtStartup) -Settings $settings -Principal $principal -Force | Out-Null
 Start-ScheduledTask -TaskName "SSADesk-p2p"
 # Chamada de vídeo/chat: o app SSADesk usa a mesma rede P2P (sem pedir permissão ao usuário)
-New-NetFirewallRule -DisplayName "SSADesk chamada P2P" -Direction Inbound -Action Allow -Program (Join-Path $InstallDir "app\SSADesk.exe") | Out-Null
+New-NetFirewallRule -DisplayName "SSADesk chamada P2P" -Direction Inbound -Action Allow -Program (Join-Path $InstallDir "app\SSADeskApp.exe") | Out-Null
 # Chave de internet = chave pública derivada da semente (mesma conta do hypertele-server):
 # calculada na hora, sem esperar o túnel responder pela rede.
 $seed = (Get-Content $p2pCfg -Raw | ConvertFrom-Json).seed

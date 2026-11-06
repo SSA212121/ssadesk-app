@@ -703,8 +703,8 @@ ipcMain.on('janela', (_e, acao) => {
 // ---------- Conectar ----------
 function rustdeskPath () {
   if (isMac) return '/Applications/RustDesk.app/Contents/MacOS/RustDesk'
-  const base = path.join(DIR, 'RustDesk')
-  for (const n of ['rustdesk.exe', 'RustDesk.exe']) { const p = path.join(base, n); if (fs.existsSync(p)) return p }
+  // Motor próprio na raiz da instalação; versões antigas tinham o RustDesk numa subpasta
+  for (const p of [path.join(DIR, 'SSADesk.exe'), path.join(DIR, 'RustDesk', 'rustdesk.exe')]) if (fs.existsSync(p)) return p
   return null
 }
 function freePort () {

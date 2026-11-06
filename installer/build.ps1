@@ -4,9 +4,10 @@ Gera dist\SSADesk-Setup.exe.
 Requer Inno Setup 6 (winget install JRSoftware.InnoSetup) e Node.js.
 
 O Setup.exe é só um envelope: extrai a pasta "stage" e abre a tela de instalação do próprio app
-(app\SSADesk.exe --instalar). Layout da stage = layout final da instalação:
-  app\  (SSADesk.exe = Electron oficial + resources\app)   p2p\  (node.exe + túnel)
-  bin\hbbs.exe   tools\*.ps1   rustdesk.msi   ssadesk.ico/png   licenças
+(app\SSADeskApp.exe --instalar). Layout da stage = layout final da instalação:
+  motor\ -> raiz da instalação: SSADesk.exe (motor próprio, compilado do código do RustDesk com a marca SSADesk)
+  app\  (SSADeskApp.exe = Electron oficial + resources\app; também é o Node do túnel)
+  bin\hbbs.exe   tools\*.ps1   ssadesk.ico/png   licenças
 Todos os binários de terceiros são oficiais e têm o SHA-256 conferido.
 #>
 $ErrorActionPreference = "Stop"
@@ -44,7 +45,6 @@ try {
     Get-Verified $ServerUrl "$tmp\server.zip" $ServerSha
     Expand-Archive "$tmp\server.zip" -DestinationPath "$tmp\x" -Force
     Get-ChildItem "$tmp\x" -Recurse -Include hbbs.exe | Copy-Item -Destination "$stage\bin"
-    Get-Verified $ClientUrl "$stage\rustdesk.msi" $ClientSha
     Invoke-WebRequest "https://raw.githubusercontent.com/rustdesk/rustdesk-server/$ServerVer/LICENSE" -OutFile "$stage\LICENSE-SERVER-AGPL.txt" -UseBasicParsing
     Invoke-WebRequest "https://raw.githubusercontent.com/rustdesk/rustdesk/$ClientVer/LICENCE" -OutFile "$stage\LICENSE-RUSTDESK-AGPL.txt" -UseBasicParsing
 } finally { Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue }
@@ -56,6 +56,13 @@ foreach ($f in "configure.ps1", "network.ps1", "tunel.ps1", "chave.js") {
 }
 
 # 3. Túnel P2P: roda no motor do próprio app (SSADesk.exe modo Node); hypertele vem nas dependências do app
+
+# 3b. Motor SSADesk (compilado de C:\dev\ssadesk-motor, ramo "ssadesk"): vai para a raiz da instalação como SSADesk.exe
+$motorSrc = "C:\dev\ssadesk-motor\flutter\build\windows\x64\runner\Release"
+if (-not (Test-Path "$motorSrc\rustdesk.exe")) { throw "Motor não compilado. Compile em C:\dev\ssadesk-motor (cargo build + flutter build windows)." }
+Copy-Item $motorSrc "$stage\motor" -Recurse
+Rename-Item "$stage\motor\rustdesk.exe" "SSADesk.exe"
+$vd = "C:\dev\ssadesk-motor\target\release\deps\dylib_virtual_display.dll"; if (Test-Path $vd) { Copy-Item $vd "$stage\motor\" }
 
 # 4. Identidade visual
 & (Join-Path $here "make-icon.ps1") | Out-Null
@@ -73,7 +80,7 @@ Copy-Item "$appSrc\node_modules\@fontsource-variable\inter\files\inter-latin-wgh
 $appOut = Join-Path $stage "app"
 Copy-Item "$appSrc\node_modules\electron\dist" $appOut -Recurse
 Remove-Item "$appOut\resources\default_app.asar" -ErrorAction SilentlyContinue
-Rename-Item "$appOut\electron.exe" "SSADesk.exe"
+Rename-Item "$appOut\electron.exe" "SSADeskApp.exe"
 New-Item -ItemType Directory -Force "$appOut\resources\app" | Out-Null
 Copy-Item "$appSrc\main.js", "$appSrc\preload.js", "$appSrc\instalador.js", "$appSrc\instalar-cli.js", "$appSrc\package.json" "$appOut\resources\app\"
 Copy-Item "$appSrc\src", "$appSrc\assets" "$appOut\resources\app\" -Recurse
@@ -81,7 +88,7 @@ Copy-Item "$appSrc\canal.js" "$appOut\resources\app\"
 # Dependências de produção (rede P2P da chamada); electron e rcedit são só de build
 robocopy "$appSrc\node_modules" "$appOut\resources\app\node_modules" /E /NFL /NDL /NJH /NJS /NP /XD electron rcedit @types | Out-Null
 if ($LASTEXITCODE -ge 8) { throw "robocopy falhou ($LASTEXITCODE)" }
-& "$appSrc\node_modules\rcedit\bin\rcedit-x64.exe" "$appOut\SSADesk.exe" --set-icon "$here\assets\ssadesk.ico" `
+& "$appSrc\node_modules\rcedit\bin\rcedit-x64.exe" "$appOut\SSADeskApp.exe" --set-icon "$here\assets\ssadesk.ico" `
     --set-version-string "ProductName" "SSADesk" --set-version-string "FileDescription" "SSADesk" `
     --set-version-string "CompanyName" "SSA Comercio" --set-file-version $version --set-product-version $version
 if ($LASTEXITCODE -ne 0) { throw "rcedit falhou" }

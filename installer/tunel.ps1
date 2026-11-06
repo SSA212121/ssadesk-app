@@ -6,7 +6,7 @@ Fecha sozinho quando não houver mais conexão passando por ele.
 #>
 param([Parameter(Mandatory = $true)][string]$Key, [Parameter(Mandatory = $true)][int]$Port)
 $app  = Split-Path $PSScriptRoot -Parent
-$node = Join-Path $app "app\SSADesk.exe"
+$node = Join-Path $app "app\SSADeskApp.exe"
 $cli  = Join-Path $app "app\resources\app\node_modules\hypertele\client.js"
 $env:ELECTRON_RUN_AS_NODE = "1" # usa o motor do próprio app como Node
 $tun = Start-Process $node -ArgumentList "`"$cli`"", "-p", $Port, "-s", $Key -WindowStyle Hidden -PassThru

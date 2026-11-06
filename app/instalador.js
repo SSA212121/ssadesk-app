@@ -48,7 +48,7 @@ const psFile = (file, args, onLine) => run(PS, ['-NoProfile', '-ExecutionPolicy'
 function ehPastaSSADesk (dir) {
   if (path.basename(dir).toLowerCase() !== 'ssadesk') return false
   const itens = fs.readdirSync(dir).map(n => n.toLowerCase())
-  return itens.length === 0 || itens.some(n => ['tools', 'app', 'p2p', 'dados', 'unins000.exe'].includes(n))
+  return itens.length === 0 || itens.some(n => ['tools', 'app', 'p2p', 'dados', 'unins000.exe', 'ssadesk.exe'].includes(n))
 }
 
 function apagarPasta (dir, manter) {
@@ -102,10 +102,13 @@ function copiar (payload, destino) {
     const src = path.join(payload, nome)
     if (fs.existsSync(src)) fs.cpSync(src, path.join(destino, nome), { recursive: true, force: true })
   }
+  // Motor SSADesk (SSADesk.exe e bibliotecas) vai para a raiz da instalação
+  const motor = path.join(payload, 'motor')
+  if (fs.existsSync(motor)) for (const n of fs.readdirSync(motor)) fs.cpSync(path.join(motor, n), path.join(destino, n), { recursive: true, force: true })
 }
 
 async function registrar (dir, versao) {
-  const exe = path.join(dir, 'app', 'SSADesk.exe')
+  const exe = path.join(dir, 'app', 'SSADeskApp.exe')
   const ico = path.join(dir, 'ssadesk.ico')
   // Atalhos (área de trabalho pública e menu Iniciar)
   await ps(`
@@ -162,7 +165,7 @@ async function instalar ({ payload, destino: escolhido, senha, versao }, avisar)
   fs.writeFileSync(pw, senha, { mode: 0o600 })
   try {
     await psFile(path.join(destino, 'tools', 'configure.ps1'),
-      ['-Mode', 'install', '-InstallDir', destino, '-Msi', path.join(payload, 'rustdesk.msi'), '-PasswordFile', pw],
+      ['-Mode', 'install', '-InstallDir', destino, '-PasswordFile', pw],
       linha => {
         if (/ETAPA tunel/.test(linha)) passo(3)
         if (/ETAPA rede/.test(linha)) passo(4)
@@ -173,7 +176,7 @@ async function instalar ({ payload, destino: escolhido, senha, versao }, avisar)
   await registrar(destino, versao)
   const ler = n => { try { return fs.readFileSync(path.join(destino, n), 'utf8').replace(/^\uFEFF/, '').trim() } catch { return '' } }
   let rede = null; try { rede = JSON.parse(ler('rede.json')) } catch {}
-  return { codigo: ler('codigo.txt'), chave: ler('chave-internet.txt'), exe: path.join(destino, 'app', 'SSADesk.exe'), cgnat: rede && rede.cgnat }
+  return { codigo: ler('codigo.txt'), chave: ler('chave-internet.txt'), exe: path.join(destino, 'app', 'SSADeskApp.exe'), cgnat: rede && rede.cgnat }
 }
 
 async function desinstalar (dir) {
