@@ -2,7 +2,7 @@
 
 **Regra:** atualizar a % total após concluir cada subtarefa (marcar `[x]`, recalcular soma). Ao atingir **90%**, o SSADesk é considerado **funcional e pronto para uso no dia a dia**; os **10% finais (Fase 7)** são refinamentos, não bloqueiam o uso.
 
-**Progresso total: 20%**
+**Progresso total: 31,25%**
 
 > **Mudança de arquitetura (2026-11-06, decisão do usuário):** sem servidor central/VPS. Instalador único e igual em todos os computadores; cada um acessa e pode ser acessado por **conexão direta IPv4/IPv6** (porta TCP 21118), com código único e senha permanente. A Fase 1 foi reescrita para refletir isso.
 
@@ -19,11 +19,12 @@
 - [x] Testado localmente: instalação, código único, conexão TCP IPv4/IPv6, desinstalação limpa
 - [x] Nenhum servidor de terceiros: componente local próprio, zero conexões aos servidores públicos do RustDesk (validado)
 
-## Fase 2 — Windows de Lages (computador acessado) (peso: 15%)
-- [ ] SSADesk instalado como serviço no Windows de Lages
-- [ ] Endereço de acesso pela internet definido (IPv6 público, ou IPv4 público + porta 21118 redirecionada no roteador)
-- [ ] Acesso não assistido configurado com senha permanente fixa
-- [ ] Testado: ligar, ver tela, controlar mouse/teclado remotamente
+## Fase 2 — Windows acessado (peso: 15%)
+> Validado no notebook SSA-Atendimento, por decisão do usuário (se funciona aqui, funciona no servidor de Lages e em clientes).
+- [x] SSADesk instalado como serviço no Windows (inicia com o sistema)
+- [ ] Endereço de acesso pela internet definido (IPv6 público, ou IPv4 público + porta 21118 redirecionada no roteador). Esta rede: IPv4 45.229.105.152, sem IPv6
+- [x] Acesso não assistido configurado com senha permanente fixa
+- [x] Testado: ver tela, controlar mouse/teclado por conexão direta via IP (192.168.3.17), com senha
 
 ## Fase 3 — Cliente Mac (colaborador em Itajaí) (peso: 15%)
 - [ ] RustDesk oficial instalado no Mac
@@ -67,3 +68,6 @@
 - 2026-11-06 — 12,5% — Instalador virou universal (`dist/SSADesk-Setup.exe`): tipo Servidor de Lages ou Computador; cliente RustDesk 1.5.1 com código único por máquina e senha permanente obrigatória (prepara Fases 2/3, ainda não testado em máquina real)
 - 2026-11-06 — 12,5% — Teste no notebook: corrigidos bug do alias `RD` e tela de tipo confusa; código 120 358 953 gerado; desinstalação limpa
 - 2026-11-06 — 20% — Arquitetura trocada para conexão direta IPv4/IPv6 sem servidor (decisão do usuário); instalador único v2.0.0 testado: porta 21118 dual-stack, nenhuma conexão externa; Fase 1 concluída
+- 2026-11-06 — 23,75% — Fase 2: SSADesk rodando como serviço no notebook (teste definido pelo usuário como equivalente ao servidor)
+- 2026-11-06 — 27,5% — Fase 2: acesso desassistido só com senha permanente confirmado
+- 2026-11-06 — 31,25% — Fase 2: conexão direta por IP (192.168.3.17) com controle de tela, mouse e teclado funcionando
