@@ -185,6 +185,8 @@ async function desinstalar (dir) {
   fs.rmSync(path.join(START_MENU, 'SSADesk.lnk'), { force: true })
   try { execFileSync('reg.exe', ['delete', ARP, '/f'], { windowsHide: true }) } catch {}
   try { execFileSync('reg.exe', ['delete', RUN, '/v', 'SSADesk', '/f'], { windowsHide: true }) } catch {}
+  // "Enviar para → SSADesk" (criado pelo app no perfil do usuário)
+  if (process.env.APPDATA) fs.rmSync(path.join(process.env.APPDATA, 'Microsoft', 'Windows', 'SendTo', 'SSADesk.lnk'), { force: true })
   // A pasta (inclusive este programa) é apagada logo depois que esta janela fechar
   if (!ehPastaSSADesk(dir)) return
   spawn('cmd.exe', ['/c', `ping -n 4 127.0.0.1 >nul & rmdir /s /q "${dir}"`], { detached: true, stdio: 'ignore', windowsHide: true }).unref()

@@ -77,7 +77,16 @@ async function montarBiblioteca () {
     const x = document.createElement('button'); x.className = 'x'; x.setAttribute('aria-label', 'Remover da lista')
     x.innerHTML = '<svg viewBox="0 0 16 16"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg>'
     x.addEventListener('click', async e => { e.stopPropagation(); await api.biblioteca.remover(c.codigo); montarBiblioteca() })
-    li.append(av, tx, x)
+    // Desligado: botão para ligar pela rede (Wake-on-LAN, por um vizinho da mesma rede)
+    const ligar = document.createElement('button'); ligar.className = 'ligar'; ligar.title = 'Ligar este computador'; ligar.setAttribute('aria-label', 'Ligar este computador')
+    ligar.innerHTML = '<svg viewBox="0 0 24 24"><path d="M12 3.5v8"/><path d="M7.2 6.6a7 7 0 1 0 9.6 0"/></svg>'
+    ligar.addEventListener('click', async e => {
+      e.stopPropagation(); ligar.disabled = true; toast('Enviando sinal para ligar…')
+      const r = await api.biblioteca.acordar(c.codigo); ligar.disabled = false
+      const m = $('msg'); m.className = 'hint ' + (r.ok ? 'ok' : 'err'); m.textContent = r.msg
+      if (r.ok) setTimeout(montarBiblioteca, 45000)
+    })
+    li.append(av, tx, ligar, x)
     li.addEventListener('click', () => { $('destino').value = fmt(c.codigo); $('form').requestSubmit() })
     ul.appendChild(li)
     // Bolinha verde (online) ou vermelha (offline), verificada na rede P2P

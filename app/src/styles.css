@@ -213,3 +213,12 @@ button:focus-visible { outline: 0; box-shadow: 0 0 0 3px color-mix(in srgb, var(
 .item:hover .x { opacity: 1; }
 .item .x:hover { background: var(--hairline); color: var(--text); }
 .item .x svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+
+/* Botão "Ligar" (só aparece quando o computador está offline) */
+.item .ligar { display: none; width: 30px; height: 30px; border-radius: 50%; place-items: center; color: var(--accent); background: var(--field);
+  transition: background .2s, transform .3s var(--spring); }
+.item.off .ligar { display: grid; }
+.item .ligar:hover { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+.item .ligar:active { transform: scale(.88); }
+.item .ligar:disabled { opacity: .5; }
+.item .ligar svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }

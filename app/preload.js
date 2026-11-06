@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('ssadesk', {
     listar: () => ipcRenderer.invoke('biblioteca'),
     remover: codigo => ipcRenderer.invoke('biblioteca-remover', codigo),
     online: codigo => ipcRenderer.invoke('biblioteca-online', codigo),
+    acordar: codigo => ipcRenderer.invoke('biblioteca-acordar', codigo),
     onMudou: cb => ipcRenderer.on('biblioteca-mudou', () => cb())
   },
   onStatus: cb => ipcRenderer.on('conectar-status', (_e, s) => cb(s)),

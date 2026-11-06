@@ -129,6 +129,8 @@ let estadoChamada = { fase: 'aguardando', nome: '' }
 let pendente = null // conexão pelo código esperando a resposta do outro lado
 let arquivos = null
 let ultimoDestino = ''
+let modoAcordar = null
+let ultimoDespertar = 0
 function enviarEstadoChamada () { if (callWin && !callWin.isDestroyed()) callWin.webContents.send('chamada-estado', estadoChamada) }
 function avisarPainel (canalNome, dados) { if (win && !win.isDestroyed()) win.webContents.send(canalNome, dados) }
 
@@ -155,6 +157,7 @@ function iniciarCanal () {
   canal.on('conectado', ({ recebida }) => {
     sessao = { ativa: true, papel: recebida ? 'acessado' : 'acessando', nome: '', permissoes: { ...PERMISSOES_PADRAO } }
     if (process.env.SSADESK_FOTO_CHAMADA) setTimeout(async () => { if (callWin) fs.writeFileSync(process.env.SSADESK_FOTO_CHAMADA, (await callWin.webContents.capturePage()).toPNG()) }, 15000)
+    if (!recebida && modoAcordar) { canal.controle({ t: 'acordar', mac: modoAcordar.mac }); return }
     if (!recebida) {
       const rede = readJson(path.join(DIR, 'rede.json')) || {}
       canal.controle({ t: 'ola', nome: meuNome(), codigo: meuCodigo(), quer: 'acesso', ipPublico: rede.ip_publico || '' })
@@ -171,21 +174,30 @@ function iniciarCanal () {
   })
   canal.on('controle', async msg => {
     switch (msg.t) {
+      case 'acordar': // um computador da lista pede para eu ligar um vizinho desta mesma rede (só envia o sinal)
+        if (sessao.papel === 'acessado') {
+          const agora = Date.now()
+          if (agora - ultimoDespertar > 10000) { ultimoDespertar = agora; enviarPacoteDespertar(msg.mac) }
+          canal.controle({ t: 'acordado' }); setTimeout(() => canal.encerrar(), 300)
+        }
+        break
+      case 'acordado': if (modoAcordar) { modoAcordar.ok(); modoAcordar = null; canal.encerrar() } break
       case 'ola': { // alguém quer acessar este computador
         sessao.nome = String(msg.nome || msg.codigo || 'Alguém').slice(0, 40)
         const r = await mostrarPedido({ nome: sessao.nome, codigo: msg.codigo || '' })
         if (!canal.conectado()) return
         if (!r.permitir) { canal.controle({ t: 'negado' }); setTimeout(() => canal.encerrar(), 300); return }
         sessao.permissoes = { ...PERMISSOES_PADRAO, ...r.permissoes }
+        const minhaRede = readJson(path.join(DIR, 'rede.json')) || {}
         canal.controle({
-          t: 'aceito', nome: meuNome(), permissoes: sessao.permissoes,
+          t: 'aceito', nome: meuNome(), permissoes: sessao.permissoes, mac: minhaRede.mac || '', ipPublico: minhaRede.ip_publico || '',
           // Sem permissão de controle, não entrega os caminhos de acesso
           chave: sessao.permissoes.controlar ? minhaChave() : '',
           ips: sessao.permissoes.controlar ? meusEnderecos(msg.ipPublico) : []
         })
         break
       }
-      case 'aceito': sessao.nome = String(msg.nome || '').slice(0, 40); sessao.permissoes = { ...PERMISSOES_PADRAO, ...msg.permissoes }; if (pendente) { pendente.resolve(msg); pendente = null } break
+      case 'aceito': sessao.nome = String(msg.nome || '').slice(0, 40); sessao.remoto = { mac: String(msg.mac || '').slice(0, 17), ipPublico: String(msg.ipPublico || '').slice(0, 45) }; sessao.permissoes = { ...PERMISSOES_PADRAO, ...msg.permissoes }; if (pendente) { pendente.resolve(msg); pendente = null } break
       case 'negado': if (pendente) { pendente.reject(new Error('O outro computador negou o acesso.')); pendente = null } break
       case 'chamada':
         if (!sessao.permissoes.chamada) { canal.controle({ t: 'aviso', texto: 'Chamada de vídeo não permitida.' }); break }
@@ -412,15 +424,59 @@ async function melhorCaminho ({ chave, ips = [] }) {
 
 // ---------- Biblioteca de conexões: computadores já acessados, com online/offline ----------
 function biblioteca () { return (loadPrefs().biblioteca || []).slice(0, 30) }
-function salvarNaBiblioteca (codigo, nome) {
+function salvarNaBiblioteca (codigo, nome, extra) {
+  const antigo = biblioteca().find(c => c.codigo === codigo) || {}
   const lista = biblioteca().filter(c => c.codigo !== codigo)
-  lista.unshift({ codigo, nome: nome || '', ultima: Date.now() })
+  lista.unshift({ ...antigo, codigo, nome: nome || antigo.nome || '', ultima: Date.now(), mac: (extra && extra.mac) || antigo.mac || '', ipPublico: (extra && extra.ipPublico) || antigo.ipPublico || '' })
   savePrefs({ ...loadPrefs(), biblioteca: lista.slice(0, 30), ultimoCodigo: codigo })
   avisarPainel('biblioteca-mudou')
 }
 ipcMain.handle('biblioteca', () => biblioteca())
 ipcMain.handle('biblioteca-remover', (_e, codigo) => { savePrefs({ ...loadPrefs(), biblioteca: biblioteca().filter(c => c.codigo !== codigo) }); return biblioteca() })
 ipcMain.handle('biblioteca-online', async (_e, codigo) => (canal ? canal.online(codigo) : false))
+
+// ---------- Ligar um computador desligado (Wake-on-LAN), sem servidor ----------
+// O "pacote mágico" precisa sair de dentro da mesma rede do computador desligado: ou daqui mesmo
+// (se estou na mesma rede) ou de outro computador da lista que esteja ligado nessa rede.
+function enviarPacoteDespertar (mac) {
+  const bytes = String(mac || '').split(/[-:]/).map(h => parseInt(h, 16))
+  if (bytes.length !== 6 || bytes.some(isNaN)) return false
+  const pacote = Buffer.alloc(102, 0xff)
+  for (let i = 0; i < 16; i++) Buffer.from(bytes).copy(pacote, 6 + i * 6)
+  const s = require('dgram').createSocket('udp4')
+  s.bind(() => {
+    s.setBroadcast(true)
+    let n = 0; const fim = () => { if (++n === 2) s.close() }
+    s.send(pacote, 9, '255.255.255.255', fim); s.send(pacote, 7, '255.255.255.255', fim)
+  })
+  return true
+}
+ipcMain.handle('biblioteca-acordar', (_e, codigo) => acordarComputador(codigo))
+async function acordarComputador (codigo) {
+  const alvo = biblioteca().find(c => c.codigo === codigo)
+  if (!alvo || !alvo.mac) return { ok: false, msg: 'Este computador ainda não informou o endereço da placa de rede. Conecte nele uma vez com ele ligado.' }
+  const minha = readJson(path.join(DIR, 'rede.json')) || {}
+  if (minha.ip_publico && alvo.ipPublico && minha.ip_publico === alvo.ipPublico) {
+    enviarPacoteDespertar(alvo.mac)
+    return { ok: true, msg: 'Sinal enviado. Ele deve ligar em até 1 minuto.' }
+  }
+  if (!canal) return { ok: false, msg: 'A rede P2P não está pronta.' }
+  if (canal.conectado()) return { ok: false, msg: 'Encerre a conexão atual antes de ligar outro computador.' }
+  // Procura um vizinho ligado da mesma rede, entre os computadores da lista
+  const vizinhos = biblioteca().filter(c => c.codigo !== codigo && c.ipPublico && c.ipPublico === alvo.ipPublico)
+  for (const v of vizinhos) {
+    if (!(await canal.online(v.codigo, 5000))) continue
+    try {
+      await new Promise((resolve, reject) => {
+        const t = setTimeout(() => { modoAcordar = null; canal.pararProcura(); reject(new Error('tempo')) }, 30000)
+        modoAcordar = { mac: alvo.mac, ok: () => { clearTimeout(t); resolve() } }
+        canal.procurar({ codigo: v.codigo })
+      })
+      return { ok: true, msg: 'Sinal enviado por ' + (v.nome || v.codigo) + '. Ele deve ligar em até 1 minuto.' }
+    } catch {}
+  }
+  return { ok: false, msg: 'Nenhum computador da mesma rede está ligado para enviar o sinal.' }
+}
 
 // Conectar pelo código (9 dígitos), como no AnyDesk
 async function conectarPorCodigo (codigo) {
@@ -439,7 +495,7 @@ async function conectarPorCodigo (codigo) {
   const destino = await melhorCaminho(resposta)
   ultimoDestino = destino
   if (!process.env.SSADESK_CODIGO_TESTE) abrirRustDesk(destino)
-  salvarNaBiblioteca(soDigitos(codigo), sessao.nome)
+  salvarNaBiblioteca(soDigitos(codigo), sessao.nome, sessao.remoto)
   avisarPainel('sessao', { ativa: true, nome: sessao.nome })
   abrirBarra()
   return sessao.nome
@@ -682,6 +738,7 @@ app.whenReady().then(() => {
     require('electron').desktopCapturer.getSources({ types: ['screen'] }).then(s => cb(s.length ? { video: s[0] } : {})).catch(() => cb({}))
   })
   if (process.env.SSADESK_CALL) { abrirChamada({ nome: 'Lages' }); return }
+  if (process.env.SSADESK_ACORDAR_TESTE) { iniciarCanal(); acordarComputador(process.env.SSADESK_ACORDAR_TESTE).then(r => fs.writeFileSync(process.env.SSADESK_LOG, JSON.stringify(r))); return }
   if (process.env.SSADESK_CODIGO_TESTE) {
     iniciarCanal()
     conectarPorCodigo(process.env.SSADESK_CODIGO_TESTE)

@@ -70,7 +70,7 @@
 - [x] Conectar pelo código: sessão P2P pelo código de 9 dígitos, pedido Permitir/Negar com permissões, nome opcional, vários caminhos ao mesmo tempo (testado entre duas cópias do app: 8,7 s)
 
 ## Fase 7 — Refinamentos finais (peso: 10%)
-- [ ] Wake-on-LAN (ligar a máquina de Lages totalmente desligada) — decidir caminho (roteador vs. dispositivo sempre ligado) e implementar
+- [ ] Wake-on-LAN (ligar a máquina de Lages totalmente desligada). **Implementado sem servidor**: botão "Ligar" nos computadores offline da lista; o sinal sai daqui (mesma rede) ou de outro computador da lista ligado na mesma rede; pacote validado. Falta: ativar Wake-on-LAN na BIOS/placa de rede de Lages e testar ligando de verdade
 - [ ] Teste de estresse de conexão (24h+ sem queda)
 - [ ] Polimento visual fino (animações, micro-interações estilo Apple)
 - [ ] Ajustes de UX a partir do uso real do financeiro

@@ -45,6 +45,8 @@ function Test-Cgnat([string]$ip) {
 $route = Get-NetRoute -DestinationPrefix 0.0.0.0/0 -ErrorAction SilentlyContinue | Sort-Object RouteMetric | Select-Object -First 1
 $gateway = $route.NextHop
 $ifIndex = $route.InterfaceIndex
+# Endereço físico (MAC) da placa de rede em uso: usado para ligar este computador pela rede (Wake-on-LAN)
+$mac = (Get-NetAdapter -InterfaceIndex $ifIndex -ErrorAction SilentlyContinue).MacAddress
 $v4 = (Get-NetIPAddress -AddressFamily IPv4 -InterfaceIndex $ifIndex -ErrorAction SilentlyContinue |
        Where-Object { $_.AddressState -eq "Preferred" -and $_.IPAddress -notlike "169.254*" } | Select-Object -First 1).IPAddress
 $v6 = @(Get-NetIPAddress -AddressFamily IPv6 -ErrorAction SilentlyContinue | Where-Object {
@@ -121,6 +123,6 @@ $L += "Porta: $Port (TCP). Diagnóstico refeito sozinho a cada inicialização e
 $L | Set-Content -Path (Join-Path $InstallDir "SSADESK-ESTE-COMPUTADOR.txt") -Encoding UTF8
 
 [ordered]@{
-    data = (Get-Date).ToString("s"); codigo = $id; ipv4_local = $v4; ipv6 = $v6; ip_publico = $public
+    data = (Get-Date).ToString("s"); codigo = $id; ipv4_local = $v4; ipv6 = $v6; ip_publico = $public; mac = $mac
     upnp = $upnp; wan_upnp = $wan; cgnat = $cgnat; internet_ipv4 = [bool]$internetV4; internet_ipv6 = $internetV6
 } | ConvertTo-Json | Set-Content -Path (Join-Path $InstallDir "rede.json") -Encoding UTF8
