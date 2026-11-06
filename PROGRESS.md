@@ -2,7 +2,7 @@
 
 **Regra:** atualizar a % total após concluir cada subtarefa (marcar `[x]`, recalcular soma). Ao atingir **90%**, o SSADesk é considerado **funcional e pronto para uso no dia a dia**; os **10% finais (Fase 7)** são refinamentos, não bloqueiam o uso.
 
-**Progresso total: 45%**
+**Progresso total: 60%**
 
 > **Mudança de arquitetura (2026-11-06, decisão do usuário):** sem servidor central/VPS. Instalador único e igual em todos os computadores; cada um acessa e pode ser acessado por **conexão direta IPv4/IPv6** (porta TCP 21118), com código único e senha permanente. A Fase 1 foi reescrita para refletir isso.
 
@@ -39,9 +39,9 @@
 - [x] Tema claro/escuro/automático validado (controle segmentado; Automático segue o sistema)
 
 ## Fase 5 — App de chamada de vídeo: estrutura (peso: 15%)
-- [ ] Projeto Electron + WebRTC criado em `videocall-app/`
-- [ ] Captura de câmera/microfone local funcionando nos dois lados
-- [ ] Janela de vídeo com layout FaceTime (PiP arrastável, controles flutuantes)
+- [x] Projeto Electron + WebRTC criado (dentro do app SSADesk, em `app/`, por decisão do usuário)
+- [x] Captura de câmera/microfone local funcionando (liga/desliga sob demanda, libera o dispositivo; mesmo app nos dois lados; testado no notebook)
+- [x] Janela de vídeo estilo FaceTime: flutuante, sempre no topo, redimensionável e tela cheia; sua imagem arrastável e redimensionável; controles flutuantes que somem
 
 ## Fase 6 — Sinalização e conexão da chamada (peso: 15%)
 - [ ] Servidor de sinalização WebRTC próprio (reaproveitando a infra de Lages)
@@ -56,6 +56,8 @@
 - [ ] **Botão de filmar a tela** da sessão remota (sugestão: Fase 6, barra da sessão)
 - [ ] **Botão de print** (captura da tela remota) (sugestão: Fase 6)
 - [ ] **Modo My**: a tela do PC acessado ocupa toda a área da janela/monitor de quem acessa, ajustada de forma responsiva (resolução, escala, botões legíveis), sem a "janelinha pequena" do AnyDesk/TeamViewer; **atalho na tela para sair do Modo My** (sugestão: Fase 6)
+
+- [ ] **Chat de texto na chamada**: aba lateral direita que abre/guarda, com som de aviso a cada mensagem recebida (interface na Fase 5/6, envio real na Fase 6)
 
 ## Fase 7 — Refinamentos finais (peso: 10%)
 - [ ] Wake-on-LAN (ligar a máquina de Lages totalmente desligada) — decidir caminho (roteador vs. dispositivo sempre ligado) e implementar
@@ -89,3 +91,6 @@
 - 2026-11-06 — 38,3% — Fase 4: app SSADesk em Electron com visual Apple (vidro, Inter/SF, animações) e botões de janela próprios
 - 2026-11-06 — 41,7% — Fase 4: ícone e marca SSADesk; instalador/desinstalador próprios no mesmo visual, com instalação sempre limpa preservando código e chave (resolve pendência da Fase 7)
 - 2026-11-06 — 45% — Fase 4: temas Automático/Claro/Escuro validados pelo usuário; Fase 4 concluída
+- 2026-11-06 — 50% — Fase 5: chamada de vídeo dentro do app SSADesk (Electron + WebRTC)
+- 2026-11-06 — 55% — Fase 5: microfone e câmera ligam sob demanda, cada lado o seu, testados no notebook
+- 2026-11-06 — 60% — Fase 5: janela flutuante estilo FaceTime, redimensionável, com sua imagem arrastável/redimensionável; Fase 5 concluída

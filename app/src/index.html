@@ -34,7 +34,13 @@
       </button>
     </section>
 
-    <section class="connect glass reveal" style="--d:2">
+    <button class="row glass reveal call-row" style="--d:2" id="chamada">
+      <span class="call-ico"><svg viewBox="0 0 24 24"><rect x="3" y="6.5" width="13" height="11" rx="2.5"/><path d="M16 10.5l5-3v9l-5-3"/></svg></span>
+      <span class="row-text"><span class="call-title">Chamada de vídeo</span><span class="label">Câmera e microfone, separado do acesso</span></span>
+      <svg class="chev" viewBox="0 0 24 24"><path d="M9.5 6l6 6-6 6"/></svg>
+    </button>
+
+    <section class="connect glass reveal" style="--d:3">
       <p class="eyebrow">Conectar</p>
       <form id="form" class="field" autocomplete="off">
         <input id="destino" placeholder="IP ou chave de internet" spellcheck="false" aria-label="IP ou chave de internet">
@@ -47,7 +53,7 @@
     </section>
   </main>
 
-  <footer class="reveal" style="--d:3">
+  <footer class="reveal" style="--d:4">
     <div class="segmented" id="tema" role="radiogroup" aria-label="Aparência">
       <span class="thumb"></span>
       <button role="radio" data-tema="system">Automático</button>

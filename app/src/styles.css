@@ -172,3 +172,14 @@ button:focus-visible { outline: 0; box-shadow: 0 0 0 3px color-mix(in srgb, var(
 .reveal { opacity: 0; transform: translateY(10px) scale(.985); animation: reveal .7s var(--ease) forwards; animation-delay: calc(var(--d) * 70ms + 60ms); }
 @keyframes reveal { to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } .reveal { opacity: 1; transform: none; } }
+
+/* Linha "Chamada de vídeo" */
+.call-row { width: 100%; text-align: left; transition: transform .35s var(--spring), background .25s var(--ease); }
+.call-row:hover { background: var(--glass-hi); }
+.call-row:active { transform: scale(.98); }
+.call-ico { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; flex: none;
+  background: linear-gradient(180deg, #34c759, #28a745); color: #fff; box-shadow: 0 3px 10px rgba(52, 199, 89, .3); }
+.call-ico svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.call-row .row-text { display: flex; flex-direction: column; gap: 2px; }
+.call-title { font-size: 14.5px; font-weight: 600; letter-spacing: -.01em; }
+.chev { width: 16px; height: 16px; fill: none; stroke: var(--text-3); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }

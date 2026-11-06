@@ -7,6 +7,10 @@ contextBridge.exposeInMainWorld('ssadesk', {
   tema: tema => ipcRenderer.invoke('tema', tema),
   conectar: destino => ipcRenderer.invoke('conectar', destino),
   janela: acao => ipcRenderer.send('janela', acao),
+  chamada: {
+    abrir: dados => ipcRenderer.send('abrir-chamada', dados),
+    janela: acao => ipcRenderer.send('janela-chamada', acao)
+  },
   setup: {
     info: () => ipcRenderer.invoke('setup-info'),
     escolherPasta: atual => ipcRenderer.invoke('setup-pasta', atual),

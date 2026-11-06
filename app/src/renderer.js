@@ -53,4 +53,6 @@ $('form').addEventListener('submit', async e => {
   msg.textContent = r.msg
 })
 
+$('chamada').addEventListener('click', () => api.chamada.abrir({ nome: 'Chamada de vídeo' }))
+
 carregar()

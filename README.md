@@ -19,7 +19,7 @@ Não usamos nem reproduzimos nenhum código do AnyDesk — o RustDesk é um proj
 
 1. **`installer/`** — gera `dist/SSADesk-Setup.exe`, instalador único para Windows (ver `installer/README.md`).
 2. **Mac** — RustDesk oficial para macOS, configurado para conexão direta (Fase 3).
-3. **`videocall-app/`** — app companheiro de chamada de vídeo bidirecional (estilo FaceTime/Google Meet): ambos os lados ligam câmera e microfone quando quiserem, numa janela flutuante, independente da sessão de controle de tela.
+3. **`app/`** — app SSADesk (Electron): painel, instalador/desinstalador e **chamada de vídeo** bidirecional estilo FaceTime (janela própria, independente da sessão de controle de tela). Decisão de 2026-11-06: a chamada fica dentro do app, não num app separado.
 4. **`DESIGN_GUIDELINES.md`** — identidade visual do SSADesk, inspirada nos apps da Apple (FaceTime, System Settings): minimalista, moderna, tema claro/escuro/sistema.
 5. **`PROGRESS.md`** — controle de progresso por fases, em percentual. 90% = funcional e pronto para uso no dia a dia; os 10% finais são refinamentos (Wake-on-LAN, polimento visual, testes de estresse de conexão).
 

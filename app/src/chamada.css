@@ -1,0 +1,93 @@
+/* SSADesk — chamada de vídeo (estilo FaceTime, ver DESIGN_GUIDELINES.md) */
+@font-face { font-family: "Inter"; src: url("fonts/inter.woff2") format("woff2"); font-weight: 100 900; font-display: block; }
+:root {
+  --font: -apple-system, "SF Pro Display", "Inter", "Segoe UI Variable Display", system-ui, sans-serif;
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  --spring: cubic-bezier(.34, 1.56, .64, 1);
+  --glass: rgba(40, 40, 44, .55);
+  --stroke: rgba(255, 255, 255, .12);
+  --red: #ff3b30;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body { background: #000; color: #fff; font-family: var(--font); -webkit-font-smoothing: antialiased; overflow: hidden; user-select: none; }
+button { font: inherit; color: inherit; border: 0; background: none; cursor: default; }
+
+/* Vídeo do outro lado */
+#remoto { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #000; }
+.aguardando { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: clamp(2px, 1.6vmin, 10px); padding-bottom: 14vmin;
+  background: radial-gradient(120% 90% at 50% 20%, #1c2a44 0%, #0b0d12 60%, #050506 100%); transition: opacity .6s var(--ease); }
+.aguardando.oculto { opacity: 0; pointer-events: none; }
+.avatar { width: clamp(52px, 22vmin, 112px); height: clamp(52px, 22vmin, 112px); border-radius: 50%; display: grid; place-items: center; background: rgba(255, 255, 255, .08);
+  box-shadow: 0 0 0 0 rgba(10, 132, 255, .45); animation: chama 2.6s var(--ease) infinite; margin-bottom: 8px; }
+.avatar img { width: 54%; height: 54%; border-radius: 24%; }
+@keyframes chama { 70% { box-shadow: 0 0 0 26px rgba(10, 132, 255, 0); } 100% { box-shadow: 0 0 0 0 rgba(10, 132, 255, 0); } }
+.nome { font-size: clamp(15px, 6vmin, 26px); font-weight: 600; letter-spacing: -.02em; }
+.estado { font-size: clamp(11.5px, 3.6vmin, 15px); color: rgba(235, 235, 245, .6); }
+
+/* Topo: área de arrastar + botões de janela */
+.topo { position: absolute; top: 0; left: 0; right: 0; height: 40px; -webkit-app-region: drag; display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, .45), transparent); transition: opacity .5s var(--ease); }
+.winctl { position: absolute; right: 8px; display: flex; gap: 6px; -webkit-app-region: no-drag; }
+.wbtn { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; color: rgba(255, 255, 255, .8);
+  background: rgba(255, 255, 255, .08); backdrop-filter: blur(20px); transition: background .25s, color .25s, transform .3s var(--spring); }
+.wbtn svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.wbtn:hover { background: rgba(255, 255, 255, .18); color: #fff; }
+.wbtn.close:hover { background: rgba(255, 59, 48, .85); }
+.wbtn:active { transform: scale(.88); }
+.platform-darwin .winctl { display: none; }
+.tempo { font-size: 13px; font-weight: 500; color: rgba(255, 255, 255, .85); font-variant-numeric: tabular-nums; }
+
+/* PiP (seu vídeo) */
+.pip { position: absolute; width: 120px; height: 90px; border-radius: clamp(8px, 2.5vmin, 16px); overflow: hidden;
+  background: #1c1c1e; box-shadow: 0 12px 36px rgba(0, 0, 0, .45), 0 0 0 .5px rgba(255, 255, 255, .14); cursor: grab; touch-action: none;
+  transition: left .55s var(--spring), top .55s var(--spring), transform .25s var(--ease); z-index: 3; }
+.pip.arrastando { transition: none !important; cursor: grabbing; transform: scale(1.03); }
+.pip video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+.pip-off { position: absolute; inset: 0; display: grid; place-items: center; background: #2c2c2e; opacity: 0; transition: opacity .3s; }
+.pip-off svg { width: 30px; height: 30px; fill: none; stroke: rgba(255, 255, 255, .55); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.pip.sem-video .pip-off { opacity: 1; }
+
+/* Controles flutuantes */
+.controles { position: absolute; left: 50%; bottom: clamp(8px, 4vmin, 28px); transform: translateX(-50%); display: flex; gap: clamp(8px, 3vmin, 14px); padding: clamp(6px, 2.4vmin, 12px) clamp(8px, 2.8vmin, 14px);
+  border-radius: 999px; background: var(--glass); backdrop-filter: blur(30px) saturate(180%); border: .5px solid var(--stroke);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, .4); transition: opacity .5s var(--ease), transform .5s var(--ease); z-index: 4; }
+.ctl { width: clamp(34px, 13vmin, 54px); height: clamp(34px, 13vmin, 54px); border-radius: 50%; display: grid; place-items: center; background: rgba(255, 255, 255, .14);
+  transition: background .25s var(--ease), transform .35s var(--spring), color .25s; }
+.ctl:hover { background: rgba(255, 255, 255, .24); }
+.ctl:active { transform: scale(.9); }
+.ctl svg { width: clamp(16px, 5.5vmin, 24px); height: clamp(16px, 5.5vmin, 24px); fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.ctl .on { display: none; }
+.ctl { color: rgba(255, 255, 255, .9); }
+.ctl[aria-pressed="true"] { background: #fff; color: #000; }
+.ctl[aria-pressed="true"] .on { display: block; }
+.ctl[aria-pressed="true"] .off { display: none; }
+.ctl:disabled { opacity: .6; }
+.ctl.fim { background: var(--red); }
+.ctl.fim:hover { background: #ff5147; }
+.ctl.fim svg { fill: #fff; stroke: none; width: clamp(18px, 6.5vmin, 28px); height: clamp(18px, 6.5vmin, 28px); }
+.ctl:focus-visible, .wbtn:focus-visible { outline: 0; box-shadow: 0 0 0 3px rgba(10, 132, 255, .7); }
+
+/* Some quando o mouse fica parado */
+body.ocioso .controles { opacity: 0; transform: translate(-50%, 16px); pointer-events: none; }
+body.ocioso .topo { opacity: 0; }
+body.ocioso { cursor: none; }
+
+.aviso { position: absolute; top: 64px; left: 50%; transform: translate(-50%, -8px); opacity: 0; padding: 8px 16px; border-radius: 999px; font-size: 13px;
+  background: var(--glass); backdrop-filter: blur(30px); border: .5px solid var(--stroke); transition: opacity .3s var(--ease), transform .4s var(--spring); z-index: 5; }
+.aviso.show { opacity: 1; transform: translate(-50%, 0); }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+/* Alça de redimensionar o seu quadradinho (aparece ao passar o mouse) */
+.pip-resize { position: absolute; width: 22px; height: 22px; z-index: 2; opacity: 0; transition: opacity .25s; cursor: nwse-resize; }
+.pip-resize::after { content: ""; position: absolute; inset: 6px; border: solid rgba(255, 255, 255, .9); border-width: 2px 0 0 2px; border-radius: 3px 0 0 0;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .6)); }
+.pip:hover .pip-resize, .pip.arrastando .pip-resize { opacity: 1; }
+.pip[data-canto="inf-dir"] .pip-resize { left: 0; top: 0; }
+.pip[data-canto="sup-dir"] .pip-resize { left: 0; bottom: 0; cursor: nesw-resize; transform: scaleY(-1); }
+.pip[data-canto="inf-esq"] .pip-resize { right: 0; top: 0; cursor: nesw-resize; transform: scaleX(-1); }
+.pip[data-canto="sup-esq"] .pip-resize { right: 0; bottom: 0; transform: scale(-1); }
+.pip { transition: left .5s var(--spring), top .5s var(--spring), width .3s var(--ease), height .3s var(--ease), transform .25s var(--ease); }
+/* Seu quadradinho só aparece com a sua câmera ligada */
+.pip.sem-video { opacity: 0; transform: scale(.85); pointer-events: none; }
+.pip { transition: left .5s var(--spring), top .5s var(--spring), width .3s var(--ease), height .3s var(--ease), transform .35s var(--spring), opacity .3s var(--ease); }

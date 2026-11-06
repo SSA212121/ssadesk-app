@@ -38,7 +38,7 @@ function createWindow () {
 
   win = new BrowserWindow({
     width: 400,
-    height: 548,
+    height: 612,
     resizable: false,
     maximizable: false,
     fullscreenable: false,
@@ -56,17 +56,51 @@ function createWindow () {
   if (process.env.SSADESK_PAGE) query.pagina = process.env.SSADESK_PAGE
   win.loadFile(path.join(__dirname, 'src', pagina), { query })
   win.once('ready-to-show', () => {
-    if (process.env.SSADESK_SNAPSHOT) return snapshot()
+    if (process.env.SSADESK_SNAPSHOT && !process.env.SSADESK_CALL) return snapshot(win)
     win.show()
   })
 }
 
+// ---------- Janela de chamada de vídeo (estilo FaceTime) ----------
+// Independente da sessão de controle de tela: abrir/fechar a chamada não afeta o RustDesk.
+let callWin = null
+function abrirChamada (dados = {}) {
+  if (callWin && !callWin.isDestroyed()) { callWin.show(); callWin.focus(); return }
+  // Janela pequena, flutuante e sempre no topo (canto inferior direito), redimensionável à vontade
+  const area = require('electron').screen.getPrimaryDisplay().workArea
+  const W = 360; const H = 270
+  callWin = new BrowserWindow({
+    width: W, height: H, minWidth: 200, minHeight: 150,
+    x: area.x + area.width - W - 24, y: area.y + area.height - H - 24,
+    alwaysOnTop: true, skipTaskbar: false,
+    show: false, title: 'SSADesk — Chamada', backgroundColor: '#000000',
+    icon: path.join(__dirname, 'assets', 'icon.png'),
+    ...(isWin ? { titleBarStyle: 'hidden', roundedCorners: true } : {}),
+    ...(isMac ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 16, y: 16 } } : {}),
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true }
+  })
+  callWin.loadFile(path.join(__dirname, 'src', 'chamada.html'), { query: { platform: process.platform, nome: dados.nome || '' } })
+  callWin.once('ready-to-show', () => {
+    if (process.env.SSADESK_SNAPSHOT && process.env.SSADESK_CALL) return snapshot(callWin)
+    callWin.show()
+  })
+  callWin.setAlwaysOnTop(true, 'floating')
+  callWin.on('closed', () => { callWin = null })
+}
+ipcMain.on('abrir-chamada', (_e, dados) => abrirChamada(dados))
+ipcMain.on('janela-chamada', (_e, acao) => {
+  if (!callWin) return
+  if (acao === 'fechar') callWin.close()
+  if (acao === 'minimizar') callWin.minimize()
+  if (acao === 'tela-cheia') callWin.setFullScreen(!callWin.isFullScreen())
+})
+
 // Pré-visualização (usada no build para validar o visual): salva PNG e fecha
-async function snapshot () {
+async function snapshot (w) {
   if (process.env.SSADESK_THEME) nativeTheme.themeSource = process.env.SSADESK_THEME
-  win.setOpacity(0); win.show()
-  await new Promise(r => setTimeout(r, 1500))
-  const img = await win.webContents.capturePage()
+  w.setOpacity(0); w.show()
+  await new Promise(r => setTimeout(r, 2500))
+  const img = await w.webContents.capturePage()
   fs.writeFileSync(process.env.SSADESK_SNAPSHOT, img.toPNG())
   app.quit()
 }
@@ -202,5 +236,14 @@ ipcMain.handle('setup-desinstalar', async () => {
   return true
 })
 
-app.whenReady().then(createWindow)
+// Câmera e microfone: liberados só para as páginas do próprio app
+if (process.env.SSADESK_SNAPSHOT) app.commandLine.appendSwitch('use-fake-device-for-media-stream')
+app.whenReady().then(() => {
+  const { session } = require('electron')
+  const proprio = url => String(url || '').startsWith('file://')
+  session.defaultSession.setPermissionRequestHandler((wc, perm, cb) => cb(['media', 'clipboard-sanitized-write'].includes(perm) && proprio(wc.getURL())))
+  session.defaultSession.setPermissionCheckHandler((wc, perm) => perm === 'media' && proprio(wc && wc.getURL()))
+  if (process.env.SSADESK_CALL) { abrirChamada({ nome: 'Lages' }); return }
+  createWindow()
+})
 app.on('window-all-closed', () => app.quit())
