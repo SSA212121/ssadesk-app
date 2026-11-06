@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:">
+  <title>SSADesk</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="pedido.css">
+</head>
+<body class="pedido">
+  <div class="ambient" aria-hidden="true"><i></i><i></i></div>
+  <header class="titlebar"></header>
+  <main class="center-col">
+    <div class="avatar-pedido" id="inicial">?</div>
+    <h2><span id="nome">Alguém</span> deseja conectar</h2>
+    <p class="sub" id="sub">ao seu computador</p>
+
+    <ul class="perms glass" aria-label="Permissões">
+      <li><span>Controlar a tela</span><label class="switch"><input type="checkbox" data-perm="controlar" checked><i></i></label></li>
+      <li><span>Enviar arquivos</span><label class="switch"><input type="checkbox" data-perm="arquivos" checked><i></i></label></li>
+      <li><span>Chamada de vídeo</span><label class="switch"><input type="checkbox" data-perm="chamada" checked><i></i></label></li>
+      <li><span>Chat</span><label class="switch"><input type="checkbox" data-perm="chat" checked><i></i></label></li>
+    </ul>
+
+    <div class="actions">
+      <button class="btn secondary" id="negar">Negar</button>
+      <button class="btn primary" id="permitir">Permitir</button>
+    </div>
+    <p class="fine" id="contagem"></p>
+  </main>
+  <script src="pedido.js"></script>
+</body>
+</html>

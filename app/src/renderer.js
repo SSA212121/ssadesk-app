@@ -23,14 +23,12 @@ function setTema (tema) {
 async function carregar () {
   const info = await api.info()
   $('codigo').textContent = info.codigo || '—'
-  $('chave').textContent = info.chave ? info.chave.slice(0, 12) + '…' + info.chave.slice(-12) : 'Indisponível'
-  $('chave').title = info.chave || ''
+  $('nome').value = info.nome || ''
   $('statusTxt').textContent = info.status.texto
   $('status').className = 'status ' + info.status.tipo
   setTema(info.tema)
 
   $('codigo').onclick = () => { if (info.codigo) { api.copiar(info.codigo.replace(/\s/g, '')); toast('Código copiado') } }
-  $('copiarChave').onclick = () => { if (info.chave) { api.copiar(info.chave); toast('Chave copiada') } }
 }
 
 document.querySelectorAll('#tema button').forEach(b => {
@@ -46,7 +44,7 @@ $('form').addEventListener('submit', async e => {
   if (!destino) { $('destino').focus(); return }
   go.classList.add('busy')
   msg.className = 'hint'
-  msg.textContent = /^[0-9a-f]{64}$/i.test(destino.replace(/\s/g, '')) ? 'Abrindo túnel seguro…' : 'Conectando…'
+  msg.textContent = 'Conectando…'
   const r = await api.conectar(destino)
   go.classList.remove('busy')
   msg.className = 'hint ' + (r.ok ? 'ok' : 'err')
@@ -54,5 +52,13 @@ $('form').addEventListener('submit', async e => {
 })
 
 $('chamada').addEventListener('click', () => api.chamada.abrir({ nome: 'Chamada de vídeo' }))
+
+// Nome opcional: salva sozinho ao sair do campo (aparece para o outro lado ao conectar)
+$('nome').addEventListener('change', () => { api.nome($('nome').value); toast($('nome').value.trim() ? 'Nome salvo' : 'Nome removido') })
+$('nome').addEventListener('keydown', e => { if (e.key === 'Enter') e.target.blur() })
+// Andamento da conexão pelo código
+api.onStatus(s => { const m = $('msg'); m.className = 'hint'; m.textContent = s })
+// Código digitado com espaços (como aparece na tela) também vale
+$('destino').addEventListener('input', e => { const v = e.target.value; if (/^[\d\s]+$/.test(v)) e.target.value = v.replace(/\D/g, '').replace(/(\d{3})(?=\d)/g, '$1 ').slice(0, 11) })
 
 carregar()

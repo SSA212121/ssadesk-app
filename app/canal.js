@@ -1,27 +1,27 @@
-// SSADesk — canal P2P da chamada (Hyperswarm), sem servidor.
-// Cada computador "escuta" num tópico derivado da PRÓPRIA chave de internet.
-// Quem conhece essa chave (a mesma usada para o acesso remoto) consegue chamar.
+// SSADesk — sessão P2P entre dois computadores (Hyperswarm), sem servidor.
+// Cada computador "escuta" num tópico derivado do PRÓPRIO CÓDIGO (9 dígitos, como no AnyDesk) e,
+// por compatibilidade, também no da chave de internet. Quem digita o código encontra o computador.
+// A sessão carrega: pedido de permissão, endereços para conectar, chamada (áudio/vídeo), chat e arquivos.
 //
-// Protocolo (sobre o stream criptografado do Hyperswarm), quadros:
-//   [1 byte tipo][4 bytes tamanho (UInt32 BE)][dados]
-//   tipo 1 = controle (JSON: ola, chat, estado, tchau)
-//   tipo 2 = áudio (Opus)   tipo 3 = vídeo (VP8)
-//   dados de mídia = [1 byte flags (bit0 = quadro-chave)][8 bytes timestamp µs (Float64 BE)][bytes codificados]
+// Quadros: [1 byte tipo][4 bytes tamanho (UInt32 BE)][dados]
+//   1 = controle (JSON)   2 = áudio (Opus)   3 = vídeo (VP8)   4 = arquivo (pedaço binário)
 const crypto = require('crypto')
 const os = require('os')
 const { EventEmitter } = require('events')
 
-const TIPO = { CONTROLE: 1, AUDIO: 2, VIDEO: 3 }
-const topicoDe = chave => crypto.createHash('sha256').update('ssadesk-chamada:' + String(chave).toLowerCase()).digest()
+const TIPO = { CONTROLE: 1, AUDIO: 2, VIDEO: 3, ARQUIVO: 4 }
+const soDigitos = c => String(c || '').replace(/\D/g, '')
+const topicoChave = chave => crypto.createHash('sha256').update('ssadesk-chamada:' + String(chave).toLowerCase()).digest()
+const topicoCodigo = codigo => crypto.createHash('sha256').update('ssadesk-codigo:' + soDigitos(codigo)).digest()
 
 class Canal extends EventEmitter {
   constructor (Hyperswarm) {
     super()
     this.Hyperswarm = Hyperswarm
     this.swarm = null
-    this.conexao = null // uma chamada por vez
-    this.escutando = null
-    this.chamando = null
+    this.conexao = null // uma sessão por vez
+    this.escutas = new Set()
+    this.procurando = null
   }
 
   _swarm () {
@@ -31,26 +31,35 @@ class Canal extends EventEmitter {
     return this.swarm
   }
 
-  // Computador acessado: fica disponível para receber chamadas
-  async escutar (minhaChave) {
-    if (!/^[0-9a-f]{64}$/i.test(minhaChave || '') || this.escutando) return
-    this.escutando = this._swarm().join(topicoDe(minhaChave), { server: true, client: false })
-    await this.escutando.flushed()
+  // Fica disponível para ser encontrado pelo código (e pela chave de internet)
+  async escutar ({ codigo, chave }) {
+    const topicos = []
+    if (soDigitos(codigo).length >= 6) topicos.push(topicoCodigo(codigo))
+    if (/^[0-9a-f]{64}$/i.test(chave || '')) topicos.push(topicoChave(chave))
+    for (const t of topicos) {
+      const id = t.toString('hex')
+      if (this.escutas.has(id)) continue
+      this.escutas.add(id)
+      await this._swarm().join(t, { server: true, client: false }).flushed().catch(() => {})
+    }
   }
 
-  // Quem acessa: chama o outro computador pela chave dele
-  async chamar (chaveDestino) {
+  // Procura o outro computador pelo código (ou pela chave, nas versões anteriores)
+  async procurar ({ codigo, chave }) {
     if (this.conexao) return
-    if (this.chamando) { await this._swarm().leave(this.chamando.topico).catch(() => {}) }
-    const topico = topicoDe(chaveDestino)
-    this.chamando = { topico }
+    await this.pararProcura()
+    const topico = codigo ? topicoCodigo(codigo) : topicoChave(chave)
+    this.procurando = topico
     this._swarm().join(topico, { server: false, client: true })
     this.emit('estado', 'procurando')
+  }
+  async pararProcura () {
+    if (this.procurando) { const t = this.procurando; this.procurando = null; await this._swarm().leave(t).catch(() => {}) }
   }
 
   _nova (sock, info) {
     sock.on('error', () => {})
-    if (this.conexao) { sock.destroy(); return } // já em chamada
+    if (this.conexao) { sock.destroy(); return } // já em sessão
     this.conexao = sock
     this.cheio = false
     sock.on('drain', () => { this.cheio = false })
@@ -66,6 +75,8 @@ class Canal extends EventEmitter {
           try { this.emit('controle', JSON.parse(dados.toString('utf8'))) } catch {}
         } else if (tipo === TIPO.AUDIO || tipo === TIPO.VIDEO) {
           this.emit('midia', tipo === TIPO.AUDIO ? 'audio' : 'video', Buffer.from(dados))
+        } else if (tipo === TIPO.ARQUIVO) {
+          this.emit('arquivo', Buffer.from(dados))
         }
       }
     })
@@ -75,29 +86,34 @@ class Canal extends EventEmitter {
       this.emit('desconectado')
     }
     sock.on('close', fim)
-    this.controle({ t: 'ola', nome: os.hostname(), lado: info.client ? 'chamou' : 'recebeu' })
-    this.emit('conectado', { recebida: !info.client })
-    if (this.chamando) { this._swarm().leave(this.chamando.topico).catch(() => {}); this.chamando = null }
+    const quemChamou = !!info.client
+    this.emit('conectado', { recebida: !quemChamou })
+    if (quemChamou) this.pararProcura()
   }
+
+  conectado () { return !!(this.conexao && !this.conexao.destroyed) }
 
   _enviar (tipo, dados) {
     const s = this.conexao
     if (!s || s.destroyed) return false
-    // Sem fila infinita: se a rede estiver congestionada, descarta mídia (nunca o controle)
-    if (tipo !== TIPO.CONTROLE && this.cheio) return false
+    // Sem fila infinita: com a rede congestionada, descarta áudio/vídeo (nunca controle nem arquivo)
+    if ((tipo === TIPO.AUDIO || tipo === TIPO.VIDEO) && this.cheio) return false
     const cab = Buffer.alloc(5); cab[0] = tipo; cab.writeUInt32BE(dados.length, 1)
     if (!s.write(Buffer.concat([cab, dados]))) this.cheio = true
     return true
   }
   controle (obj) { return this._enviar(TIPO.CONTROLE, Buffer.from(JSON.stringify(obj), 'utf8')) }
   midia (tipo, dados) { return this._enviar(tipo === 'audio' ? TIPO.AUDIO : TIPO.VIDEO, Buffer.from(dados)) }
+  arquivo (dados) { return this._enviar(TIPO.ARQUIVO, Buffer.from(dados)) }
+  // Espera a rede escoar (usado no envio de arquivos grandes, para não lotar a memória)
+  esperarVazao () { return new Promise(r => { if (!this.cheio || !this.conexao) return r(); this.conexao.once('drain', r) }) }
 
   encerrar () {
     if (this.conexao) { this.controle({ t: 'tchau' }); const s = this.conexao; setTimeout(() => s.destroy(), 200) }
-    if (this.chamando) { this._swarm().leave(this.chamando.topico).catch(() => {}); this.chamando = null }
+    this.pararProcura()
   }
 
   async destruir () { if (this.swarm) await this.swarm.destroy().catch(() => {}) }
 }
 
-module.exports = { Canal }
+module.exports = { Canal, soDigitos, nomeComputador: () => os.hostname() }

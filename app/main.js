@@ -56,7 +56,7 @@ function createWindow () {
 
   win = new BrowserWindow({
     width: 400,
-    height: 612,
+    height: 560,
     resizable: false,
     maximizable: false,
     fullscreenable: false,
@@ -107,25 +107,41 @@ function abrirChamada (dados = {}) {
   callWin.setAlwaysOnTop(true, 'floating')
   callWin.on('closed', () => {
     callWin = null
-    if (canal) canal.encerrar()
-    // Fim da chamada: fecha o chat e apaga a conversa
-    if (chatWin && !chatWin.isDestroyed()) { chatWin.destroy() }
-    chatWin = null; mensagens.length = 0
+    if (canal && canal.conectado()) canal.controle({ t: 'chamada-fim' })
+    if (chatWin && !chatWin.isDestroyed()) chatWin.destroy()
+    chatWin = null
   })
-  // Quem acessa: liga para o outro computador pela chave de internet dele
-  if (dados.chave && canal) { estadoChamada = { fase: 'procurando', nome: dados.nome || '' }; canal.chamar(dados.chave) }
 }
-ipcMain.on('abrir-chamada', (_e, dados) => {
-  dados = dados || {}
-  // Sem chave informada: usa a do último computador acessado pela internet
-  if (!dados.chave) dados.chave = loadPrefs().ultimaChave || ''
-  abrirChamada(dados)
+ipcMain.on('abrir-chamada', () => {
+  // A chamada usa a sessão já aberta com o outro computador (conectado pelo código)
+  const ativa = !!(canal && canal.conectado() && sessao.ativa)
+  estadoChamada = ativa ? { fase: 'conectado', nome: sessao.nome } : { fase: 'sem-sessao', nome: '' }
+  abrirChamada({ nome: sessao.nome || 'Chamada de vídeo' })
+  if (ativa) canal.controle({ t: 'chamada' })
+  enviarEstadoChamada()
 })
 
-// ---------- Canal P2P da chamada (vídeo, áudio, chat) ----------
+// ---------- Sessão P2P com o outro computador (pedido, chamada, chat, arquivos) ----------
+const PERMISSOES_PADRAO = { controlar: true, arquivos: true, chamada: true, chat: true }
 let canal = null
+let sessao = { ativa: false, papel: null, nome: '', permissoes: { ...PERMISSOES_PADRAO } }
 let estadoChamada = { fase: 'aguardando', nome: '' }
+let pendente = null // conexão pelo código esperando a resposta do outro lado
+let ultimoDestino = ''
 function enviarEstadoChamada () { if (callWin && !callWin.isDestroyed()) callWin.webContents.send('chamada-estado', estadoChamada) }
+function avisarPainel (canalNome, dados) { if (win && !win.isDestroyed()) win.webContents.send(canalNome, dados) }
+
+const meuCodigo = () => readText(path.join(DIR, 'codigo.txt'))
+const minhaChave = () => readText(path.join(DIR, 'chave-internet.txt'))
+const meuNome = () => (loadPrefs().nome || '').trim() || require('os').hostname()
+// Endereços diretos que o outro lado pode tentar: rede local (só se estiver na mesma rede) e IPv6 público
+function meusEnderecos (ipPublicoDoOutro) {
+  const rede = readJson(path.join(DIR, 'rede.json')) || {}
+  const ips = []
+  if (rede.ipv4_local && rede.ip_publico && ipPublicoDoOutro && rede.ip_publico === ipPublicoDoOutro) ips.push(rede.ipv4_local)
+  for (const v6 of [].concat(rede.ipv6 || [])) if (v6) ips.push(v6)
+  return ips
+}
 
 function iniciarCanal () {
   if (canal || MODO !== 'app') return
@@ -135,30 +151,86 @@ function iniciarCanal () {
     canal = new Canal(Hyperswarm)
   } catch (e) { console.error('canal P2P indisponível:', e.message); return }
 
-  canal.on('estado', fase => { estadoChamada = { ...estadoChamada, fase }; enviarEstadoChamada() })
   canal.on('conectado', ({ recebida }) => {
-    estadoChamada = { ...estadoChamada, fase: 'conectado' }
+    sessao = { ativa: true, papel: recebida ? 'acessado' : 'acessando', nome: '', permissoes: { ...PERMISSOES_PADRAO } }
     if (process.env.SSADESK_FOTO_CHAMADA) setTimeout(async () => { if (callWin) fs.writeFileSync(process.env.SSADESK_FOTO_CHAMADA, (await callWin.webContents.capturePage()).toPNG()) }, 15000)
-    if (recebida) abrirChamada({ nome: 'Chamada' }) // o outro lado chamou: a janelinha aparece sozinha
-    enviarEstadoChamada()
+    if (!recebida) {
+      const rede = readJson(path.join(DIR, 'rede.json')) || {}
+      canal.controle({ t: 'ola', nome: meuNome(), codigo: meuCodigo(), quer: 'acesso', ipPublico: rede.ip_publico || '' })
+    }
   })
-  canal.on('desconectado', () => { estadoChamada = { ...estadoChamada, fase: 'encerrada' }; enviarEstadoChamada() })
-  canal.on('controle', msg => {
-    if (msg.t === 'ola') { estadoChamada = { ...estadoChamada, nome: String(msg.nome || '').slice(0, 60) }; enviarEstadoChamada() }
-    if (msg.t === 'chat') receberMensagem(msg.texto)
-    if (msg.t === 'estado' && callWin && !callWin.isDestroyed()) callWin.webContents.send('chamada-remoto', { mic: !!msg.mic, cam: !!msg.cam })
-    if (msg.t === 'quadro-chave' && callWin && !callWin.isDestroyed()) callWin.webContents.send('chamada-quadro-chave')
-    if (msg.t === 'tchau') { estadoChamada = { ...estadoChamada, fase: 'encerrada' }; enviarEstadoChamada() }
+  canal.on('desconectado', () => {
+    sessao.ativa = false
+    estadoChamada = { ...estadoChamada, fase: 'encerrada' }; enviarEstadoChamada()
+    if (pendente) { pendente.reject(new Error('O outro computador encerrou a conexão.')); pendente = null }
+    avisarPainel('sessao', { ativa: false })
+  })
+  canal.on('controle', async msg => {
+    switch (msg.t) {
+      case 'ola': { // alguém quer acessar este computador
+        sessao.nome = String(msg.nome || msg.codigo || 'Alguém').slice(0, 40)
+        const r = await mostrarPedido({ nome: sessao.nome, codigo: msg.codigo || '' })
+        if (!canal.conectado()) return
+        if (!r.permitir) { canal.controle({ t: 'negado' }); setTimeout(() => canal.encerrar(), 300); return }
+        sessao.permissoes = { ...PERMISSOES_PADRAO, ...r.permissoes }
+        canal.controle({
+          t: 'aceito', nome: meuNome(), permissoes: sessao.permissoes,
+          // Sem permissão de controle, não entrega os caminhos de acesso
+          chave: sessao.permissoes.controlar ? minhaChave() : '',
+          ips: sessao.permissoes.controlar ? meusEnderecos(msg.ipPublico) : []
+        })
+        break
+      }
+      case 'aceito': sessao.nome = String(msg.nome || '').slice(0, 40); sessao.permissoes = { ...PERMISSOES_PADRAO, ...msg.permissoes }; if (pendente) { pendente.resolve(msg); pendente = null } break
+      case 'negado': if (pendente) { pendente.reject(new Error('O outro computador negou o acesso.')); pendente = null } break
+      case 'chamada':
+        if (!sessao.permissoes.chamada) { canal.controle({ t: 'aviso', texto: 'Chamada de vídeo não permitida.' }); break }
+        estadoChamada = { fase: 'conectado', nome: sessao.nome }; abrirChamada({ nome: sessao.nome }); enviarEstadoChamada(); break
+      case 'chamada-fim': if (callWin && !callWin.isDestroyed()) { estadoChamada = { ...estadoChamada, fase: 'encerrada' }; enviarEstadoChamada() } break
+      case 'chat': if (sessao.permissoes.chat) receberMensagem(msg.texto); break
+      case 'estado': if (callWin && !callWin.isDestroyed()) callWin.webContents.send('chamada-remoto', { mic: !!msg.mic, cam: !!msg.cam }); break
+      case 'quadro-chave': if (callWin && !callWin.isDestroyed()) callWin.webContents.send('chamada-quadro-chave'); break
+      case 'tchau': estadoChamada = { ...estadoChamada, fase: 'encerrada' }; enviarEstadoChamada(); break
+    }
+    if (typeof aoControleArquivos === 'function') aoControleArquivos(msg)
   })
   canal.on('midia', (tipo, dados) => {
     if (callWin && !callWin.isDestroyed()) callWin.webContents.send('chamada-midia', tipo, dados)
   })
+  canal.on('arquivo', dados => { if (typeof aoPedacoArquivo === 'function') aoPedacoArquivo(dados) })
   canal._swarm() // liga o nó P2P já na abertura: as próximas conexões saem rápidas
-  // Fica disponível para receber chamadas pela própria chave de internet
-  const minha = readText(path.join(DIR, 'chave-internet.txt'))
-  if (minha) canal.escutar(minha).catch(() => {})
+  // Fica disponível para ser encontrado pelo código (e pela chave de internet)
+  canal.escutar({ codigo: meuCodigo(), chave: minhaChave() }).catch(() => {})
 }
 ipcMain.handle('chamada-estado-atual', () => estadoChamada)
+
+// ---------- Pedido "Fulano deseja conectar" (Permitir / Negar, com permissões) ----------
+// Se ninguém responder em 15 s, permite (o servidor pode estar sem ninguém na frente; a senha continua exigida)
+let pedidoWin = null
+let pedidoAtual = null
+function mostrarPedido (dados) {
+  if (process.env.SSADESK_AUTOPERMITIR) return Promise.resolve({ permitir: true, permissoes: PERMISSOES_PADRAO })
+  return new Promise(resolve => {
+    let respondido = false
+    const responder = r => { if (respondido) return; respondido = true; clearTimeout(tempo); pedidoAtual = null; if (pedidoWin && !pedidoWin.isDestroyed()) pedidoWin.destroy(); pedidoWin = null; resolve(r) }
+    const tempo = setTimeout(() => responder({ permitir: true, permissoes: PERMISSOES_PADRAO }), 15000)
+    pedidoAtual = { dados: { ...dados, segundos: 15, permissoes: PERMISSOES_PADRAO }, responder, adiar: () => clearTimeout(tempo) }
+    pedidoWin = new BrowserWindow({
+      width: 380, height: 420, resizable: false, maximizable: false, minimizable: false, alwaysOnTop: true, show: false,
+      title: 'SSADesk', backgroundColor: '#00000000', icon: path.join(__dirname, 'assets', 'icon.png'),
+      ...(isWin ? { titleBarStyle: 'hidden', backgroundMaterial: 'acrylic' } : {}),
+      ...(isMac ? { titleBarStyle: 'hiddenInset', vibrancy: 'hud', visualEffectState: 'active' } : {}),
+      webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true }
+    })
+    pedidoWin.setAlwaysOnTop(true, 'screen-saver')
+    pedidoWin.loadFile(path.join(__dirname, 'src', 'pedido.html'), { query: { platform: process.platform } })
+    pedidoWin.once('ready-to-show', () => { pedidoWin.show(); pedidoWin.flashFrame(true) })
+    pedidoWin.on('closed', () => responder({ permitir: false }))
+  })
+}
+ipcMain.handle('pedido-dados', () => pedidoAtual && pedidoAtual.dados)
+ipcMain.on('pedido-adiar', () => { if (pedidoAtual) pedidoAtual.adiar() }) // mexeu nas permissões: espera a decisão da pessoa
+ipcMain.on('pedido-resposta', (_e, r) => { if (pedidoAtual) pedidoAtual.responder({ permitir: !!(r && r.permitir), permissoes: (r && r.permissoes) || PERMISSOES_PADRAO }) })
 
 // ---------- Túnel de acesso remoto dentro do app ----------
 // Usa o nó da rede P2P que o app mantém ligado em segundo plano: não precisa 'entrar' na rede a cada conexão.
@@ -179,11 +251,56 @@ async function tunelInterno (chave) {
     })
     const porta = await new Promise((resolve, reject) => { servidor.once('error', reject); servidor.listen(0, '127.0.0.1', () => resolve(servidor.address().port)) })
     tuneis.set(chave, { porta, servidor })
-    // Já 'fura' o caminho até o outro computador enquanto o SSADesk abre a janela
-    const aquece = dht.connect(remoto, { reusableSocket: true }); aquece.on('error', () => {}); aquece.on('open', () => setTimeout(() => aquece.destroy(), 1500))
     return porta
   } catch { return 0 }
 }
+// Confirma que o caminho P2P até o outro computador abriu de verdade (e já deixa o caminho "furado")
+function abrirCaminhoP2P (chave, ms) {
+  return new Promise((resolve, reject) => {
+    const s = canal._swarm().dht.connect(Buffer.from(chave, 'hex'), { reusableSocket: true })
+    const t = setTimeout(() => { s.destroy(); reject(new Error('tempo')) }, ms)
+    s.on('error', e => { clearTimeout(t); reject(e) })
+    s.once('open', () => { clearTimeout(t); setTimeout(() => s.destroy(), 1500); resolve() })
+  })
+}
+function testarTcp (host, porta, ms) {
+  return new Promise((resolve, reject) => {
+    const s = net.connect({ host, port: porta })
+    const t = setTimeout(() => { s.destroy(); reject(new Error('tempo')) }, ms)
+    s.once('connect', () => { clearTimeout(t); s.destroy(); resolve() })
+    s.once('error', e => { clearTimeout(t); reject(e) })
+  })
+}
+// Tenta todos os caminhos ao mesmo tempo (rede local, IPv6, túnel P2P) e usa o primeiro que responder
+async function melhorCaminho ({ chave, ips = [] }) {
+  const tentativas = ips.map(ip => testarTcp(ip, 21118, 3500).then(() => ip.includes(':') ? '[' + ip + ']' : ip))
+  if (chave) tentativas.push((async () => { const porta = await tunelInterno(chave); if (!porta) throw new Error('túnel'); await abrirCaminhoP2P(chave, 45000); return '127.0.0.1:' + porta })())
+  if (!tentativas.length) throw new Error('O outro computador não liberou o controle da tela.')
+  try { return await Promise.any(tentativas) } catch { throw new Error('Não foi possível alcançar o outro computador por nenhum caminho.') }
+}
+
+// Conectar pelo código (9 dígitos), como no AnyDesk
+async function conectarPorCodigo (codigo) {
+  const { soDigitos } = require('./canal')
+  if (!canal) throw new Error('A rede P2P não iniciou. Reabra o SSADesk.')
+  if (soDigitos(codigo) === soDigitos(meuCodigo())) throw new Error('Este é o código deste computador.')
+  if (canal.conectado()) { canal.encerrar(); await new Promise(r => setTimeout(r, 400)) }
+  avisarPainel('conectar-status', 'Procurando o computador…')
+  const resposta = await new Promise((resolve, reject) => {
+    const t = setTimeout(() => { if (pendente) { pendente = null; canal.pararProcura(); reject(new Error('Computador não encontrado. Ele está ligado, com internet e com o SSADesk aberto?')) } }, 45000)
+    pendente = { resolve: v => { clearTimeout(t); resolve(v) }, reject: e => { clearTimeout(t); reject(e) } }
+    canal.procurar({ codigo })
+    canal.once('conectado', () => avisarPainel('conectar-status', 'Aguardando permissão…'))
+  })
+  avisarPainel('conectar-status', 'Escolhendo o caminho mais rápido…')
+  const destino = await melhorCaminho(resposta)
+  ultimoDestino = destino
+  if (!process.env.SSADESK_CODIGO_TESTE) abrirRustDesk(destino)
+  savePrefs({ ...loadPrefs(), ultimoCodigo: soDigitos(codigo) })
+  avisarPainel('sessao', { ativa: true, nome: sessao.nome })
+  return sessao.nome
+}
+
 ipcMain.on('chamada-midia', (_e, tipo, dados) => { if (canal) canal.midia(tipo, Buffer.from(dados)) })
 ipcMain.on('chamada-controle', (_e, obj) => { if (canal && obj && typeof obj === 'object') canal.controle(obj) })
 
@@ -276,10 +393,12 @@ ipcMain.handle('info', () => {
     ipLocal: rede && rede.ipv4_local,
     status,
     tema: loadPrefs().tema || 'system',
+    nome: loadPrefs().nome || '',
     plataforma: process.platform
   }
 })
 
+ipcMain.handle('nome', (_e, nome) => { savePrefs({ ...loadPrefs(), nome: String(nome || '').trim().slice(0, 40) }); return true })
 ipcMain.handle('copiar', (_e, texto) => { clipboard.writeText(String(texto || '')); return true })
 
 ipcMain.handle('tema', (_e, tema) => {
@@ -322,8 +441,13 @@ function abrirRustDesk (destino) {
 
 ipcMain.handle('conectar', async (_e, destinoBruto) => {
   const destino = String(destinoBruto || '').replace(/\s/g, '')
-  if (!destino) return { ok: false, msg: 'Digite um IP ou uma chave.' }
+  if (!destino) return { ok: false, msg: 'Digite o código do outro computador.' }
   try {
+    // Código do computador (só números), como no AnyDesk
+    if (/^\d{6,12}$/.test(destino)) {
+      const nome = await conectarPorCodigo(destino)
+      return { ok: true, msg: 'Conectado a ' + (nome || destino) + '. Digite a senha dele.' }
+    }
     if (/^[0-9a-fA-F]{64}$/.test(destino)) {
       // Qualquer rede: túnel P2P. Preferência: dentro do próprio app, com a rede P2P já aquecida (bem mais rápido).
       const rapido = await tunelInterno(destino.toLowerCase())
@@ -349,7 +473,7 @@ ipcMain.handle('conectar', async (_e, destinoBruto) => {
       abrirRustDesk(destino)
       return { ok: true, msg: 'Conectando.' }
     }
-    return { ok: false, msg: 'IP ou chave inválidos.' }
+    return { ok: false, msg: 'Código inválido. Ele tem 9 números.' }
   } catch (e) {
     return { ok: false, msg: e.message }
   }
@@ -409,7 +533,13 @@ app.whenReady().then(() => {
   session.defaultSession.setPermissionRequestHandler((wc, perm, cb) => cb(['media', 'clipboard-sanitized-write'].includes(perm) && proprio(wc.getURL())))
   session.defaultSession.setPermissionCheckHandler((wc, perm) => perm === 'media' && proprio(wc && wc.getURL()))
   if (process.env.SSADESK_CALL) { abrirChamada({ nome: 'Lages' }); return }
-  if (process.env.SSADESK_CHAMAR) { iniciarCanal(); abrirChamada({ chave: process.env.SSADESK_CHAMAR, nome: 'Teste' }); return }
+  if (process.env.SSADESK_CODIGO_TESTE) {
+    iniciarCanal()
+    conectarPorCodigo(process.env.SSADESK_CODIGO_TESTE)
+      .then(n => fs.writeFileSync(process.env.SSADESK_LOG, 'conectado: ' + n + ' via ' + ultimoDestino + '\n', { flag: 'a' }))
+      .catch(e => fs.writeFileSync(process.env.SSADESK_LOG, 'erro: ' + e.message + '\n', { flag: 'a' }))
+    return
+  }
   if (MODO !== 'app') { createWindow(); return }
   iniciarCanal()
   criarBandeja()
@@ -428,7 +558,7 @@ function criarBandeja () {
   bandeja.setToolTip('SSADesk — disponível')
   bandeja.setContextMenu(Menu.buildFromTemplate([
     { label: 'Abrir SSADesk', click: mostrarPainel },
-    { label: 'Chamada de vídeo', click: () => abrirChamada({ chave: loadPrefs().ultimaChave || '' }) },
+    { label: 'Chamada de vídeo', click: () => ipcMain.emit('abrir-chamada') },
     { type: 'separator' },
     { label: 'Sair do SSADesk', click: () => { app.exit(0) } }
   ]))

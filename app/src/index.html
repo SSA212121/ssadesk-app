@@ -22,38 +22,29 @@
       <p class="eyebrow">Este computador</p>
       <button class="code" id="codigo" title="Copiar código">— — —</button>
       <div class="status" id="status"><span class="dot"></span><span id="statusTxt">Verificando rede</span></div>
+      <input class="nome-input" id="nome" placeholder="Seu nome (opcional)" maxlength="40" spellcheck="false" aria-label="Seu nome, mostrado ao conectar">
     </section>
 
-    <section class="row glass reveal" style="--d:1">
-      <div class="row-text">
-        <p class="label">Chave de internet</p>
-        <p class="mono" id="chave">—</p>
-      </div>
-      <button class="icon-btn" id="copiarChave" aria-label="Copiar chave">
-        <svg viewBox="0 0 24 24"><rect x="8.5" y="8.5" width="11" height="11" rx="2.6"/><path d="M15.5 8.5V6.6A2.1 2.1 0 0 0 13.4 4.5H6.6A2.1 2.1 0 0 0 4.5 6.6v6.8a2.1 2.1 0 0 0 2.1 2.1h1.9"/></svg>
-      </button>
-    </section>
-
-    <button class="row glass reveal call-row" style="--d:2" id="chamada">
+    <button class="row glass reveal call-row" style="--d:1" id="chamada">
       <span class="call-ico"><svg viewBox="0 0 24 24"><rect x="3" y="6.5" width="13" height="11" rx="2.5"/><path d="M16 10.5l5-3v9l-5-3"/></svg></span>
       <span class="row-text"><span class="call-title">Chamada de vídeo</span><span class="label">Câmera e microfone, separado do acesso</span></span>
       <svg class="chev" viewBox="0 0 24 24"><path d="M9.5 6l6 6-6 6"/></svg>
     </button>
 
-    <section class="connect glass reveal" style="--d:3">
+    <section class="connect glass reveal" style="--d:2">
       <p class="eyebrow">Conectar</p>
       <form id="form" class="field" autocomplete="off">
-        <input id="destino" placeholder="IP ou chave de internet" spellcheck="false" aria-label="IP ou chave de internet">
+        <input id="destino" placeholder="Código do outro computador" spellcheck="false" inputmode="numeric" aria-label="Código do outro computador">
         <button class="go" id="go" aria-label="Conectar">
           <svg class="arrow" viewBox="0 0 24 24"><path d="M5 12h13M13 6.5 18.5 12 13 17.5"/></svg>
           <span class="spinner"></span>
         </button>
       </form>
-      <p class="hint" id="msg">Mesma rede: IP. Qualquer lugar: chave.</p>
+      <p class="hint" id="msg">Digite o código e a senha dele.</p>
     </section>
   </main>
 
-  <footer class="reveal" style="--d:4">
+  <footer class="reveal" style="--d:3">
     <div class="segmented" id="tema" role="radiogroup" aria-label="Aparência">
       <span class="thumb"></span>
       <button role="radio" data-tema="system">Automático</button>

@@ -6,6 +6,14 @@ contextBridge.exposeInMainWorld('ssadesk', {
   copiar: texto => ipcRenderer.invoke('copiar', texto),
   tema: tema => ipcRenderer.invoke('tema', tema),
   conectar: destino => ipcRenderer.invoke('conectar', destino),
+  nome: nome => ipcRenderer.invoke('nome', nome),
+  onStatus: cb => ipcRenderer.on('conectar-status', (_e, s) => cb(s)),
+  onSessao: cb => ipcRenderer.on('sessao', (_e, s) => cb(s)),
+  pedido: {
+    dados: () => ipcRenderer.invoke('pedido-dados'),
+    responder: r => ipcRenderer.send('pedido-resposta', r),
+    adiar: () => ipcRenderer.send('pedido-adiar')
+  },
   janela: acao => ipcRenderer.send('janela', acao),
   chamada: {
     abrir: dados => ipcRenderer.send('abrir-chamada', dados),
