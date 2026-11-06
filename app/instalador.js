@@ -59,6 +59,17 @@ function apagarPasta (dir, manter) {
   }
 }
 
+// Arquivos ainda presos por um programa que acabou de ser fechado: tenta de novo por alguns segundos
+async function apagarComPaciencia (dir, manter) {
+  for (let i = 0; ; i++) {
+    try { apagarPasta(dir, manter); return } catch (e) {
+      if (i >= 6) throw new Error('Não foi possível limpar ' + dir + '. Feche o SSADesk e tente de novo.')
+      await pararTudo(dir)
+      await new Promise(r => setTimeout(r, 1500))
+    }
+  }
+}
+
 // Para tudo que é do SSADesk (exceto este próprio processo, que roda da pasta temporária do instalador)
 async function pararTudo (dir) {
   await ps(`
@@ -82,7 +93,7 @@ async function removerAnterior (dir) {
     fs.rmSync(path.join(PUBLIC_DESKTOP, lnk), { force: true })
     fs.rmSync(path.join(START_MENU, lnk), { force: true })
   }
-  apagarPasta(dir, 'dados') // mantém a identidade do computador
+  await apagarComPaciencia(dir, 'dados') // mantém a identidade do computador
 }
 
 function copiar (payload, destino) {
@@ -138,7 +149,10 @@ async function instalar ({ payload, destino: escolhido, senha, versao }, avisar)
     }
     if (ehPastaSSADesk(anterior)) fs.rmSync(anterior, { recursive: true, force: true, maxRetries: 5, retryDelay: 400 })
   }
-  apagarPasta(destino, 'dados')
+  // Restos na pasta escolhida (ex.: instalação anterior que parou no meio): desliga e remove também
+  if (fs.existsSync(destino) && path.resolve(destino).toLowerCase() !== path.resolve(anterior || '.').toLowerCase()) await removerAnterior(destino)
+  await pararTudo(destino)
+  await apagarComPaciencia(destino, 'dados')
 
   passo(1)
   copiar(payload, destino)
