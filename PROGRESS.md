@@ -70,6 +70,8 @@
 - [ ] **Motor próprio (decisão 2026-11-06):** o SSADesk não instala nem usa o RustDesk separado. Agora: compilar o motor a partir do código-fonte do RustDesk com marca SSADesk, embutido no programa (licença AGPL: código-fonte do SSADesk público). Futuro: controle de tela 100% próprio (sem AGPL), pensando em comercializar.
 - [x] Conectar pelo código: sessão P2P pelo código de 9 dígitos, pedido Permitir/Negar com permissões, nome opcional, vários caminhos ao mesmo tempo (testado entre duas cópias do app: 8,7 s)
 
+- [x] **Ajustes** no painel: ao receber conexão (Perguntar com liberação em 15 s / Sempre perguntar / Permitir direto, para servidores), permissões padrão e iniciar com o Windows
+
 ## Fase 7 — Refinamentos finais (peso: 10%)
 - [ ] Wake-on-LAN (ligar a máquina de Lages totalmente desligada). **Implementado sem servidor**: botão "Ligar" nos computadores offline da lista; o sinal sai daqui (mesma rede) ou de outro computador da lista ligado na mesma rede; pacote validado. Falta: ativar Wake-on-LAN na BIOS/placa de rede de Lages e testar ligando de verdade
 - [ ] Teste de estresse de conexão (24h+ sem queda)

@@ -121,8 +121,8 @@ async function registrar (dir, versao) {
     ['NoModify', 'REG_DWORD', '1'], ['NoRepair', 'REG_DWORD', '1']
   ]
   for (const [n, t, v] of vals) execFileSync('reg.exe', ['add', ARP, '/v', n, '/t', t, '/d', v, '/f'], { windowsHide: true })
-  // Inicia com o Windows, em segundo plano (ícone perto do relógio), para receber chamadas de vídeo
-  execFileSync('reg.exe', ['add', RUN, '/v', 'SSADesk', '/t', 'REG_SZ', '/d', `\"${exe}\" --segundo-plano`, '/f'], { windowsHide: true })
+  // O início com o Windows é ligado pelo próprio app (Ajustes → Iniciar com o Windows); remove o registro antigo
+  try { execFileSync('reg.exe', ['delete', RUN, '/v', 'SSADesk', '/f'], { windowsHide: true }) } catch {}
 }
 
 // Passos mostrados na tela (o índice é o que a interface recebe)
@@ -185,6 +185,8 @@ async function desinstalar (dir) {
   fs.rmSync(path.join(START_MENU, 'SSADesk.lnk'), { force: true })
   try { execFileSync('reg.exe', ['delete', ARP, '/f'], { windowsHide: true }) } catch {}
   try { execFileSync('reg.exe', ['delete', RUN, '/v', 'SSADesk', '/f'], { windowsHide: true }) } catch {}
+  try { execFileSync('reg.exe', ['delete', 'HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run', '/v', 'electron.app.SSADesk', '/f'], { windowsHide: true }) } catch {}
+  try { execFileSync('reg.exe', ['delete', 'HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run', '/v', 'SSADesk', '/f'], { windowsHide: true }) } catch {}
   // "Enviar para → SSADesk" (criado pelo app no perfil do usuário)
   if (process.env.APPDATA) fs.rmSync(path.join(process.env.APPDATA, 'Microsoft', 'Windows', 'SendTo', 'SSADesk.lnk'), { force: true })
   // A pasta (inclusive este programa) é apagada logo depois que esta janela fechar

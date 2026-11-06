@@ -123,6 +123,27 @@ ipcMain.on('abrir-chamada', (_e, extra) => {
 
 // ---------- Sessão P2P com o outro computador (pedido, chamada, chat, arquivos) ----------
 const PERMISSOES_PADRAO = { controlar: true, arquivos: true, chamada: true, chat: true }
+// ---------- Ajustes ----------
+// receber: 'auto' (pergunta e libera sozinho em 15 s) | 'perguntar' (só com resposta) | 'direto' (sem janela; servidor sem ninguém)
+function ajustes () {
+  const a = loadPrefs().ajustes || {}
+  return { receber: ['auto', 'perguntar', 'direto'].includes(a.receber) ? a.receber : 'auto', permissoes: { ...PERMISSOES_PADRAO, ...(a.permissoes || {}) }, iniciar: a.iniciar !== false }
+}
+function aplicarInicioAutomatico () {
+  if (!app.isPackaged || MODO !== 'app') return
+  // Inicia com o Windows (perfil do usuário), em segundo plano: necessário para receber conexões e chamadas
+  app.setLoginItemSettings({ openAtLogin: ajustes().iniciar, path: process.execPath, args: ['--segundo-plano'] })
+}
+ipcMain.handle('ajustes', () => ajustes())
+ipcMain.handle('ajustes-salvar', (_e, novo) => {
+  const atual = ajustes()
+  const a = {
+    receber: ['auto', 'perguntar', 'direto'].includes(novo && novo.receber) ? novo.receber : atual.receber,
+    permissoes: { ...atual.permissoes, ...((novo && novo.permissoes) || {}) },
+    iniciar: novo && typeof novo.iniciar === 'boolean' ? novo.iniciar : atual.iniciar
+  }
+  savePrefs({ ...loadPrefs(), ajustes: a }); aplicarInicioAutomatico(); return a
+})
 let canal = null
 let sessao = { ativa: false, papel: null, nome: '', permissoes: { ...PERMISSOES_PADRAO } }
 let estadoChamada = { fase: 'aguardando', nome: '' }
@@ -187,7 +208,7 @@ function iniciarCanal () {
         const r = await mostrarPedido({ nome: sessao.nome, codigo: msg.codigo || '' })
         if (!canal.conectado()) return
         if (!r.permitir) { canal.controle({ t: 'negado' }); setTimeout(() => canal.encerrar(), 300); return }
-        sessao.permissoes = { ...PERMISSOES_PADRAO, ...r.permissoes }
+        sessao.permissoes = { ...ajustes().permissoes, ...r.permissoes }
         const minhaRede = readJson(path.join(DIR, 'rede.json')) || {}
         canal.controle({
           t: 'aceito', nome: meuNome(), permissoes: sessao.permissoes, mac: minhaRede.mac || '', ipPublico: minhaRede.ip_publico || '',
@@ -246,12 +267,13 @@ ipcMain.handle('tela-fonte', async () => {
 let pedidoWin = null
 let pedidoAtual = null
 function mostrarPedido (dados) {
-  if (process.env.SSADESK_AUTOPERMITIR) return Promise.resolve({ permitir: true, permissoes: PERMISSOES_PADRAO })
+  const aj = ajustes()
+  if (process.env.SSADESK_AUTOPERMITIR || aj.receber === 'direto') return Promise.resolve({ permitir: true, permissoes: aj.permissoes })
   return new Promise(resolve => {
     let respondido = false
     const responder = r => { if (respondido) return; respondido = true; clearTimeout(tempo); pedidoAtual = null; if (pedidoWin && !pedidoWin.isDestroyed()) pedidoWin.destroy(); pedidoWin = null; resolve(r) }
-    const tempo = setTimeout(() => responder({ permitir: true, permissoes: PERMISSOES_PADRAO }), 15000)
-    pedidoAtual = { dados: { ...dados, segundos: 15, permissoes: PERMISSOES_PADRAO }, responder, adiar: () => clearTimeout(tempo) }
+    const tempo = aj.receber === 'auto' ? setTimeout(() => responder({ permitir: true, permissoes: aj.permissoes }), 15000) : null
+    pedidoAtual = { dados: { ...dados, segundos: aj.receber === 'auto' ? 15 : 0, permissoes: aj.permissoes }, responder, adiar: () => clearTimeout(tempo) }
     pedidoWin = new BrowserWindow({
       width: 380, height: 420, resizable: false, maximizable: false, minimizable: false, alwaysOnTop: true, show: false,
       title: 'SSADesk', backgroundColor: '#00000000', icon: path.join(__dirname, 'assets', 'icon.png'),
@@ -770,6 +792,7 @@ app.whenReady().then(() => {
   iniciarCanal()
   criarBandeja()
   registrarEnviarPara()
+  aplicarInicioAutomatico()
   const paraEnviar = arquivosDaLinha(process.argv)
   if (paraEnviar.length) { enviarArquivos(paraEnviar); return }
   if (!SEGUNDO_PLANO) createWindow()

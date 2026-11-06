@@ -16,8 +16,11 @@ pedido.dados().then(d => {
   $('nome').textContent = nome
   $('inicial').textContent = (nome.trim()[0] || '?').toUpperCase()
   if (d.codigo) $('sub').textContent = 'ao seu computador · código ' + String(d.codigo).replace(/(\d{3})(?=\d)/g, '$1 ')
+  // Permissões já vêm como definidas nos Ajustes
+  document.querySelectorAll('[data-perm]').forEach(c => { if (d.permissoes && c.dataset.perm in d.permissoes) c.checked = !!d.permissoes[c.dataset.perm] })
   // Sem resposta, permite sozinho (computador sem ninguém na frente); a senha continua sendo exigida
-  let s = d.segundos || 15
+  if (!d.segundos) { $('contagem').textContent = ''; $('permitir').focus(); return }
+  let s = d.segundos
   let mexeu = false
   document.querySelectorAll('[data-perm]').forEach(c => c.addEventListener('change', () => { if (!mexeu) pedido.adiar(); mexeu = true; $('contagem').textContent = '' }))
   const tick = () => {

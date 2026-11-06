@@ -14,6 +14,7 @@
       <button class="wbtn" data-acao="minimizar" aria-label="Minimizar"><svg viewBox="0 0 16 16"><path d="M4 8h8"/></svg></button>
       <button class="wbtn close" data-acao="fechar" aria-label="Fechar"><svg viewBox="0 0 16 16"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg></button>
     </div>
+    <button class="wbtn engrenagem" id="abrirAjustes" aria-label="Ajustes" title="Ajustes"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
     <div class="brand"><img src="../assets/icon.png" alt=""><span>SSADesk</span></div>
   </header>
 
@@ -57,6 +58,29 @@
       <button role="radio" data-tema="dark">Escuro</button>
     </div>
   </footer>
+
+  <!-- Ajustes (folha que sobe, como no iPhone) -->
+  <div class="veu" id="veu"></div>
+  <section class="folha" id="ajustes" aria-label="Ajustes" aria-hidden="true">
+    <div class="folha-topo"><span>Ajustes</span><button class="pronto" id="fecharAjustes">OK</button></div>
+    <p class="grupo">Ao receber uma conexão</p>
+    <div class="opcoes glass" role="radiogroup">
+      <label class="opcao"><input type="radio" name="receber" value="auto"><span><b>Perguntar</b><small>Libera sozinho em 15 s se ninguém responder</small></span></label>
+      <label class="opcao"><input type="radio" name="receber" value="perguntar"><span><b>Sempre perguntar</b><small>Só conecta se alguém permitir</small></span></label>
+      <label class="opcao"><input type="radio" name="receber" value="direto"><span><b>Permitir direto</b><small>Para servidores sem ninguém na frente</small></span></label>
+    </div>
+    <p class="grupo">Permissões padrão</p>
+    <ul class="perms-aj glass">
+      <li><span>Controlar a tela</span><label class="switch"><input type="checkbox" data-aj-perm="controlar"><i></i></label></li>
+      <li><span>Enviar arquivos</span><label class="switch"><input type="checkbox" data-aj-perm="arquivos"><i></i></label></li>
+      <li><span>Chamada de vídeo</span><label class="switch"><input type="checkbox" data-aj-perm="chamada"><i></i></label></li>
+      <li><span>Chat</span><label class="switch"><input type="checkbox" data-aj-perm="chat"><i></i></label></li>
+    </ul>
+    <ul class="perms-aj glass">
+      <li><span>Iniciar com o Windows</span><label class="switch"><input type="checkbox" id="ajIniciar"><i></i></label></li>
+    </ul>
+    <p class="nota">A senha deste computador é sempre exigida para controlar a tela.</p>
+  </section>
 
   <div class="toast" id="toast" role="status">Copiado</div>
   <script src="renderer.js"></script>

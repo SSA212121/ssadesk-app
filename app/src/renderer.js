@@ -61,6 +61,27 @@ api.onStatus(s => { const m = $('msg'); m.className = 'hint'; m.textContent = s 
 // Código digitado com espaços (como aparece na tela) também vale
 $('destino').addEventListener('input', e => { const v = e.target.value; if (/^[\d\s]+$/.test(v)) e.target.value = v.replace(/\D/g, '').replace(/(\d{3})(?=\d)/g, '$1 ').slice(0, 11) })
 
+// ---------- Ajustes ----------
+async function abrirAjustes () {
+  const a = await api.ajustes.ler()
+  document.querySelectorAll('input[name=receber]').forEach(r => { r.checked = r.value === a.receber })
+  document.querySelectorAll('[data-aj-perm]').forEach(c => { c.checked = !!a.permissoes[c.dataset.ajPerm] })
+  $('ajIniciar').checked = a.iniciar
+  document.body.classList.add('ajustes-aberto'); $('ajustes').setAttribute('aria-hidden', 'false')
+}
+function fecharAjustes () { document.body.classList.remove('ajustes-aberto'); $('ajustes').setAttribute('aria-hidden', 'true') }
+$('abrirAjustes').addEventListener('click', abrirAjustes)
+$('fecharAjustes').addEventListener('click', fecharAjustes)
+$('veu').addEventListener('click', fecharAjustes)
+addEventListener('keydown', e => { if (e.key === 'Escape') fecharAjustes() })
+// Salva na hora, a cada mudança
+$('ajustes').addEventListener('change', async () => {
+  const receber = (document.querySelector('input[name=receber]:checked') || {}).value
+  const permissoes = {}; document.querySelectorAll('[data-aj-perm]').forEach(c => { permissoes[c.dataset.ajPerm] = c.checked })
+  await api.ajustes.salvar({ receber, permissoes, iniciar: $('ajIniciar').checked })
+  toast('Ajustes salvos')
+})
+
 // ---------- Biblioteca de conexões ----------
 const fmt = c => String(c).replace(/(\d{3})(?=\d)/g, '$1 ')
 async function montarBiblioteca () {
@@ -94,6 +115,7 @@ async function montarBiblioteca () {
   }
 }
 api.biblioteca.onMudou(montarBiblioteca)
+if (new URLSearchParams(location.search).get('pagina') === 'ajustes') setTimeout(abrirAjustes, 300)
 montarBiblioteca()
 setInterval(montarBiblioteca, 60000) // atualiza o online/offline a cada minuto
 
