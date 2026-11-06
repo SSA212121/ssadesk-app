@@ -72,6 +72,8 @@
 
 - [x] **Ajustes** no painel: ao receber conexão (Perguntar com liberação em 15 s / Sempre perguntar / Permitir direto, para servidores), permissões padrão e iniciar com o Windows
 
+- [ ] **Agente leve em segundo plano** (depois do motor, decisão 2026-11-06): separar rede P2P (agente ~40–60 MB) das janelas (painel, chamada, lousa abertas só quando usadas); hoje ~250 MB em segundo plano
+
 ## Fase 7 — Refinamentos finais (peso: 10%)
 - [ ] Wake-on-LAN (ligar a máquina de Lages totalmente desligada). **Implementado sem servidor**: botão "Ligar" nos computadores offline da lista; o sinal sai daqui (mesma rede) ou de outro computador da lista ligado na mesma rede; pacote validado. Falta: ativar Wake-on-LAN na BIOS/placa de rede de Lages e testar ligando de verdade
 - [ ] Teste de estresse de conexão (24h+ sem queda)
