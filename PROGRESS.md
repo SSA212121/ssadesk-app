@@ -59,6 +59,8 @@
 
 - [ ] **Chat de texto na chamada**: janela própria flutuante e redimensionável, aberta pela aba da chamada; som a cada mensagem recebida e contador de não lidas. Interface pronta e validada (modo demonstração); falta o envio real entre os computadores (Fase 6)
 
+- [ ] **Assinatura digital do SSADesk** (bloqueador para distribuir a clientes): sem ela, o "Controle Inteligente de Aplicativos" do Windows 11 bloqueia o app (Electron, hbbs e módulos nativos não são assinados). Recomendado: Azure Trusted Signing (~US$ 10/mês) em nome da SSA; build assinando tudo. Enquanto isso, o Setup detecta a proteção e orienta o usuário (nunca desliga sozinho)
+
 ## Fase 7 — Refinamentos finais (peso: 10%)
 - [ ] Wake-on-LAN (ligar a máquina de Lages totalmente desligada) — decidir caminho (roteador vs. dispositivo sempre ligado) e implementar
 - [ ] Teste de estresse de conexão (24h+ sem queda)
@@ -97,3 +99,4 @@
 - 2026-11-06 — 60% — Chat de texto da chamada (janela flutuante, som de aviso, não lidas) validado em modo demonstração
 - 2026-11-06 — 60% — Fase 6 (em teste): chamada e chat reais pelo canal P2P próprio; app em segundo plano para receber chamadas (v3.1)
 - 2026-11-06 — 60% — v3.2: instalação mais rápida (chave calculada na hora, diagnóstico em segundo plano, pacote 258→193 MB) e conexão mais rápida (túnel dentro do app com rede P2P aquecida: ~8 s → ~1 s)
+- 2026-11-06 — 60% — v3.2.1/3.2.2: limpeza de instalação interrompida; Setup detecta o Controle Inteligente de Aplicativos e orienta o usuário (o 2º notebook bloqueou o app por falta de assinatura digital)
