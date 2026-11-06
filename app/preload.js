@@ -7,6 +7,12 @@ contextBridge.exposeInMainWorld('ssadesk', {
   tema: tema => ipcRenderer.invoke('tema', tema),
   conectar: destino => ipcRenderer.invoke('conectar', destino),
   nome: nome => ipcRenderer.invoke('nome', nome),
+  biblioteca: {
+    listar: () => ipcRenderer.invoke('biblioteca'),
+    remover: codigo => ipcRenderer.invoke('biblioteca-remover', codigo),
+    online: codigo => ipcRenderer.invoke('biblioteca-online', codigo),
+    onMudou: cb => ipcRenderer.on('biblioteca-mudou', () => cb())
+  },
   onStatus: cb => ipcRenderer.on('conectar-status', (_e, s) => cb(s)),
   onSessao: cb => ipcRenderer.on('sessao', (_e, s) => cb(s)),
   sessao: {

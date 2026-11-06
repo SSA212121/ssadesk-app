@@ -52,7 +52,7 @@
 
 ## Funcionalidades pedidas pelo usuário (2026-11-06) — a encaixar nas fases
 > Anotadas a pedido do usuário. Fase sugerida entre parênteses; peso definido quando forem agendadas.
-- [ ] **Biblioteca de conexões** (sugestão: Fase 4/6, no app SSADesk): todo computador já acessado fica salvo (nome, código, chave/IP); conectar com um clique, sem colar a chave; senha lembrada (opcional) para entrar mais rápido; **bolinha verde = online, vermelha = offline**
+- [x] **Biblioteca de conexões**: computadores já acessados ficam salvos no painel (nome e código); um clique conecta; **bolinha verde = online, vermelha = offline** (verificado na rede P2P a cada minuto). Senha lembrada: fica a cargo do motor (opção "lembrar senha" na sessão). Obs.: um computador desligado pode aparecer online por alguns minutos até o anúncio expirar na rede
 - [ ] **Botão de filmar a tela** da sessão remota (sugestão: Fase 6, barra da sessão)
 - [ ] **Botão de print** (captura da tela remota) (sugestão: Fase 6)
 - [ ] **Modo My**: a tela do PC acessado ocupa toda a área da janela/monitor de quem acessa, ajustada de forma responsiva (resolução, escala, botões legíveis), sem a "janelinha pequena" do AnyDesk/TeamViewer; **atalho na tela para sair do Modo My** (sugestão: Fase 6)

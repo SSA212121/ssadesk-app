@@ -56,7 +56,7 @@ function createWindow () {
 
   win = new BrowserWindow({
     width: 400,
-    height: 560,
+    height: 720,
     resizable: false,
     maximizable: false,
     fullscreenable: false,
@@ -367,6 +367,18 @@ async function melhorCaminho ({ chave, ips = [] }) {
   try { return await Promise.any(tentativas) } catch { throw new Error('Não foi possível alcançar o outro computador por nenhum caminho.') }
 }
 
+// ---------- Biblioteca de conexões: computadores já acessados, com online/offline ----------
+function biblioteca () { return (loadPrefs().biblioteca || []).slice(0, 30) }
+function salvarNaBiblioteca (codigo, nome) {
+  const lista = biblioteca().filter(c => c.codigo !== codigo)
+  lista.unshift({ codigo, nome: nome || '', ultima: Date.now() })
+  savePrefs({ ...loadPrefs(), biblioteca: lista.slice(0, 30), ultimoCodigo: codigo })
+  avisarPainel('biblioteca-mudou')
+}
+ipcMain.handle('biblioteca', () => biblioteca())
+ipcMain.handle('biblioteca-remover', (_e, codigo) => { savePrefs({ ...loadPrefs(), biblioteca: biblioteca().filter(c => c.codigo !== codigo) }); return biblioteca() })
+ipcMain.handle('biblioteca-online', async (_e, codigo) => (canal ? canal.online(codigo) : false))
+
 // Conectar pelo código (9 dígitos), como no AnyDesk
 async function conectarPorCodigo (codigo) {
   const { soDigitos } = require('./canal')
@@ -384,7 +396,7 @@ async function conectarPorCodigo (codigo) {
   const destino = await melhorCaminho(resposta)
   ultimoDestino = destino
   if (!process.env.SSADESK_CODIGO_TESTE) abrirRustDesk(destino)
-  savePrefs({ ...loadPrefs(), ultimoCodigo: soDigitos(codigo) })
+  salvarNaBiblioteca(soDigitos(codigo), sessao.nome)
   avisarPainel('sessao', { ativa: true, nome: sessao.nome })
   abrirBarra()
   return sessao.nome
@@ -460,7 +472,7 @@ ipcMain.on('janela-chamada', (_e, acao) => {
 async function snapshot (w) {
   if (process.env.SSADESK_THEME) nativeTheme.themeSource = process.env.SSADESK_THEME
   w.setOpacity(0); w.show()
-  await new Promise(r => setTimeout(r, 2500))
+  await new Promise(r => setTimeout(r, Number(process.env.SSADESK_SNAPSHOT_ESPERA) || 2500))
   const img = await w.webContents.capturePage()
   fs.writeFileSync(process.env.SSADESK_SNAPSHOT, img.toPNG())
   app.quit()

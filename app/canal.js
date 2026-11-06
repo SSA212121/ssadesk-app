@@ -93,6 +93,19 @@ class Canal extends EventEmitter {
 
   conectado () { return !!(this.conexao && !this.conexao.destroyed) }
 
+  // Está online? Procura na rede P2P se o computador está anunciado pelo código (sem conectar nele)
+  online (codigo, ms = 8000) {
+    return new Promise(resolve => {
+      let fim = false
+      const terminar = v => { if (fim) return; fim = true; clearTimeout(t); try { busca.destroy() } catch {} resolve(v) }
+      const busca = this._swarm().dht.lookup(topicoCodigo(codigo))
+      const t = setTimeout(() => terminar(false), ms)
+      busca.on('data', d => { if (d && d.peers && d.peers.length) terminar(true) })
+      busca.on('end', () => terminar(false))
+      busca.on('error', () => terminar(false))
+    })
+  }
+
   _enviar (tipo, dados) {
     const s = this.conexao
     if (!s || s.destroyed) return false
