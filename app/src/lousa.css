@@ -1,0 +1,36 @@
+/* SSADesk — lousa digital: camada transparente sobre a tela, com barra de ferramentas de vidro */
+@font-face { font-family: "Inter"; src: url("fonts/inter.woff2") format("woff2"); font-weight: 100 900; font-display: block; }
+:root { --ease: cubic-bezier(.2, .8, .2, 1); --spring: cubic-bezier(.34, 1.56, .64, 1); }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; height: 100%; background: transparent; overflow: hidden; user-select: none; }
+body { font-family: -apple-system, "SF Pro Text", "Inter", "Segoe UI Variable Text", system-ui, sans-serif; }
+button { font: inherit; border: 0; background: none; cursor: default; }
+canvas { position: fixed; inset: 0; width: 100%; height: 100%; touch-action: none; }
+body.desenhar canvas { cursor: crosshair; }
+/* Moldura discreta: deixa claro que a lousa está ligada */
+body::after { content: ""; position: fixed; inset: 0; border: 3px solid rgba(10, 132, 255, .55); border-radius: 2px; pointer-events: none; transition: opacity .3s; }
+body:not(.desenhar)::after { opacity: .35; }
+
+.ferramentas { position: fixed; top: 14px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 4px; padding: 6px 8px;
+  border-radius: 999px; background: rgba(28, 28, 30, .8); backdrop-filter: blur(30px) saturate(180%); border: .5px solid rgba(255, 255, 255, .14);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .3); color: #fff; animation: entra .45s var(--spring); }
+@keyframes entra { from { opacity: 0; transform: translate(-50%, -12px) scale(.96); } }
+.f { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; color: rgba(255, 255, 255, .85); transition: background .2s, transform .3s var(--spring); }
+.f:hover { background: rgba(255, 255, 255, .14); }
+.f:active, .cor:active, .txt:active { transform: scale(.88); }
+.f.ativa { background: rgba(255, 255, 255, .92); color: #000; }
+.f svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.f .m-mouse { fill: currentColor; stroke: none; }
+.f.fechar:hover { background: rgba(255, 59, 48, .85); color: #fff; }
+.cor { width: 22px; height: 22px; border-radius: 50%; background: var(--c); margin: 0 3px; box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .25); transition: transform .3s var(--spring), box-shadow .2s; }
+.cor.ativa { box-shadow: 0 0 0 2px rgba(28, 28, 30, .9), 0 0 0 4px #fff; transform: scale(1.08); }
+.sep { width: 1px; height: 22px; background: rgba(255, 255, 255, .16); margin: 0 6px; }
+.txt { height: 32px; padding: 0 12px; border-radius: 999px; color: #fff; font-size: 13px; font-weight: 600; background: rgba(255, 255, 255, .12); transition: background .2s, transform .3s var(--spring); }
+.txt:hover { background: rgba(255, 255, 255, .2); }
+.f:focus-visible, .cor:focus-visible, .txt:focus-visible { outline: 0; box-shadow: 0 0 0 3px rgba(10, 132, 255, .7); }
+
+.aviso { position: fixed; top: 70px; left: 50%; transform: translate(-50%, -6px); opacity: 0; padding: 7px 14px; border-radius: 999px; color: #fff; font-size: 13px;
+  background: rgba(28, 28, 30, .8); backdrop-filter: blur(30px); transition: opacity .3s var(--ease), transform .4s var(--spring); }
+.aviso.show { opacity: 1; transform: translate(-50%, 0); }
+
+body.borracha canvas { cursor: cell; }

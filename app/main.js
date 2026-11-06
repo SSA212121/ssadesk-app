@@ -164,6 +164,7 @@ function iniciarCanal () {
     sessao.ativa = false
     if (arquivos) arquivos.sessaoEncerrada()
     fecharBarra()
+    if (lousaWin && !lousaWin.isDestroyed()) lousaWin.destroy()
     estadoChamada = { ...estadoChamada, fase: 'encerrada' }; enviarEstadoChamada()
     if (pendente) { pendente.reject(new Error('O outro computador encerrou a conexão.')); pendente = null }
     avisarPainel('sessao', { ativa: false })
@@ -194,6 +195,11 @@ function iniciarCanal () {
       case 'estado': if (callWin && !callWin.isDestroyed()) callWin.webContents.send('chamada-remoto', { mic: !!msg.mic, cam: !!msg.cam, tela: !!msg.tela }); break
       case 'quadro-chave': if (callWin && !callWin.isDestroyed()) callWin.webContents.send('chamada-quadro-chave'); break
       case 'tchau': estadoChamada = { ...estadoChamada, fase: 'encerrada' }; enviarEstadoChamada(); break
+      case 'lousa': // anotações do outro lado (a lousa abre sozinha aqui para mostrar)
+        if (process.env.SSADESK_LOG) fs.appendFileSync(process.env.SSADESK_LOG, 'lousa recebida: ' + (msg.d && msg.d.acao) + '\n')
+        if (sessao.permissoes.controlar === false) { if (process.env.SSADESK_LOG) fs.appendFileSync(process.env.SSADESK_LOG, 'lousa bloqueada pela permissão\n'); break }
+        abrirLousa(); if (lousaWin && !lousaWin.isDestroyed()) { if (lousaPronta) lousaWin.webContents.send('lousa-remoto', msg.d); else lousaFila.push(msg.d) }
+        break
     }
     if (arquivos && /^arq-/.test(msg.t)) arquivos.controle(msg)
   })
@@ -257,7 +263,7 @@ function abrirBarra () {
   if (process.env.SSADESK_CODIGO_TESTE) return
   if (barraWin && !barraWin.isDestroyed()) { barraWin.showInactive(); barraWin.webContents.send('barra-sessao', { nome: sessao.nome }); return }
   const area = require('electron').screen.getPrimaryDisplay().workArea
-  const W = 460; const H = 64
+  const W = 500; const H = 64
   barraWin = new BrowserWindow({
     width: W, height: H, x: Math.round(area.x + (area.width - W) / 2), y: area.y + 12,
     frame: false, transparent: true, resizable: false, maximizable: false, minimizable: false, skipTaskbar: true,
@@ -291,6 +297,7 @@ ipcMain.handle('arquivos-escolher', async () => {
 ipcMain.on('sessao-acao', (_e, acao) => {
   if (acao === 'chamada') ipcMain.emit('abrir-chamada')
   if (acao === 'tela') ipcMain.emit('abrir-chamada', null, { tela: true }) // transmitir minha tela
+  if (acao === 'lousa') abrirLousa()
   if (acao === 'chat') abrirChatJanela()
   if (acao === 'encerrar') { if (canal) canal.encerrar(); fecharBarra() }
 })
@@ -319,6 +326,42 @@ function arquivosDaLinha (argv) {
   const i = argv.indexOf('--enviar')
   return i < 0 ? [] : argv.slice(i + 1).filter(a => !a.startsWith('--'))
 }
+
+// ---------- Lousa digital (Modo My): camada transparente sobre a tela inteira, nos dois computadores ----------
+let lousaWin = null; let lousaPronta = false; const lousaFila = []
+function abrirLousa () {
+  if (lousaWin && !lousaWin.isDestroyed()) { lousaWin.showInactive(); return }
+  const d = require('electron').screen.getPrimaryDisplay().bounds
+  lousaPronta = false
+  if (process.env.SSADESK_LOG) fs.appendFileSync(process.env.SSADESK_LOG, 'abrindo lousa\n')
+  lousaWin = new BrowserWindow({
+    x: d.x, y: d.y, width: d.width, height: d.height, frame: false, transparent: true, resizable: false, movable: false,
+    skipTaskbar: true, alwaysOnTop: true, hasShadow: false, show: false, title: 'SSADesk — Lousa', fullscreenable: false,
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true }
+  })
+  lousaWin.setAlwaysOnTop(true, 'screen-saver')
+  if (process.env.SSADESK_LOG) {
+    const reg = s => fs.appendFileSync(process.env.SSADESK_LOG, s + '\n')
+    lousaWin.webContents.on('did-fail-load', (_e, c, d) => reg('lousa falhou ao carregar: ' + c + ' ' + d))
+    lousaWin.webContents.on('console-message', (_e, _l, msg) => reg('lousa console: ' + msg))
+    lousaWin.webContents.on('render-process-gone', (_e, d) => reg('lousa caiu: ' + d.reason))
+    lousaWin.webContents.on('dom-ready', () => reg('lousa dom pronto'))
+  }
+  lousaWin.loadFile(path.join(__dirname, 'src', 'lousa.html'))
+  lousaWin.webContents.once('dom-ready', () => {
+    lousaPronta = true; while (lousaFila.length) lousaWin.webContents.send('lousa-remoto', lousaFila.shift())
+    if (process.env.SSADESK_FOTO_LOUSA) setTimeout(async () => {
+      try { const img = await lousaWin.webContents.capturePage(); fs.writeFileSync(process.env.SSADESK_FOTO_LOUSA, img.toPNG()) } catch (e) { fs.appendFileSync(process.env.SSADESK_LOG, 'foto erro: ' + e.message + '\n') }
+    }, 2500)
+  })
+  lousaWin.once('ready-to-show', () => {
+    lousaWin.show()
+  })
+  lousaWin.on('closed', () => { lousaWin = null; lousaFila.length = 0 })
+}
+ipcMain.on('lousa-enviar', (_e, d) => { if (canal && canal.conectado() && d && typeof d === 'object') canal.controle({ t: 'lousa', d }) })
+ipcMain.on('lousa-atravessar', (_e, sim) => { if (lousaWin && !lousaWin.isDestroyed()) lousaWin.setIgnoreMouseEvents(!!sim, { forward: true }) })
+ipcMain.on('lousa-fechar', () => { if (lousaWin && !lousaWin.isDestroyed()) lousaWin.close() })
 
 // ---------- Túnel de acesso remoto dentro do app ----------
 // Usa o nó da rede P2P que o app mantém ligado em segundo plano: não precisa 'entrar' na rede a cada conexão.
@@ -645,12 +688,25 @@ app.whenReady().then(() => {
       .then(async n => {
         fs.writeFileSync(process.env.SSADESK_LOG, 'conectado: ' + n + ' via ' + ultimoDestino + '\n', { flag: 'a' })
         if (process.env.SSADESK_TELA_TESTE) ipcMain.emit('abrir-chamada', null, { tela: true })
+        if (process.env.SSADESK_LOUSA_TESTE) { // desenha um círculo e um traço, como se fosse a pessoa
+          const pts = []; for (let a = 0; a <= 64; a++) pts.push([0.5 + 0.12 * Math.cos(a / 64 * 2 * Math.PI), 0.5 + 0.2 * Math.sin(a / 64 * 2 * Math.PI)])
+          canal.controle({ t: 'lousa', d: { acao: 'inicio', id: 'c1', cor: '#ff3b30', larg: 6, alfa: 1, pts } })
+          canal.controle({ t: 'lousa', d: { acao: 'inicio', id: 'm1', cor: '#ffd60a', larg: 22, alfa: 0.35, pts: [[0.3, 0.8], [0.7, 0.8]] } })
+        }
         if (process.env.SSADESK_ENVIAR_TESTE) {
           const t0 = Date.now(); const r = await enviarArquivos(process.env.SSADESK_ENVIAR_TESTE.split('|'))
           fs.writeFileSync(process.env.SSADESK_LOG, 'envio: ' + JSON.stringify(r) + ' em ' + (Date.now() - t0) + ' ms\n', { flag: 'a' })
         }
       })
-      .catch(e => fs.writeFileSync(process.env.SSADESK_LOG, 'erro: ' + e.message + '\n', { flag: 'a' }))
+      .catch(e => {
+        fs.writeFileSync(process.env.SSADESK_LOG, 'erro: ' + e.message + '\n', { flag: 'a' })
+        // A sessão P2P pode estar ativa mesmo sem caminho até a tela (teste da lousa não depende disso)
+        if (process.env.SSADESK_LOUSA_TESTE && canal.conectado()) {
+          const pts = []; for (let a = 0; a <= 64; a++) pts.push([0.5 + 0.12 * Math.cos(a / 64 * 2 * Math.PI), 0.5 + 0.2 * Math.sin(a / 64 * 2 * Math.PI)])
+          canal.controle({ t: 'lousa', d: { acao: 'inicio', id: 'c1', cor: '#ff3b30', larg: 6, alfa: 1, pts } })
+          canal.controle({ t: 'lousa', d: { acao: 'inicio', id: 'm1', cor: '#ffd60a', larg: 22, alfa: 0.35, pts: [[0.3, 0.8], [0.7, 0.8]] } })
+        }
+      })
     return
   }
   if (MODO !== 'app') { createWindow(); return }

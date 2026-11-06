@@ -27,6 +27,12 @@ contextBridge.exposeInMainWorld('ssadesk', {
     escolher: () => ipcRenderer.invoke('arquivos-escolher'),
     onProgresso: cb => ipcRenderer.on('arquivos-progresso', (_e, p) => cb(p))
   },
+  lousa: {
+    enviar: d => ipcRenderer.send('lousa-enviar', d),
+    atravessar: sim => ipcRenderer.send('lousa-atravessar', sim),
+    fechar: () => ipcRenderer.send('lousa-fechar'),
+    onRemoto: cb => ipcRenderer.on('lousa-remoto', (_e, d) => cb(d))
+  },
   pedido: {
     dados: () => ipcRenderer.invoke('pedido-dados'),
     responder: r => ipcRenderer.send('pedido-resposta', r),
