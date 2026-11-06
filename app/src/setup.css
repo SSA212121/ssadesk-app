@@ -1,0 +1,80 @@
+/* SSADesk — telas de instalação (mesma linguagem visual do app) */
+.setup .titlebar { height: 48px; }
+.pages { position: relative; flex: 1; }
+.page {
+  position: absolute; inset: 0; padding: 4px 28px 28px; display: flex; flex-direction: column;
+  opacity: 0; transform: translateX(24px) scale(.99); pointer-events: none;
+  transition: opacity .45s var(--ease), transform .55s var(--ease);
+}
+.page.ativa { opacity: 1; transform: none; pointer-events: auto; }
+.page.saiu { transform: translateX(-24px) scale(.99); }
+
+.center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.top { padding-top: 18px; margin-bottom: 22px; }
+h1 { font-size: 34px; font-weight: 700; letter-spacing: -.025em; margin-top: 18px; }
+h2 { font-size: 24px; font-weight: 700; letter-spacing: -.02em; }
+.lead { margin-top: 10px; font-size: 15.5px; line-height: 1.45; color: var(--text-2); }
+.sub { margin-top: 6px; font-size: 14px; line-height: 1.45; color: var(--text-2); }
+.note { margin-top: 14px; font-size: 12.5px; padding: 0 4px; }
+.fine { text-align: center; font-size: 11.5px; color: var(--text-3); margin-top: 12px; }
+
+.app-icon { width: 96px; height: 96px; border-radius: 22px; box-shadow: 0 12px 32px color-mix(in srgb, var(--accent) 28%, transparent), 0 2px 6px rgba(0, 0, 0, .1);
+  animation: float 6s ease-in-out infinite; }
+@keyframes float { 50% { transform: translateY(-4px); } }
+
+/* Botões */
+.actions { display: flex; gap: 10px; margin-top: auto; padding-top: 18px; }
+.btn { flex: 1; height: 44px; border-radius: 12px; font-size: 15px; font-weight: 600; letter-spacing: -.01em;
+  transition: transform .35s var(--spring), filter .2s, background .25s, opacity .25s; }
+.btn:active:not(:disabled) { transform: scale(.97); }
+.btn.wide { flex: 1; }
+.btn.primary { background: var(--accent); color: #fff; box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 35%, transparent); }
+.btn.primary:hover:not(:disabled) { filter: brightness(1.07); }
+.btn.secondary { background: var(--field); color: var(--text); }
+.btn.secondary:hover { background: var(--glass-hi); }
+.btn.danger { background: #ff3b30; color: #fff; box-shadow: 0 4px 14px rgba(255, 59, 48, .3); }
+.btn.ghost { background: var(--field); color: var(--accent); }
+.btn.small { flex: none; height: 32px; padding: 0 14px; font-size: 13px; border-radius: 999px; }
+.btn:disabled { opacity: .4; box-shadow: none; }
+
+/* Local */
+.pathbox { display: flex; align-items: center; gap: 12px; padding: 14px 14px 14px 16px; }
+.folder { width: 22px; height: 22px; fill: none; stroke: var(--accent); stroke-width: 1.6; stroke-linejoin: round; flex: none; }
+.path { flex: 1; min-width: 0; font-size: 14.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Senha */
+.fields { display: flex; flex-direction: column; gap: 10px; }
+.pill-input { height: 46px; border: 0; outline: 0; border-radius: 12px; padding: 0 16px; font-size: 15px; background: var(--field); user-select: text;
+  transition: box-shadow .25s var(--ease); }
+.pill-input:focus { box-shadow: 0 0 0 3.5px color-mix(in srgb, var(--accent) 30%, transparent); }
+.pill-input::placeholder { color: var(--text-3); }
+.checks { list-style: none; margin-top: 16px; display: flex; flex-direction: column; gap: 8px; font-size: 13.5px; color: var(--text-2); }
+.checks li { display: flex; align-items: center; gap: 9px; transition: color .25s; }
+.tick { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--text-3); position: relative; transition: background .3s var(--ease), border-color .3s; }
+.tick::after { content: ""; position: absolute; left: 5px; top: 2px; width: 4px; height: 8px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg) scale(0); transition: transform .35s var(--spring); }
+.checks li.ok { color: var(--text); }
+.checks li.ok .tick { background: var(--green); border-color: var(--green); }
+.checks li.ok .tick::after { transform: rotate(45deg) scale(1); }
+
+/* Progresso */
+.steps { list-style: none; padding: 8px 18px; }
+.steps li { display: flex; align-items: center; gap: 12px; height: 44px; font-size: 14.5px; color: var(--text-3); transition: color .3s; }
+.steps li + li { border-top: .5px solid var(--hairline); }
+.steps .ico { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--text-3); position: relative; flex: none; transition: all .35s var(--ease); }
+.steps li.ativo { color: var(--text); font-weight: 500; }
+.steps li.ativo .ico { border-color: color-mix(in srgb, var(--accent) 30%, transparent); border-top-color: var(--accent); animation: spin .8s linear infinite; }
+.steps li.feito { color: var(--text-2); }
+.steps li.feito .ico { background: var(--green); border-color: var(--green); }
+.steps li.feito .ico::after { content: ""; position: absolute; left: 6.5px; top: 3px; width: 5px; height: 10px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+
+/* Pronto */
+.done-mark svg { width: 84px; height: 84px; }
+.done-mark circle { fill: var(--green); opacity: .14; }
+.done-mark path { fill: none; stroke: var(--green); stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 40; stroke-dashoffset: 40; }
+.page.ativa .done-mark path { animation: draw .7s .2s var(--ease) forwards; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+.done-mark + h2 { margin-top: 18px; }
+.code-sm { margin-top: 8px; font-size: 34px; font-weight: 600; letter-spacing: .02em; font-variant-numeric: tabular-nums; }
+.err-mark { width: 76px; height: 76px; border-radius: 50%; display: grid; place-items: center; font-size: 38px; font-weight: 700; color: #ff453a;
+  background: rgba(255, 69, 58, .14); margin-bottom: 18px; }
+.big-spinner { width: 40px; height: 40px; border-radius: 50%; border: 3px solid var(--field); border-top-color: var(--accent); animation: spin .8s linear infinite; margin-bottom: 20px; }

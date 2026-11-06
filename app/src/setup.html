@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:">
+  <title>SSADesk</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="setup.css">
+</head>
+<body class="setup">
+  <div class="ambient" aria-hidden="true"><i></i><i></i></div>
+
+  <header class="titlebar">
+    <div class="winctl" role="group" aria-label="Janela">
+      <button class="wbtn" data-acao="minimizar" aria-label="Minimizar"><svg viewBox="0 0 16 16"><path d="M4 8h8"/></svg></button>
+      <button class="wbtn close" data-acao="fechar" id="fecharJanela" aria-label="Fechar"><svg viewBox="0 0 16 16"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg></button>
+    </div>
+  </header>
+
+  <div class="pages">
+    <!-- Boas-vindas -->
+    <section class="page" data-page="boas">
+      <div class="center">
+        <img class="app-icon" src="../assets/icon.png" alt="">
+        <h1>SSADesk</h1>
+        <p class="lead">Acesso remoto seguro.<br>Sem servidores. Sem complicação.</p>
+      </div>
+      <div class="actions"><button class="btn primary wide" data-ir="local">Instalar</button></div>
+      <p class="fine" id="versao"></p>
+    </section>
+
+    <!-- Local -->
+    <section class="page" data-page="local">
+      <div class="top">
+        <h2>Onde instalar?</h2>
+        <p class="sub">Escolha o disco ou a pasta.</p>
+      </div>
+      <div class="glass pathbox">
+        <svg class="folder" viewBox="0 0 24 24"><path d="M3.5 7.5A2 2 0 0 1 5.5 5.5h4l2 2h7a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/></svg>
+        <span class="path" id="pasta">C:\SSADesk</span>
+        <button class="btn ghost small" id="alterar">Alterar</button>
+      </div>
+      <p class="sub note">Se já houver um SSADesk instalado, ele é removido antes. O código deste computador é mantido.</p>
+      <div class="actions"><button class="btn secondary" data-ir="boas">Voltar</button><button class="btn primary" data-ir="senha">Continuar</button></div>
+    </section>
+
+    <!-- Senha -->
+    <section class="page" data-page="senha">
+      <div class="top">
+        <h2>Crie a senha de acesso</h2>
+        <p class="sub">Quem acessar este computador vai precisar dela.</p>
+      </div>
+      <div class="fields">
+        <input class="pill-input" id="senha1" type="password" placeholder="Senha" autocomplete="new-password">
+        <input class="pill-input" id="senha2" type="password" placeholder="Confirmar senha" autocomplete="new-password">
+      </div>
+      <ul class="checks">
+        <li id="chkTam"><span class="tick"></span>8 caracteres ou mais</li>
+        <li id="chkIg"><span class="tick"></span>As duas senhas iguais</li>
+      </ul>
+      <div class="actions"><button class="btn secondary" data-ir="local">Voltar</button><button class="btn primary" id="instalar" disabled>Instalar</button></div>
+    </section>
+
+    <!-- Progresso -->
+    <section class="page" data-page="progresso">
+      <div class="top"><h2>Instalando</h2><p class="sub">Leva cerca de um minuto.</p></div>
+      <ol class="steps glass" id="passos"></ol>
+    </section>
+
+    <!-- Pronto -->
+    <section class="page" data-page="pronto">
+      <div class="center">
+        <div class="done-mark"><svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24"/><path d="M15 27l7 7 15-16"/></svg></div>
+        <h2>Tudo pronto</h2>
+        <p class="sub">O código deste computador é</p>
+        <p class="code-sm" id="codigoFinal">—</p>
+      </div>
+      <div class="actions"><button class="btn primary wide" id="abrir">Abrir SSADesk</button></div>
+    </section>
+
+    <!-- Erro -->
+    <section class="page" data-page="erro">
+      <div class="center">
+        <div class="err-mark">!</div>
+        <h2>Não foi possível instalar</h2>
+        <p class="sub" id="erroMsg"></p>
+      </div>
+      <div class="actions"><button class="btn secondary" data-acao-fechar>Fechar</button><button class="btn primary" data-ir="senha">Tentar de novo</button></div>
+    </section>
+
+    <!-- Desinstalar -->
+    <section class="page" data-page="remover">
+      <div class="center">
+        <img class="app-icon" src="../assets/icon.png" alt="">
+        <h2>Remover o SSADesk?</h2>
+        <p class="sub">O acesso remoto a este computador<br>será desligado.</p>
+      </div>
+      <div class="actions"><button class="btn secondary" data-acao-fechar>Cancelar</button><button class="btn danger" id="remover">Remover</button></div>
+    </section>
+    <section class="page" data-page="removendo">
+      <div class="center"><span class="big-spinner"></span><h2>Removendo</h2><p class="sub">Só um instante.</p></div>
+    </section>
+    <section class="page" data-page="removido">
+      <div class="center">
+        <div class="done-mark"><svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24"/><path d="M15 27l7 7 15-16"/></svg></div>
+        <h2>SSADesk removido</h2>
+        <p class="sub">Obrigado por usar.</p>
+      </div>
+      <div class="actions"><button class="btn primary wide" data-acao-fechar>Fechar</button></div>
+    </section>
+  </div>
+
+  <script src="setup.js"></script>
+</body>
+</html>

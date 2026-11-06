@@ -72,6 +72,7 @@ $key = (Get-Content $pub -Raw).Trim()
 # Bloqueia de fora o hbbs local (a regra do RustDesk.exe/MSI não cobre o hbbs.exe)
 New-NetFirewallRule -DisplayName "SSADesk bloqueio componente local" -Direction Inbound -Action Block -Program $hbbs | Out-Null
 
+Write-Host "ETAPA acesso"
 # 2. RustDesk oficial (MSI), na pasta escolhida
 $p = Start-Process msiexec.exe -ArgumentList "/i `"$Msi`" /qn /norestart INSTALLFOLDER=`"$InstallDir\RustDesk`" CREATESTARTMENUSHORTCUTS=1 CREATEDESKTOPSHORTCUTS=1 /l*v `"$InstallDir\msi.log`"" -Wait -PassThru
 if ($p.ExitCode -notin 0, 3010) { throw "Falha no MSI do RustDesk (código $($p.ExitCode)). Veja msi.log." }
@@ -109,6 +110,7 @@ for ($i = 0; $i -lt 30 -and -not $id; $i++) {
 $fmt = ($id -replace '(\d{3})(?=\d)', '$1 ').Trim()
 $fmt | Set-Content -Path (Join-Path $InstallDir "codigo.txt") -Encoding ASCII
 
+Write-Host "ETAPA tunel"
 # 6b. Túnel P2P (Hyperswarm/HyperDHT): acesso pela internet mesmo com CGNAT, sem servidor e sem roteador.
 #     A porta 21118 local é publicada na rede P2P com uma chave fixa deste computador.
 #     Quem tem a chave ainda precisa da senha permanente para entrar.
@@ -133,6 +135,7 @@ for ($i = 0; $i -lt 40 -and -not $p2pKey; $i++) {
 if (-not $p2pKey) { throw "O túnel P2P não iniciou. Veja $p2pLog" }
 $p2pKey | Set-Content -Path (Join-Path $InstallDir "chave-internet.txt") -Encoding ASCII
 
+Write-Host "ETAPA rede"
 # 7. Diagnóstico e configuração automática de rede (UPnP, IPv6, CGNAT), refeito a cada boot e a cada hora
 $net = Join-Path $InstallDir "tools\network.ps1"
 & $net -InstallDir $InstallDir

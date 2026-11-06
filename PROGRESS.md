@@ -2,7 +2,7 @@
 
 **Regra:** atualizar a % total após concluir cada subtarefa (marcar `[x]`, recalcular soma). Ao atingir **90%**, o SSADesk é considerado **funcional e pronto para uso no dia a dia**; os **10% finais (Fase 7)** são refinamentos, não bloqueiam o uso.
 
-**Progresso total: 35%**
+**Progresso total: 45%**
 
 > **Mudança de arquitetura (2026-11-06, decisão do usuário):** sem servidor central/VPS. Instalador único e igual em todos os computadores; cada um acessa e pode ser acessado por **conexão direta IPv4/IPv6** (porta TCP 21118), com código único e senha permanente. A Fase 1 foi reescrita para refletir isso.
 
@@ -27,15 +27,16 @@
 - [x] Testado: ver tela, controlar mouse/teclado por conexão direta via IP (192.168.3.17), com senha
 
 ## Fase 3 — Cliente Mac (colaborador em Itajaí) (peso: 15%)
+> Pacote pronto em `dist/Mac-SSADesk`. **Teste no Mac fica como último passo** (o Mac está em Itajaí), por decisão do usuário em 2026-11-06; seguimos para a Fase 4.
 - [ ] RustDesk oficial instalado no Mac
 - [ ] Configurado sem servidores públicos (só conexão direta)
 - [ ] Conexão de controle completo testada ponta a ponta
 - [ ] Testado: reconexão automática sem precisar reconfigurar nada
 
 ## Fase 4 — Identidade visual SSADesk (peso: 10%)
-- [ ] Guia de estilo (`DESIGN_GUIDELINES.md`) revisado e aplicado
-- [ ] Branding (nome/ícone SSADesk) aplicado onde o RustDesk permite customização
-- [ ] Tema claro/escuro/automático validado
+- [x] Guia de estilo (`DESIGN_GUIDELINES.md`) revisado e aplicado (app Electron com vidro Acrylic/vibrancy, tipografia estilo Apple, animações)
+- [x] Branding (nome/ícone SSADesk) aplicado: ícone próprio, app, instalador e desinstalador glass próprios (janela da sessão RustDesk mantém o nome original; recompilar fica opcional na Fase 7)
+- [x] Tema claro/escuro/automático validado (controle segmentado; Automático segue o sistema)
 
 ## Fase 5 — App de chamada de vídeo: estrutura (peso: 15%)
 - [ ] Projeto Electron + WebRTC criado em `videocall-app/`
@@ -49,12 +50,19 @@
 
 **→ Ao fim da Fase 6: 90% — considerar funcional, liberar para uso real do financeiro.**
 
+## Funcionalidades pedidas pelo usuário (2026-11-06) — a encaixar nas fases
+> Anotadas a pedido do usuário. Fase sugerida entre parênteses; peso definido quando forem agendadas.
+- [ ] **Biblioteca de conexões** (sugestão: Fase 4/6, no app SSADesk): todo computador já acessado fica salvo (nome, código, chave/IP); conectar com um clique, sem colar a chave; senha lembrada (opcional) para entrar mais rápido; **bolinha verde = online, vermelha = offline**
+- [ ] **Botão de filmar a tela** da sessão remota (sugestão: Fase 6, barra da sessão)
+- [ ] **Botão de print** (captura da tela remota) (sugestão: Fase 6)
+- [ ] **Modo My**: a tela do PC acessado ocupa toda a área da janela/monitor de quem acessa, ajustada de forma responsiva (resolução, escala, botões legíveis), sem a "janelinha pequena" do AnyDesk/TeamViewer; **atalho na tela para sair do Modo My** (sugestão: Fase 6)
+
 ## Fase 7 — Refinamentos finais (peso: 10%)
 - [ ] Wake-on-LAN (ligar a máquina de Lages totalmente desligada) — decidir caminho (roteador vs. dispositivo sempre ligado) e implementar
 - [ ] Teste de estresse de conexão (24h+ sem queda)
 - [ ] Polimento visual fino (animações, micro-interações estilo Apple)
 - [ ] Ajustes de UX a partir do uso real do financeiro
-- [ ] Instalação sempre limpa: o instalador desinstala e apaga a versão anterior antes de instalar (pedido do usuário em 2026-11-06; hoje uma atualização por cima ainda pede "ignorar arquivo")
+- [x] Instalação sempre limpa: o instalador remove a versão anterior antes de instalar (feito na v3.0, mantém código e chave)
 - [ ] Revisar o atalho "Conectar pela internet" da v2.3 (abre o túnel antes do SSADesk): no teste pelo 4G não conectou; a v2.2 conectava, mas lenta
 
 ---
@@ -78,3 +86,6 @@
 - 2026-11-06 — 35% — Conexão pela internet funcionando: notebook no 4G → SSA-Atendimento (CGNAT) pelo túnel P2P, sem servidor; Fase 2 concluída (conexão inicial lenta, com várias tentativas)
 - 2026-11-06 — 35% — v2.3: cliente P2P próprio que abre o túnel antes do SSADesk (30 ms no teste local); no 4G não conectou e a atualização por cima pediu "ignorar arquivo". Ambos ficaram pendentes na Fase 7 a pedido do usuário
 - 2026-11-06 — 35% — Fase 3 iniciada: pacote macOS `dist/Mac-SSADesk` (RustDesk 1.5.1 Intel/Apple Silicon, túnel P2P, app "Conectar pela internet", instalação sempre limpa, sem servidores públicos). Gerado, ainda não testado num Mac
+- 2026-11-06 — 38,3% — Fase 4: app SSADesk em Electron com visual Apple (vidro, Inter/SF, animações) e botões de janela próprios
+- 2026-11-06 — 41,7% — Fase 4: ícone e marca SSADesk; instalador/desinstalador próprios no mesmo visual, com instalação sempre limpa preservando código e chave (resolve pendência da Fase 7)
+- 2026-11-06 — 45% — Fase 4: temas Automático/Claro/Escuro validados pelo usuário; Fase 4 concluída

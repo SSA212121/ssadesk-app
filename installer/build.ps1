@@ -1,12 +1,21 @@
-<#
-Gera dist\SSADesk-Setup.exe (instalador unico: conexao direta IPv4/IPv6).
+﻿<#
+Gera dist\SSADesk-Setup.exe.
   powershell -ExecutionPolicy Bypass -File installer\build.ps1
-Requer Inno Setup 6 (winget install JRSoftware.InnoSetup).
-Todos os binarios sao oficiais do RustDesk e tem o SHA-256 conferido.
+Requer Inno Setup 6 (winget install JRSoftware.InnoSetup) e Node.js.
+
+O Setup.exe é só um envelope: extrai a pasta "stage" e abre a tela de instalação do próprio app
+(app\SSADesk.exe --instalar). Layout da stage = layout final da instalação:
+  app\  (SSADesk.exe = Electron oficial + resources\app)   p2p\  (node.exe + túnel)
+  bin\hbbs.exe   tools\*.ps1   rustdesk.msi   ssadesk.ico/png   licenças
+Todos os binários de terceiros são oficiais e têm o SHA-256 conferido.
 #>
 $ErrorActionPreference = "Stop"
 $here    = $PSScriptRoot
 $payload = Join-Path $here "payload"
+$stage   = Join-Path $payload "stage"
+$appSrc  = Join-Path $here "..\app"
+$p2pSrc  = Join-Path $here "..\p2p"
+$version = (Get-Content "$appSrc\package.json" -Raw | ConvertFrom-Json).version
 
 $ServerVer = "1.1.16"
 $ServerUrl = "https://github.com/rustdesk/rustdesk-server/releases/download/$ServerVer/rustdesk-server-windows-x86_64-unsigned.zip"
@@ -26,33 +35,62 @@ function Get-Verified($url, $out, $sha) {
 }
 
 if (Test-Path $payload) { Remove-Item -Recurse -Force $payload }
-New-Item -ItemType Directory -Force $payload | Out-Null
+New-Item -ItemType Directory -Force "$stage\bin", "$stage\tools" | Out-Null
+
+# 1. RustDesk oficial (cliente MSI + hbbs local)
 $tmp = Join-Path $env:TEMP "ssadesk-build-$([guid]::NewGuid())"
 New-Item -ItemType Directory -Force $tmp | Out-Null
 try {
     Get-Verified $ServerUrl "$tmp\server.zip" $ServerSha
     Expand-Archive "$tmp\server.zip" -DestinationPath "$tmp\x" -Force
-    Get-ChildItem "$tmp\x" -Recurse -Include hbbs.exe, hbbr.exe | Copy-Item -Destination $payload
-    Get-Verified $ClientUrl "$payload\rustdesk.msi" $ClientSha
-    Invoke-WebRequest "https://raw.githubusercontent.com/rustdesk/rustdesk-server/$ServerVer/LICENSE" -OutFile "$payload\LICENSE-SERVER-AGPL.txt" -UseBasicParsing
-    Invoke-WebRequest "https://raw.githubusercontent.com/rustdesk/rustdesk/$ClientVer/LICENCE" -OutFile "$payload\LICENSE-RUSTDESK-AGPL.txt" -UseBasicParsing
+    Get-ChildItem "$tmp\x" -Recurse -Include hbbs.exe | Copy-Item -Destination "$stage\bin"
+    Get-Verified $ClientUrl "$stage\rustdesk.msi" $ClientSha
+    Invoke-WebRequest "https://raw.githubusercontent.com/rustdesk/rustdesk-server/$ServerVer/LICENSE" -OutFile "$stage\LICENSE-SERVER-AGPL.txt" -UseBasicParsing
+    Invoke-WebRequest "https://raw.githubusercontent.com/rustdesk/rustdesk/$ClientVer/LICENCE" -OutFile "$stage\LICENSE-RUSTDESK-AGPL.txt" -UseBasicParsing
 } finally { Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue }
 
-# Windows PowerShell 5.1 e o Inno precisam de UTF-8 com BOM para acentos
+# 2. Scripts de configuração (Windows PowerShell 5.1 precisa de UTF-8 com BOM para acentos)
 $bom = New-Object System.Text.UTF8Encoding($true)
-foreach ($f in "configure.ps1", "network.ps1", "conectar.ps1", "SSADesk.iss") {
-    [IO.File]::WriteAllText("$payload\$f", [IO.File]::ReadAllText("$here\$f"), $bom)
+foreach ($f in "configure.ps1", "network.ps1", "tunel.ps1") {
+    [IO.File]::WriteAllText("$stage\tools\$f", [IO.File]::ReadAllText("$here\$f"), $bom)
 }
 
-# Túnel P2P: Node.js (runtime oficial instalado nesta máquina) + hypertele (p2p\, via npm ci)
-$p2pSrc = Join-Path $here "..\p2p"
+# 3. Túnel P2P: Node.js + hypertele
 Push-Location $p2pSrc
-try { npm ci --ignore-scripts --no-audit --no-fund | Out-Null; if ($LASTEXITCODE -ne 0) { throw "npm ci falhou" } } finally { Pop-Location }
-New-Item -ItemType Directory -Force "$payload\p2p" | Out-Null
-Copy-Item (Get-Command node).Source "$payload\p2p\node.exe"
-Copy-Item "$p2pSrc\node_modules" "$payload\p2p\node_modules" -Recurse
-Copy-Item "$p2pSrc\package.json", "$p2pSrc\cliente.js", "$p2pSrc\diagnostico.js" "$payload\p2p\"
+try { npm ci --ignore-scripts --no-audit --no-fund | Out-Null; if ($LASTEXITCODE -ne 0) { throw "npm ci (p2p) falhou" } } finally { Pop-Location }
+New-Item -ItemType Directory -Force "$stage\p2p" | Out-Null
+Copy-Item (Get-Command node).Source "$stage\p2p\node.exe"
+Copy-Item "$p2pSrc\node_modules" "$stage\p2p\node_modules" -Recurse
+Copy-Item "$p2pSrc\package.json", "$p2pSrc\cliente.js", "$p2pSrc\diagnostico.js" "$stage\p2p\"
 
+# 4. Identidade visual
+& (Join-Path $here "make-icon.ps1") | Out-Null
+Copy-Item "$here\assets\ssadesk.ico" "$stage\ssadesk.ico"
+Copy-Item "$here\assets\ssadesk-256.png" "$stage\ssadesk.png"
+Copy-Item "$here\assets\ssadesk.ico" "$payload\ssadesk.ico"
+
+# 5. App SSADesk (Electron oficial + código do app)
+Push-Location $appSrc
+try { npm ci --no-audit --no-fund | Out-Null; if ($LASTEXITCODE -ne 0) { throw "npm ci (app) falhou" }; node node_modules\electron\install.js } finally { Pop-Location }
+New-Item -ItemType Directory -Force "$appSrc\assets", "$appSrc\src\fonts" | Out-Null
+Copy-Item "$here\assets\ssadesk-256.png" "$appSrc\assets\icon.png" -Force
+Copy-Item "$here\assets\ssadesk.ico" "$appSrc\assets\icon.ico" -Force
+Copy-Item "$appSrc\node_modules\@fontsource-variable\inter\files\inter-latin-wght-normal.woff2" "$appSrc\src\fonts\inter.woff2" -Force
+$appOut = Join-Path $stage "app"
+Copy-Item "$appSrc\node_modules\electron\dist" $appOut -Recurse
+Remove-Item "$appOut\resources\default_app.asar" -ErrorAction SilentlyContinue
+Rename-Item "$appOut\electron.exe" "SSADesk.exe"
+New-Item -ItemType Directory -Force "$appOut\resources\app" | Out-Null
+Copy-Item "$appSrc\main.js", "$appSrc\preload.js", "$appSrc\instalador.js", "$appSrc\package.json" "$appOut\resources\app\"
+Copy-Item "$appSrc\src", "$appSrc\assets" "$appOut\resources\app\" -Recurse
+& "$appSrc\node_modules\rcedit\bin\rcedit-x64.exe" "$appOut\SSADesk.exe" --set-icon "$here\assets\ssadesk.ico" `
+    --set-version-string "ProductName" "SSADesk" --set-version-string "FileDescription" "SSADesk" `
+    --set-version-string "CompanyName" "SSA Comercio" --set-file-version $version --set-product-version $version
+if ($LASTEXITCODE -ne 0) { throw "rcedit falhou" }
+
+# 6. Envelope (Setup.exe)
+$iss = [IO.File]::ReadAllText("$here\SSADesk.iss") -replace '#define AppVersion ".*"', "#define AppVersion `"$version`""
+[IO.File]::WriteAllText("$payload\SSADesk.iss", $iss, $bom)
 & $iscc /Qp "$payload\SSADesk.iss"
 if ($LASTEXITCODE -ne 0) { throw "ISCC falhou ($LASTEXITCODE)." }
 Write-Host "OK: $(Resolve-Path (Join-Path $here '..\dist\SSADesk-Setup.exe'))"
