@@ -17,6 +17,8 @@ param(
     [string]$PasswordFile = ""
 )
 $ErrorActionPreference = "Stop"
+# Mensagens com acentos corretos quando lidas pelo instalador
+[Console]::OutputEncoding = [Text.Encoding]::UTF8; $OutputEncoding = [Text.Encoding]::UTF8
 New-Item -ItemType Directory -Force $InstallDir | Out-Null
 Start-Transcript -Path (Join-Path $InstallDir "instalacao.log") -Append | Out-Null
 
@@ -130,19 +132,24 @@ New-NetFirewallRule -DisplayName "SSADesk tunel P2P" -Direction Inbound -Action 
 # Chamada de vídeo/chat: o app SSADesk usa a mesma rede P2P (sem pedir permissão ao usuário)
 New-NetFirewallRule -DisplayName "SSADesk chamada P2P" -Direction Inbound -Action Allow -Program (Join-Path $InstallDir "app\SSADesk.exe") | Out-Null
 $p2pKey = ""
-for ($i = 0; $i -lt 40 -and -not $p2pKey; $i++) {
+for ($i = 0; $i -lt 90 -and -not $p2pKey; $i++) {
     Start-Sleep 1
     if (Test-Path $p2pLog) { $p2pKey = ([regex]::Match("$(Get-Content $p2pLog -Raw -ErrorAction SilentlyContinue)", 'hypertele:\s*([0-9a-f]{64})')).Groups[1].Value }
 }
-if (-not $p2pKey) { throw "O túnel P2P não iniciou. Veja $p2pLog" }
-$p2pKey | Set-Content -Path (Join-Path $InstallDir "chave-internet.txt") -Encoding ASCII
+if ($p2pKey) {
+    $p2pKey | Set-Content -Path (Join-Path $InstallDir "chave-internet.txt") -Encoding ASCII
+} else {
+    # Não trava a instalação: o túnel continua tentando sozinho e a chave é gravada
+    # pelo diagnóstico de rede (tarefa SSADesk-rede) assim que ele responder.
+    Write-Warning "O túnel P2P ainda não respondeu; a chave de internet aparece sozinha quando ele subir."
+}
 
 Write-Host "ETAPA rede"
 # 7. Diagnóstico e configuração automática de rede (UPnP, IPv6, CGNAT), refeito a cada boot e a cada hora
 $net = Join-Path $InstallDir "tools\network.ps1"
 & $net -InstallDir $InstallDir
 $a = New-ScheduledTaskAction -Execute "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$net`" -InstallDir `"$InstallDir`""
-$trig = @((New-ScheduledTaskTrigger -AtStartup), (New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Hours 1)))
+$trig = @((New-ScheduledTaskTrigger -AtStartup), (New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 15)))
 Register-ScheduledTask -TaskName "SSADesk-rede" -Action $a -Trigger $trig -Settings (New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable) -Principal $principal -Force | Out-Null
 Get-Content (Join-Path $InstallDir "SSADESK-ESTE-COMPUTADOR.txt") | Write-Host
 Stop-Transcript | Out-Null

@@ -85,6 +85,12 @@ if ($v4) { $L += "  Na mesma rede ......... $v4" }
 if ($internetV6) { $L += "  Pela internet (IPv6) .. [$($v6[0])]" }
 if ($internetV4) { $L += "  Pela internet (IPv4) .. $public" }
 $keyFile = Join-Path $InstallDir "chave-internet.txt"
+# Túnel que subiu depois da instalação: pega a chave do registro dele
+if (-not (Test-Path $keyFile)) {
+    $p2pLog = Join-Path $InstallDir "dados\p2p.log"
+    $k = if (Test-Path $p2pLog) { ([regex]::Match("$(Get-Content $p2pLog -Raw -ErrorAction SilentlyContinue)", 'hypertele:\s*([0-9a-f]{64})')).Groups[1].Value } else { "" }
+    if ($k) { $k | Set-Content -Path $keyFile -Encoding ASCII }
+}
 $p2pKey = if (Test-Path $keyFile) { (Get-Content $keyFile -Raw).Trim() } else { "" }
 if ($p2pKey) {
     $L += ""
@@ -111,7 +117,7 @@ if ($internetV4 -or $internetV6) {
     $L += "Este computador continua podendo ACESSAR outros normalmente."
 }
 $L += ""
-$L += "Porta: $Port (TCP). Diagnóstico refeito sozinho a cada inicialização e a cada hora."
+$L += "Porta: $Port (TCP). Diagnóstico refeito sozinho a cada inicialização e a cada 15 minutos."
 $L | Set-Content -Path (Join-Path $InstallDir "SSADESK-ESTE-COMPUTADOR.txt") -Encoding UTF8
 
 [ordered]@{
