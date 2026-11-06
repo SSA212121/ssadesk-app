@@ -95,3 +95,5 @@
 - 2026-11-06 — 55% — Fase 5: microfone e câmera ligam sob demanda, cada lado o seu, testados no notebook
 - 2026-11-06 — 60% — Fase 5: janela flutuante estilo FaceTime, redimensionável, com sua imagem arrastável/redimensionável; Fase 5 concluída
 - 2026-11-06 — 60% — Chat de texto da chamada (janela flutuante, som de aviso, não lidas) validado em modo demonstração
+- 2026-11-06 — 60% — Fase 6 (em teste): chamada e chat reais pelo canal P2P próprio; app em segundo plano para receber chamadas (v3.1)
+- 2026-11-06 — 60% — v3.2: instalação mais rápida (chave calculada na hora, diagnóstico em segundo plano, pacote 258→193 MB) e conexão mais rápida (túnel dentro do app com rede P2P aquecida: ~8 s → ~1 s)

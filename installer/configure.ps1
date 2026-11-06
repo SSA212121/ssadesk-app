@@ -131,11 +131,12 @@ Start-ScheduledTask -TaskName "SSADesk-p2p"
 New-NetFirewallRule -DisplayName "SSADesk tunel P2P" -Direction Inbound -Action Allow -Program $node | Out-Null
 # Chamada de vídeo/chat: o app SSADesk usa a mesma rede P2P (sem pedir permissão ao usuário)
 New-NetFirewallRule -DisplayName "SSADesk chamada P2P" -Direction Inbound -Action Allow -Program (Join-Path $InstallDir "app\SSADesk.exe") | Out-Null
-$p2pKey = ""
-for ($i = 0; $i -lt 90 -and -not $p2pKey; $i++) {
-    Start-Sleep 1
-    if (Test-Path $p2pLog) { $p2pKey = ([regex]::Match("$(Get-Content $p2pLog -Raw -ErrorAction SilentlyContinue)", 'hypertele:\s*([0-9a-f]{64})')).Groups[1].Value }
-}
+# Chave de internet = chave pública derivada da semente (mesma conta do hypertele-server):
+# calculada na hora, sem esperar o túnel responder pela rede.
+$seed = (Get-Content $p2pCfg -Raw | ConvertFrom-Json).seed
+$dhtMod = (Join-Path $InstallDir "p2p\node_modules\hyperdht") -replace "\\", "/"
+$p2pKey = (& $node -e "process.stdout.write(require('$dhtMod').keyPair(Buffer.from('$seed','hex')).publicKey.toString('hex'))" 2>$null)
+if ($p2pKey -notmatch "^[0-9a-f]{64}$") { $p2pKey = "" }
 if ($p2pKey) {
     $p2pKey | Set-Content -Path (Join-Path $InstallDir "chave-internet.txt") -Encoding ASCII
 } else {
@@ -147,9 +148,9 @@ if ($p2pKey) {
 Write-Host "ETAPA rede"
 # 7. Diagnóstico e configuração automática de rede (UPnP, IPv6, CGNAT), refeito a cada boot e a cada hora
 $net = Join-Path $InstallDir "tools\network.ps1"
-& $net -InstallDir $InstallDir
 $a = New-ScheduledTaskAction -Execute "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$net`" -InstallDir `"$InstallDir`""
 $trig = @((New-ScheduledTaskTrigger -AtStartup), (New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 15)))
 Register-ScheduledTask -TaskName "SSADesk-rede" -Action $a -Trigger $trig -Settings (New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable) -Principal $principal -Force | Out-Null
-Get-Content (Join-Path $InstallDir "SSADESK-ESTE-COMPUTADOR.txt") | Write-Host
+# O diagnóstico (consulta de IP, UPnP, rota) roda em segundo plano: a instalação não espera por ele
+Start-ScheduledTask -TaskName "SSADesk-rede"
 Stop-Transcript | Out-Null

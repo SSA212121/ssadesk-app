@@ -92,7 +92,19 @@ if ($LASTEXITCODE -ge 8) { throw "robocopy falhou ($LASTEXITCODE)" }
     --set-version-string "CompanyName" "SSA Comercio" --set-file-version $version --set-product-version $version
 if ($LASTEXITCODE -ne 0) { throw "rcedit falhou" }
 
-# 6. Envelope (Setup.exe)
+# 6. Enxugar o pacote (instala mais rápido): só binários nativos de Windows x64 e idiomas pt-BR/en-US
+function Remove-OutrasPlataformas($raiz) {
+    Get-ChildItem $raiz -Recurse -Directory -Filter prebuilds -ErrorAction SilentlyContinue | ForEach-Object {
+        Get-ChildItem $_.FullName -Directory | Where-Object { $_.Name -ne "win32-x64" } | Remove-Item -Recurse -Force
+    }
+}
+Remove-OutrasPlataformas "$stage\p2p\node_modules"
+Remove-OutrasPlataformas "$appOut\resources\app\node_modules"
+Get-ChildItem "$appOut\locales" -Filter *.pak | Where-Object { $_.Name -notin "pt-BR.pak", "en-US.pak" } | Remove-Item -Force
+$mb = [math]::Round(((Get-ChildItem $stage -Recurse -File | Measure-Object Length -Sum).Sum / 1MB), 0)
+Write-Host "Pacote: $mb MB"
+
+# 7. Envelope (Setup.exe)
 $iss = [IO.File]::ReadAllText("$here\SSADesk.iss") -replace '#define AppVersion ".*"', "#define AppVersion `"$version`""
 [IO.File]::WriteAllText("$payload\SSADesk.iss", $iss, $bom)
 & $iscc /Qp "$payload\SSADesk.iss"

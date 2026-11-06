@@ -142,11 +142,37 @@ function iniciarCanal () {
   canal.on('midia', (tipo, dados) => {
     if (callWin && !callWin.isDestroyed()) callWin.webContents.send('chamada-midia', tipo, dados)
   })
+  canal._swarm() // liga o nó P2P já na abertura: as próximas conexões saem rápidas
   // Fica disponível para receber chamadas pela própria chave de internet
   const minha = readText(path.join(DIR, 'chave-internet.txt'))
   if (minha) canal.escutar(minha).catch(() => {})
 }
 ipcMain.handle('chamada-estado-atual', () => estadoChamada)
+
+// ---------- Túnel de acesso remoto dentro do app ----------
+// Usa o nó da rede P2P que o app mantém ligado em segundo plano: não precisa 'entrar' na rede a cada conexão.
+// Compatível com o hypertele-server do outro computador (bytes repassados sem alteração).
+const tuneis = new Map() // chave -> { porta, servidor }
+async function tunelInterno (chave) {
+  if (!canal) return 0
+  try {
+    if (tuneis.has(chave)) return tuneis.get(chave).porta
+    const dht = canal._swarm().dht
+    await dht.ready()
+    const remoto = Buffer.from(chave, 'hex')
+    const servidor = net.createServer({ allowHalfOpen: true }, local => {
+      const s = dht.connect(remoto, { reusableSocket: true })
+      local.pipe(s).pipe(local)
+      const fim = () => { local.destroy(); s.destroy() }
+      local.on('error', fim).on('close', fim); s.on('error', fim).on('close', fim)
+    })
+    const porta = await new Promise((resolve, reject) => { servidor.once('error', reject); servidor.listen(0, '127.0.0.1', () => resolve(servidor.address().port)) })
+    tuneis.set(chave, { porta, servidor })
+    // Já 'fura' o caminho até o outro computador enquanto o SSADesk abre a janela
+    const aquece = dht.connect(remoto, { reusableSocket: true }); aquece.on('error', () => {}); aquece.on('open', () => setTimeout(() => aquece.destroy(), 1500))
+    return porta
+  } catch { return 0 }
+}
 ipcMain.on('chamada-midia', (_e, tipo, dados) => { if (canal) canal.midia(tipo, Buffer.from(dados)) })
 ipcMain.on('chamada-controle', (_e, obj) => { if (canal && obj && typeof obj === 'object') canal.controle(obj) })
 
@@ -288,7 +314,13 @@ ipcMain.handle('conectar', async (_e, destinoBruto) => {
   if (!destino) return { ok: false, msg: 'Digite um IP ou uma chave.' }
   try {
     if (/^[0-9a-fA-F]{64}$/.test(destino)) {
-      // Qualquer rede: túnel P2P (continua aberto mesmo se esta janela fechar)
+      // Qualquer rede: túnel P2P. Preferência: dentro do próprio app, com a rede P2P já aquecida (bem mais rápido).
+      const rapido = await tunelInterno(destino.toLowerCase())
+      if (rapido) {
+        abrirRustDesk('127.0.0.1:' + rapido)
+        savePrefs({ ...loadPrefs(), ultimaChave: destino.toLowerCase() })
+        return { ok: true, msg: 'Conectando.' }
+      }
       const port = await freePort()
       if (isWin) {
         spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File',
