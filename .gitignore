@@ -1,4 +1,4 @@
-# --- Segredos do servidor RustDesk (NUNCA versionar) ---
+﻿# --- Segredos do servidor RustDesk (NUNCA versionar) ---
 server/data/
 server/**/id_ed25519
 server/**/id_ed25519.pub
@@ -30,8 +30,8 @@ desktop.ini
 .idea/
 *.swp
 
-# --- Clones de referência do RustDesk (não fazem parte deste repositório) ---
+# --- Clones de referÃªncia do RustDesk (nÃ£o fazem parte deste repositÃ³rio) ---
 vendor/
 
 # Gerado pelo build do instalador
-server/installer/payload/
+installer/payload/

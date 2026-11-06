@@ -68,4 +68,11 @@ NUNCA copie o arquivo data\id_ed25519 (sem .pub): é a chave privada do servidor
 Lembrete: no roteador de Lages, redirecione TCP 21115-21119 e UDP 21116 para este computador.
 "@ | Set-Content -Path (Join-Path $InstallDir "CHAVE-PUBLICA.txt") -Encoding UTF8
 
+# ssadesk.ini: colocado ao lado do SSADesk-Setup.exe, preenche servidor e chave sozinho nos outros computadores
+@"
+[ssadesk]
+host=$PublicHost
+key=$key
+"@ | Set-Content -Path (Join-Path $InstallDir "ssadesk.ini") -Encoding ASCII
+
 Stop-Transcript | Out-Null
