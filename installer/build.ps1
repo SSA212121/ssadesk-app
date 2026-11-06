@@ -40,9 +40,18 @@ try {
 
 # Windows PowerShell 5.1 e o Inno precisam de UTF-8 com BOM para acentos
 $bom = New-Object System.Text.UTF8Encoding($true)
-foreach ($f in "configure.ps1", "network.ps1", "SSADesk.iss") {
+foreach ($f in "configure.ps1", "network.ps1", "conectar.ps1", "SSADesk.iss") {
     [IO.File]::WriteAllText("$payload\$f", [IO.File]::ReadAllText("$here\$f"), $bom)
 }
+
+# Túnel P2P: Node.js (runtime oficial instalado nesta máquina) + hypertele (p2p\, via npm ci)
+$p2pSrc = Join-Path $here "..\p2p"
+Push-Location $p2pSrc
+try { npm ci --ignore-scripts --no-audit --no-fund | Out-Null; if ($LASTEXITCODE -ne 0) { throw "npm ci falhou" } } finally { Pop-Location }
+New-Item -ItemType Directory -Force "$payload\p2p" | Out-Null
+Copy-Item (Get-Command node).Source "$payload\p2p\node.exe"
+Copy-Item "$p2pSrc\node_modules" "$payload\p2p\node_modules" -Recurse
+Copy-Item "$p2pSrc\package.json" "$payload\p2p\"
 
 & $iscc /Qp "$payload\SSADesk.iss"
 if ($LASTEXITCODE -ne 0) { throw "ISCC falhou ($LASTEXITCODE)." }

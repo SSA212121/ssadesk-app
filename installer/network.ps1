@@ -84,6 +84,13 @@ $L = @("SSADesk — este computador", "", "Código: $id", "", "COMO CONECTAR A E
 if ($v4) { $L += "  Na mesma rede ......... $v4" }
 if ($internetV6) { $L += "  Pela internet (IPv6) .. [$($v6[0])]" }
 if ($internetV4) { $L += "  Pela internet (IPv4) .. $public" }
+$keyFile = Join-Path $InstallDir "chave-internet.txt"
+$p2pKey = if (Test-Path $keyFile) { (Get-Content $keyFile -Raw).Trim() } else { "" }
+if ($p2pKey) {
+    $L += ""
+    $L += "  Pela internet, QUALQUER rede (inclusive CGNAT), use o atalho 'SSADesk - Conectar pela internet' com a chave:"
+    $L += "  Chave de internet: $p2pKey"
+}
 $L += ""
 $L += "DIAGNÓSTICO AUTOMÁTICO DA REDE ($(Get-Date -Format 'dd/MM/yyyy HH:mm')):"
 $L += "  Rede local ............ " + $(if ($v4) { "OK" } else { "sem rede" })
@@ -93,6 +100,9 @@ $L += "  IP compartilhado (CGNAT): " + $(if ($cgnat) { "SIM, o provedor divide o
 $L += ""
 if ($internetV4 -or $internetV6) {
     $L += "RESULTADO: este computador pode ser acessado pela internet."
+} elseif ($p2pKey) {
+    $L += "RESULTADO: este computador pode ser acessado pela internet pelo túnel P2P (chave de internet acima)."
+    if ($cgnat) { $L += "Motivo: o provedor usa IP compartilhado (CGNAT); o túnel P2P atravessa isso sozinho." }
 } else {
     $L += "RESULTADO: este computador pode ser acessado na rede local."
     $L += "Pela internet, esta rede não permite conexão de fora."

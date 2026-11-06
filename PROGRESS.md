@@ -72,3 +72,4 @@
 - 2026-11-06 — 27,5% — Fase 2: acesso desassistido só com senha permanente confirmado
 - 2026-11-06 — 31,25% — Fase 2: conexão direta por IP (192.168.3.17) com controle de tela, mouse e teclado funcionando
 - 2026-11-06 — 31,25% — Instalador 2.1: diagnóstico automático de rede (IPv4/IPv6, UPnP automático, detecção de CGNAT) na instalação e a cada hora, com resultado em linguagem simples; validado no notebook (detectou CGNAT)
+- 2026-11-06 — 31,25% — Instalador 2.2: túnel P2P (Hyperswarm/hypertele) embutido, liga com o Windows e gera "chave de internet"; atalho "Conectar pela internet". Testado em loop no notebook; aguardando teste real com segundo notebook no 4G

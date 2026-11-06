@@ -24,8 +24,8 @@ $Port      = 21118
 $LocalPort = 21126   # hbbs local (usa 21125, 21126, 21128)
 $taskName  = "SSADesk-local"
 $fwName    = "SSADesk conexao direta TCP $Port"
-$oldTasks  = "SSADesk-hbbs", "SSADesk-hbbr", $taskName, "SSADesk-rede"
-$oldFw     = "SSADesk TCP 21115-21119", "SSADesk UDP 21116", $fwName, "SSADesk bloqueio componente local"
+$oldTasks  = "SSADesk-hbbs", "SSADesk-hbbr", $taskName, "SSADesk-rede", "SSADesk-p2p"
+$oldFw     = "SSADesk TCP 21115-21119", "SSADesk UDP 21116", $fwName, "SSADesk bloqueio componente local", "SSADesk tunel P2P"
 
 # Limpa estado anterior (inclusive da versão antiga com servidor de Lages)
 foreach ($t in $oldTasks) {
@@ -35,6 +35,7 @@ foreach ($t in $oldTasks) {
     }
 }
 Get-Process hbbs, hbbr -ErrorAction SilentlyContinue | Stop-Process -Force
+Get-CimInstance Win32_Process -Filter "Name='node.exe'" -ErrorAction SilentlyContinue | Where-Object { $_.ExecutablePath -like "$InstallDir*" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 foreach ($f in $oldFw) { Get-NetFirewallRule -DisplayName $f -ErrorAction SilentlyContinue | Remove-NetFirewallRule }
 
 function Get-RustDeskProduct {
@@ -107,6 +108,30 @@ for ($i = 0; $i -lt 30 -and -not $id; $i++) {
 }
 $fmt = ($id -replace '(\d{3})(?=\d)', '$1 ').Trim()
 $fmt | Set-Content -Path (Join-Path $InstallDir "codigo.txt") -Encoding ASCII
+
+# 6b. Túnel P2P (Hyperswarm/HyperDHT): acesso pela internet mesmo com CGNAT, sem servidor e sem roteador.
+#     A porta 21118 local é publicada na rede P2P com uma chave fixa deste computador.
+#     Quem tem a chave ainda precisa da senha permanente para entrar.
+$node    = Join-Path $InstallDir "p2p\node.exe"
+$htServer = Join-Path $InstallDir "p2p\node_modules\hypertele\server.js"
+$p2pCfg  = Join-Path $data "p2p.json"
+if (-not (Test-Path $p2pCfg)) {
+    $b = New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b)
+    @{ seed = (-join ($b | ForEach-Object { $_.ToString("x2") })) } | ConvertTo-Json | Set-Content $p2pCfg -Encoding ASCII
+}
+$p2pLog = Join-Path $data "p2p.log"
+Remove-Item $p2pLog -ErrorAction SilentlyContinue
+$a = New-ScheduledTaskAction -Execute "$env:SystemRoot\System32\cmd.exe" -Argument "/c `"`"$node`" `"$htServer`" -l $Port --address 127.0.0.1 -c `"$p2pCfg`" > `"$p2pLog`" 2>&1`"" -WorkingDirectory $data
+Register-ScheduledTask -TaskName "SSADesk-p2p" -Action $a -Trigger (New-ScheduledTaskTrigger -AtStartup) -Settings $settings -Principal $principal -Force | Out-Null
+Start-ScheduledTask -TaskName "SSADesk-p2p"
+New-NetFirewallRule -DisplayName "SSADesk tunel P2P" -Direction Inbound -Action Allow -Program $node | Out-Null
+$p2pKey = ""
+for ($i = 0; $i -lt 40 -and -not $p2pKey; $i++) {
+    Start-Sleep 1
+    if (Test-Path $p2pLog) { $p2pKey = ([regex]::Match("$(Get-Content $p2pLog -Raw -ErrorAction SilentlyContinue)", 'hypertele:\s*([0-9a-f]{64})')).Groups[1].Value }
+}
+if (-not $p2pKey) { throw "O túnel P2P não iniciou. Veja $p2pLog" }
+$p2pKey | Set-Content -Path (Join-Path $InstallDir "chave-internet.txt") -Encoding ASCII
 
 # 7. Diagnóstico e configuração automática de rede (UPnP, IPv6, CGNAT), refeito a cada boot e a cada hora
 $net = Join-Path $InstallDir "tools\network.ps1"

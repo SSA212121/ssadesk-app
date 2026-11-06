@@ -34,6 +34,13 @@ Na instalação, e depois a cada inicialização e a cada hora (tarefa `SSADesk-
 
 O IP público é consultado em `api.ipify.org` só para o diagnóstico.
 
+## Acesso pela internet em qualquer rede (túnel P2P)
+
+Cada instalação publica a porta 21118 na rede P2P **Hyperswarm/HyperDHT** (descentralizada, sem servidor nosso nem de empresa), com uma **chave de internet** fixa do computador (`chave-internet.txt`). Isso atravessa CGNAT sem mexer no roteador.
+
+Para acessar: atalho **"SSADesk - Conectar pela internet"** → colar a chave do outro computador → senha permanente dele.
+Componentes: `p2p\node.exe` (Node.js oficial) + `hypertele` (MIT). Tarefa `SSADesk-p2p` (SYSTEM, na inicialização). A semente da chave fica em `dados\p2p.json` (só administradores).
+
 ## Detalhes técnicos
 
 - `configure.ps1` instala o MSI oficial do RustDesk 1.5.1 e ativa `direct-server` na porta 21118 (o RustDesk escuta em `::`, que atende IPv4 e IPv6).

@@ -5,7 +5,7 @@
 ; Base: RustDesk (AGPL-3.0), binários oficiais sem modificação.
 
 #define AppName "SSADesk"
-#define AppVersion "2.1.0"
+#define AppVersion "2.2.0"
 
 [Setup]
 AppId={{6B1F4C2E-8D3A-4E7B-9A51-5A1D35C0A001}
@@ -42,17 +42,27 @@ Source: "hbbs.exe";             DestDir: "{app}\bin"; Flags: ignoreversion
 Source: "rustdesk.msi";         DestDir: "{tmp}"; Flags: deleteafterinstall
 Source: "configure.ps1";        DestDir: "{app}\tools"; Flags: ignoreversion
 Source: "network.ps1";          DestDir: "{app}\tools"; Flags: ignoreversion
+Source: "conectar.ps1";         DestDir: "{app}\tools"; Flags: ignoreversion
+Source: "p2p\*";                DestDir: "{app}\p2p"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "LICENSE-RUSTDESK-AGPL.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "LICENSE-SERVER-AGPL.txt";   DestDir: "{app}"; Flags: ignoreversion
 
+[Icons]
+Name: "{autodesktop}\SSADesk - Conectar pela internet"; Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File ""{app}\tools\conectar.ps1"""; IconFilename: "{app}\RustDesk\rustdesk.exe"
+Name: "{autoprograms}\SSADesk - Conectar pela internet"; Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File ""{app}\tools\conectar.ps1"""; IconFilename: "{app}\RustDesk\rustdesk.exe"
+Name: "{autoprograms}\SSADesk - Este computador (código e chave)"; Filename: "{app}\SSADESK-ESTE-COMPUTADOR.txt"
+
 [Run]
-Filename: "{win}\notepad.exe"; Parameters: """{app}\SSADESK-ESTE-COMPUTADOR.txt"""; Description: "Abrir código e endereços deste computador"; Flags: postinstall nowait skipifsilent unchecked
+Filename: "{win}\notepad.exe"; Parameters: """{app}\SSADESK-ESTE-COMPUTADOR.txt"""; Description: "Abrir código e chave de internet deste computador"; Flags: postinstall nowait skipifsilent
 
 [UninstallRun]
 Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\tools\configure.ps1"" -Mode uninstall -InstallDir ""{app}"""; Flags: runhidden waituntilterminated; RunOnceId: "SSADeskOff"
 
 [UninstallDelete]
 Type: files; Name: "{app}\SSADESK-ESTE-COMPUTADOR.txt"
+Type: files; Name: "{app}\chave-internet.txt"
+Type: files; Name: "{app}\codigo.txt"
+Type: files; Name: "{app}\rede.json"
 
 [Code]
 var
@@ -91,6 +101,12 @@ var
   Code: Integer;
 begin
   Result := '';
+  Exec(ExpandConstant('{sys}\schtasks.exe'), '/End /TN SSADesk-p2p', '', SW_HIDE, ewWaitUntilTerminated, Code);
+  { Para só o node.exe do SSADesk (túnel P2P), nunca outros programas Node }
+  Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
+       '-NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name=''node.exe''\" | Where-Object { $_.ExecutablePath -like ''' +
+       ExpandConstant('{app}') + '\p2p\*'' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }"',
+       '', SW_HIDE, ewWaitUntilTerminated, Code);
   Exec(ExpandConstant('{sys}\schtasks.exe'), '/End /TN SSADesk-local', '', SW_HIDE, ewWaitUntilTerminated, Code);
   Exec(ExpandConstant('{sys}\schtasks.exe'), '/End /TN SSADesk-hbbs', '', SW_HIDE, ewWaitUntilTerminated, Code);
   Exec(ExpandConstant('{sys}\schtasks.exe'), '/End /TN SSADesk-hbbr', '', SW_HIDE, ewWaitUntilTerminated, Code);
@@ -126,7 +142,7 @@ begin
   Msg := '';
   if LoadStringsFromFile(ExpandConstant('{app}\SSADESK-ESTE-COMPUTADOR.txt'), Lines) then
     for I := 2 to GetArrayLength(Lines) - 1 do
-      if (Pos('Código', Lines[I]) = 1) or (Pos('Na mesma rede', Trim(Lines[I])) = 1) or (Pos('Pela internet', Trim(Lines[I])) = 1) or
+      if (Pos('Código', Lines[I]) = 1) or (Pos('Na mesma rede', Trim(Lines[I])) = 1) or (Pos('Pela internet (', Trim(Lines[I])) = 1) or (Pos('Chave de internet', Trim(Lines[I])) = 1) or
          (Pos('RESULTADO', Lines[I]) = 1) or (Pos('Pela internet, esta rede', Lines[I]) = 1) or (Pos('Motivo', Lines[I]) = 1) then
         Msg := Msg + Trim(Lines[I]) + #13#10;
   if Msg = '' then Msg := 'Veja ' + ExpandConstant('{app}\instalacao.log') + #13#10;
