@@ -1,0 +1,33 @@
+# SSADesk — servidor RustDesk próprio (rendezvous hbbs + relay hbbr)
+# Imagem oficial: https://github.com/rustdesk/rustdesk-server (AGPL-3.0), sem modificação.
+#
+# Uso (no servidor de Lages):
+#   1. Copie .env.example para .env e defina SSADESK_HOST com o IP público/DNS de Lages.
+#   2. docker compose up -d
+#   3. A chave pública aparece em ./data/id_ed25519.pub (cole nos clientes).
+#
+# A chave é OBRIGATÓRIA: clientes sem a chave pública correta são recusados (padrão do
+# rustdesk-server >= 1.1.11; "-k _" deixa isso explícito).
+# network_mode: host é exigido pelo RustDesk para enxergar o IP real dos clientes (NAT/hole punching).
+# Em Docker Desktop no Windows, host networking não é suportado: lá use install-windows.ps1.
+
+services:
+  hbbs:
+    container_name: ssadesk-hbbs
+    image: rustdesk/rustdesk-server:latest
+    command: hbbs -r ${SSADESK_HOST}:21117 -k _
+    volumes:
+      - ./data:/root
+    network_mode: host
+    depends_on:
+      - hbbr
+    restart: unless-stopped
+
+  hbbr:
+    container_name: ssadesk-hbbr
+    image: rustdesk/rustdesk-server:latest
+    command: hbbr -k _
+    volumes:
+      - ./data:/root
+    network_mode: host
+    restart: unless-stopped

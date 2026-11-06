@@ -2,7 +2,7 @@
 
 **Regra:** atualizar a % total após concluir cada subtarefa (marcar `[x]`, recalcular soma). Ao atingir **90%**, o SSADesk é considerado **funcional e pronto para uso no dia a dia**; os **10% finais (Fase 7)** são refinamentos, não bloqueiam o uso.
 
-**Progresso total: 5%**
+**Progresso total: 12,5%**
 
 ---
 
@@ -12,9 +12,9 @@
 - [x] Repositório git inicializado localmente
 
 ## Fase 1 — Servidor RustDesk self-hosted (peso: 15%)
-- [ ] `docker-compose.yml` com `hbbs` + `hbbr` (rustdesk-server)
-- [ ] Portas documentadas e liberadas (21115-21119 tcp, 21116 udp)
-- [ ] Servidor testado subindo localmente
+- [x] `docker-compose.yml` com `hbbs` + `hbbr` (rustdesk-server)
+- [ ] Portas documentadas e liberadas (21115-21119 tcp, 21116 udp) — documentadas e automatizadas em `install-windows.ps1`; falta rodar em Lages + redirecionar no roteador
+- [x] Servidor testado subindo localmente
 - [ ] Chave pública do servidor gerada e documentada em local seguro
 
 ## Fase 2 — Cliente Windows (servidor de Lages) (peso: 15%)
@@ -59,3 +59,5 @@
 - 2026-11-06 — 1,7% — Estrutura de pastas criada (`server/`, `videocall-app/`, `docs/`)
 - 2026-11-06 — 3,3% — `.gitignore` (protege chaves do servidor) e README de cada subpasta
 - 2026-11-06 — 5% — Git instalado (winget) e repositório inicializado (branch `main`); Fase 0 concluída
+- 2026-11-06 — 8,75% — `docker-compose.yml` (hbbs+hbbr, chave obrigatória) + `install-windows.ps1` nativo para Lages
+- 2026-11-06 — 12,5% — Servidor 1.1.16 testado localmente no notebook SSA-Atendimento: 5 portas ativas, chave gerada e exigida
