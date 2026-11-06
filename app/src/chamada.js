@@ -31,6 +31,7 @@ function desligar (tipo) {
 const ligado = tipo => (tipo === 'video' ? local.getVideoTracks() : local.getAudioTracks()).some(t => t.readyState === 'live')
 
 async function alternar (tipo, botao, nomeOn, nomeOff) {
+  if (tipo === 'video' && telaStream) pararTela()
   botao.disabled = true
   try {
     if (ligado(tipo)) { desligar(tipo); aviso(nomeOff) } else { await ligar(tipo); aviso(nomeOn) }
@@ -47,7 +48,37 @@ async function alternar (tipo, botao, nomeOn, nomeOff) {
   if (tipo === 'audio') { if (ligado('audio')) await M.iniciarAudio(new MediaStream(local.getAudioTracks())); else M.pararAudio() }
   informarEstado()
 }
-function informarEstado () { api.chamada.controle({ t: 'estado', mic: ligado('audio'), cam: ligado('video') }) }
+function informarEstado () { api.chamada.controle({ t: 'estado', mic: ligado('audio'), cam: ligado('video') || !!telaStream, tela: !!telaStream }) }
+
+// ---------- Transmitir minha tela (como no Meet): substitui a câmera enquanto transmite ----------
+let telaStream = null
+async function alternarTela () {
+  const M = window.ssadeskMidia
+  if (telaStream) { pararTela(); return }
+  try {
+    const id = await api.chamada.fonteTela()
+    if (!id) throw new Error('sem tela')
+    telaStream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: id, maxWidth: 1920, maxHeight: 1080, maxFrameRate: 15 } } })
+  } catch (e) { console.log('transmissão: ' + (e && (e.name + ' ' + e.message))); aviso('Transmissão cancelada'); return }
+  const v = $('telaLocal'); v.srcObject = telaStream; await v.play().catch(() => {})
+  telaStream.getVideoTracks()[0].addEventListener('ended', pararTela)
+  if (ligado('video')) { desligar('video'); $('cam').setAttribute('aria-pressed', 'false'); atualizarPip() }
+  console.log('transmissão: tela ' + v.videoWidth + 'x' + v.videoHeight)
+  M.iniciarVideo(v, { taxa: 2_500_000 })
+  $('tela').setAttribute('aria-pressed', 'true')
+  aviso('Transmitindo sua tela')
+  informarEstado()
+}
+function pararTela () {
+  if (!telaStream) return
+  telaStream.getTracks().forEach(t => t.stop()); telaStream = null
+  window.ssadeskMidia.pararVideo(); $('telaLocal').srcObject = null
+  $('tela').setAttribute('aria-pressed', 'false')
+  aviso('Transmissão encerrada')
+  informarEstado()
+}
+$('tela').addEventListener('click', alternarTela)
+if (params.get('tela') === '1') setTimeout(alternarTela, 600)
 $('mic').addEventListener('click', () => alternar('audio', $('mic'), 'Microfone ligado', 'Microfone desligado'))
 $('cam').addEventListener('click', () => alternar('video', $('cam'), 'Câmera ligada', 'Câmera desligada'))
 
@@ -57,6 +88,7 @@ function atualizarPip () {
 }
 
 function encerrar () {
+  if (telaStream) { telaStream.getTracks().forEach(t => t.stop()); telaStream = null }
   window.ssadeskMidia.pararVideo(); window.ssadeskMidia.pararAudio()
   local.getTracks().forEach(t => t.stop())
   api.chamada.janela('fechar')
@@ -173,7 +205,8 @@ function aplicarEstado (s) {
 }
 api.chamada.onEstado(aplicarEstado)
 api.chamada.estadoAtual().then(aplicarEstado) // estado que chegou antes de a janela terminar de abrir
-api.chamada.onRemoto(({ mic, cam }) => {
+api.chamada.onRemoto(({ mic, cam, tela }) => {
+  document.body.classList.toggle('vendo-tela', !!tela)
   remotoCam = cam
   if (!cam) window.ssadeskMidia.pararRecebimento()
   $('estado').textContent = cam ? '' : (mic ? 'Microfone ligado · câmera desligada' : textos.conectado)

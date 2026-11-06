@@ -97,7 +97,7 @@ function abrirChamada (dados = {}) {
     ...(isMac ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 16, y: 16 } } : {}),
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true }
   })
-  callWin.loadFile(path.join(__dirname, 'src', 'chamada.html'), { query: { platform: process.platform, nome: dados.nome || '', demo: process.env.SSADESK_DEMO ? '1' : '', autoteste: process.env.SSADESK_AUTOTESTE ? '1' : '' } })
+  callWin.loadFile(path.join(__dirname, 'src', 'chamada.html'), { query: { platform: process.platform, nome: dados.nome || '', demo: process.env.SSADESK_DEMO ? '1' : '', autoteste: process.env.SSADESK_AUTOTESTE ? '1' : '', tela: dados.tela ? '1' : '' } })
   callWin.once('ready-to-show', () => {
     if (process.env.SSADESK_SNAPSHOT && process.env.SSADESK_CALL) return snapshot(callWin)
     callWin.showInactive() // aparece sem roubar o foco de quem está trabalhando
@@ -112,11 +112,11 @@ function abrirChamada (dados = {}) {
     chatWin = null
   })
 }
-ipcMain.on('abrir-chamada', () => {
+ipcMain.on('abrir-chamada', (_e, extra) => {
   // A chamada usa a sessão já aberta com o outro computador (conectado pelo código)
   const ativa = !!(canal && canal.conectado() && sessao.ativa)
   estadoChamada = ativa ? { fase: 'conectado', nome: sessao.nome } : { fase: 'sem-sessao', nome: '' }
-  abrirChamada({ nome: sessao.nome || 'Chamada de vídeo' })
+  abrirChamada({ nome: sessao.nome || 'Chamada de vídeo', tela: !!(extra && extra.tela) })
   if (ativa) canal.controle({ t: 'chamada' })
   enviarEstadoChamada()
 })
@@ -191,7 +191,7 @@ function iniciarCanal () {
         estadoChamada = { fase: 'conectado', nome: sessao.nome }; abrirChamada({ nome: sessao.nome }); enviarEstadoChamada(); break
       case 'chamada-fim': if (callWin && !callWin.isDestroyed()) { estadoChamada = { ...estadoChamada, fase: 'encerrada' }; enviarEstadoChamada() } break
       case 'chat': if (sessao.permissoes.chat) receberMensagem(msg.texto); break
-      case 'estado': if (callWin && !callWin.isDestroyed()) callWin.webContents.send('chamada-remoto', { mic: !!msg.mic, cam: !!msg.cam }); break
+      case 'estado': if (callWin && !callWin.isDestroyed()) callWin.webContents.send('chamada-remoto', { mic: !!msg.mic, cam: !!msg.cam, tela: !!msg.tela }); break
       case 'quadro-chave': if (callWin && !callWin.isDestroyed()) callWin.webContents.send('chamada-quadro-chave'); break
       case 'tchau': estadoChamada = { ...estadoChamada, fase: 'encerrada' }; enviarEstadoChamada(); break
     }
@@ -215,6 +215,13 @@ function iniciarCanal () {
   canal.escutar({ codigo: meuCodigo(), chave: minhaChave() }).catch(() => {})
 }
 ipcMain.handle('chamada-estado-atual', () => estadoChamada)
+// Tela principal para transmitir (captura direta: funciona mesmo quando a transmissão começa pela barrinha)
+ipcMain.handle('tela-fonte', async () => {
+  const s = await require('electron').desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 0, height: 0 } })
+  const principal = require('electron').screen.getPrimaryDisplay().id
+  const f = s.find(x => String(x.display_id) === String(principal)) || s[0]
+  return f ? f.id : null
+})
 
 // ---------- Pedido "Fulano deseja conectar" (Permitir / Negar, com permissões) ----------
 // Se ninguém responder em 15 s, permite (o servidor pode estar sem ninguém na frente; a senha continua exigida)
@@ -250,7 +257,7 @@ function abrirBarra () {
   if (process.env.SSADESK_CODIGO_TESTE) return
   if (barraWin && !barraWin.isDestroyed()) { barraWin.showInactive(); barraWin.webContents.send('barra-sessao', { nome: sessao.nome }); return }
   const area = require('electron').screen.getPrimaryDisplay().workArea
-  const W = 420; const H = 64
+  const W = 460; const H = 64
   barraWin = new BrowserWindow({
     width: W, height: H, x: Math.round(area.x + (area.width - W) / 2), y: area.y + 12,
     frame: false, transparent: true, resizable: false, maximizable: false, minimizable: false, skipTaskbar: true,
@@ -283,6 +290,7 @@ ipcMain.handle('arquivos-escolher', async () => {
 })
 ipcMain.on('sessao-acao', (_e, acao) => {
   if (acao === 'chamada') ipcMain.emit('abrir-chamada')
+  if (acao === 'tela') ipcMain.emit('abrir-chamada', null, { tela: true }) // transmitir minha tela
   if (acao === 'chat') abrirChatJanela()
   if (acao === 'encerrar') { if (canal) canal.encerrar(); fecharBarra() }
 })
@@ -611,14 +619,20 @@ app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
 app.whenReady().then(() => {
   const { session } = require('electron')
   const proprio = url => String(url || '').startsWith('file://')
-  session.defaultSession.setPermissionRequestHandler((wc, perm, cb) => cb(['media', 'clipboard-sanitized-write'].includes(perm) && proprio(wc.getURL())))
-  session.defaultSession.setPermissionCheckHandler((wc, perm) => perm === 'media' && proprio(wc && wc.getURL()))
+  session.defaultSession.setPermissionRequestHandler((wc, perm, cb) => cb(['media', 'display-capture', 'clipboard-sanitized-write'].includes(perm) && proprio(wc.getURL())))
+  session.defaultSession.setPermissionCheckHandler((wc, perm) => ['media', 'display-capture'].includes(perm) && proprio(wc && wc.getURL()))
+  // Transmitir a tela: usa a tela principal (sem diálogo extra), só para as páginas do próprio app
+  session.defaultSession.setDisplayMediaRequestHandler((req, cb) => {
+    if (!proprio(req.frame && req.frame.url)) return cb({})
+    require('electron').desktopCapturer.getSources({ types: ['screen'] }).then(s => cb(s.length ? { video: s[0] } : {})).catch(() => cb({}))
+  })
   if (process.env.SSADESK_CALL) { abrirChamada({ nome: 'Lages' }); return }
   if (process.env.SSADESK_CODIGO_TESTE) {
     iniciarCanal()
     conectarPorCodigo(process.env.SSADESK_CODIGO_TESTE)
       .then(async n => {
         fs.writeFileSync(process.env.SSADESK_LOG, 'conectado: ' + n + ' via ' + ultimoDestino + '\n', { flag: 'a' })
+        if (process.env.SSADESK_TELA_TESTE) ipcMain.emit('abrir-chamada', null, { tela: true })
         if (process.env.SSADESK_ENVIAR_TESTE) {
           const t0 = Date.now(); const r = await enviarArquivos(process.env.SSADESK_ENVIAR_TESTE.split('|'))
           fs.writeFileSync(process.env.SSADESK_LOG, 'envio: ' + JSON.stringify(r) + ' em ' + (Date.now() - t0) + ' ms\n', { flag: 'a' })

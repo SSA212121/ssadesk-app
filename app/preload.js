@@ -35,6 +35,7 @@ contextBridge.exposeInMainWorld('ssadesk', {
     onMidia: cb => ipcRenderer.on('chamada-midia', (_e, tipo, dados) => cb(tipo, dados)),
     onEstado: cb => ipcRenderer.on('chamada-estado', (_e, s) => cb(s)),
     estadoAtual: () => ipcRenderer.invoke('chamada-estado-atual'),
+    fonteTela: () => ipcRenderer.invoke('tela-fonte'),
     onRemoto: cb => ipcRenderer.on('chamada-remoto', (_e, s) => cb(s)),
     onQuadroChave: cb => ipcRenderer.on('chamada-quadro-chave', () => cb())
   },

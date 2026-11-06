@@ -64,7 +64,7 @@
 - [ ] **Vários caminhos ao mesmo tempo** (rede local, IPv6, túnel P2P), usa o que responder primeiro; investigar falha via 5G
 - [x] **Enviar arquivos arrastando** para a barrinha flutuante da sessão (ou botão direito → Enviar para → SSADesk) → Área de Trabalho do computador conectado; respeita a permissão "Enviar arquivos"; não sobrescreve; testado entre duas cópias (30 MB + pasta, íntegros)
 - [ ] **Lousa digital no Modo My**: circular, escrever, desenhar; botão "Limpar tudo"; os dois usuários veem as anotações (pedido 2026-11-06)
-- [ ] **Transmitir a tela de quem conecta** (como Meet/Discord), janela da transmissão redimensionável do outro lado (pedido 2026-11-06; reaproveita o vídeo da chamada)
+- [x] **Transmitir a tela de quem conecta** (como Meet/Discord): botão na barrinha e na chamada; do outro lado abre na janela da chamada, redimensionável e em tela cheia; testado entre duas cópias
 
 - [ ] **Motor próprio (decisão 2026-11-06):** o SSADesk não instala nem usa o RustDesk separado. Agora: compilar o motor a partir do código-fonte do RustDesk com marca SSADesk, embutido no programa (licença AGPL: código-fonte do SSADesk público). Futuro: controle de tela 100% próprio (sem AGPL), pensando em comercializar.
 - [x] Conectar pelo código: sessão P2P pelo código de 9 dígitos, pedido Permitir/Negar com permissões, nome opcional, vários caminhos ao mesmo tempo (testado entre duas cópias do app: 8,7 s)

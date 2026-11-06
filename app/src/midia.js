@@ -33,7 +33,10 @@
 
   // --- Vídeo ---
   let vEnc = null; let vAtivo = false; let vQuadros = 0; let pedirChave = true; let vTam = ''
-  function iniciarVideo (videoEl) {
+  // opcoes.taxa: bits/s (tela compartilhada usa mais, para o texto ficar legível)
+  let vTaxa = 1_200_000
+  function iniciarVideo (videoEl, opcoes) {
+    vTaxa = (opcoes && opcoes.taxa) || 1_200_000
     pararVideo()
     vAtivo = true; vQuadros = 0; pedirChave = true
     const enviar = () => {
@@ -47,7 +50,7 @@
               output: chunk => { const b = new Uint8Array(chunk.byteLength); chunk.copyTo(b); api.enviarMidia('video', empacotar(chunk.type === 'key', chunk.timestamp, b)) },
               error: () => { vEnc = null }
             })
-            vEnc.configure({ codec: 'vp8', width: w, height: h, bitrate: 1_200_000, framerate: 30, latencyMode: 'realtime' })
+            vEnc.configure({ codec: 'vp8', width: w, height: h, bitrate: vTaxa, framerate: 30, latencyMode: 'realtime' })
             vTam = w + 'x' + h; pedirChave = true
           }
           if (vEnc.encodeQueueSize < 3) { // codificador atrasado: pula o quadro em vez de acumular atraso
