@@ -1,33 +1,36 @@
-# installer/: SSADesk-Setup.exe (instalador universal Windows)
+# installer/: SSADesk-Setup.exe
 
-Um único instalador para todos os computadores Windows. No assistente você escolhe o que este computador é:
+Um único instalador, **igual para todos os computadores Windows**. Toda instalação:
 
-| Tipo | Instala | Onde |
+- acessa outros computadores **e** pode ser acessada;
+- conecta por **IP direto, IPv4 e IPv6** (porta TCP 21118), sem servidor central, VPS ou terceiros;
+- recebe um **código único**;
+- só aceita acesso com a **senha permanente** definida na instalação (mínimo 8 caracteres; sem senha temporária, sem "aceitar com clique").
+
+## Instalar
+
+Dois cliques → escolher disco/pasta → senha permanente (2x) → Instalar. Não reinicia o Windows nem fecha programas.
+A tela final mostra o código e os endereços; tudo fica salvo em `<pasta>\SSADESK-ESTE-COMPUTADOR.txt`.
+
+## Conectar a outro computador
+
+Abra o SSADesk (RustDesk) e, no campo de ID, digite o endereço do outro computador:
+
+| Situação | O que digitar | Precisa configurar roteador? |
 |---|---|---|
-| **Servidor de Lages** | servidor SSADesk (hbbs+hbbr) **e** acesso remoto | só no servidor do InfoArte |
-| **Computador** | acesso remoto (cliente RustDesk apontado para Lages) | qualquer outro Windows |
+| Mesma rede | IPv4 local, ex. `192.168.3.17` | Não |
+| Internet, rede com IPv6 | IPv6 entre colchetes, ex. `[2804:...]` | Normalmente não (alguns roteadores bloqueiam IPv6 de entrada) |
+| Internet, só IPv4 | IP público do lado acessado | Sim: redirecionar TCP 21118 → computador acessado |
 
-## Código único por computador
+Depois, digite a senha permanente do computador acessado.
 
-Cada computador recebe do RustDesk um **código (ID) numérico único**, gerado na instalação e registrado no servidor de Lages, que recusa códigos repetidos. O código aparece na tela final do instalador e fica salvo em `<pasta>\Cliente\SSADESK-ID.txt`. Para conectar a um computador, basta o código dele + a senha permanente.
+## Detalhes técnicos
 
-## Instalação rápida
-
-1. **Lages primeiro:** `SSADesk-Setup.exe` → escolher disco → tipo *Servidor de Lages* → IP/DNS público → senha permanente → Concluir. Não reinicia o Windows nem fecha o InfoArte.
-2. Copie `<pasta>\Servidor\ssadesk.ini` para junto do `SSADesk-Setup.exe` (pen drive/rede).
-3. **Demais computadores:** dois cliques → disco → *Computador* → senha. Servidor e chave já vêm preenchidos pelo `ssadesk.ini`.
-4. No roteador de Lages: TCP 21115-21119 e UDP 21116 → servidor.
-
-## Segurança
-
-- Senha permanente **obrigatória** (mínimo 8 caracteres). Senha temporária e "aceitar com clique" ficam desligadas: só entra quem tem o código **e** a senha.
-- Clientes falam apenas com o servidor da SSA (nunca com os servidores públicos do RustDesk) e exigem a chave do servidor.
-- A senha não é gravada no log nem em arquivo (passa por arquivo temporário apagado na hora).
-
-## Mac (Itajaí)
-
-O `.exe` é só para Windows. O Mac usa o RustDesk oficial para macOS com o mesmo servidor/chave (Fase 3).
+- `configure.ps1` instala o MSI oficial do RustDesk 1.5.1 e ativa `direct-server` na porta 21118 (o RustDesk escuta em `::`, que atende IPv4 e IPv6).
+- Um `hbbs` local (rustdesk-server 1.1.16, portas 21125-21128, bloqueado no firewall para acesso de fora) existe só para o RustDesk ficar "pronto" sem tentar os servidores públicos.
+- Firewall: libera só TCP 21118 para o `rustdesk.exe`.
+- Desinstalar: Painel de Controle → SSADesk. Remove o RustDesk, a tarefa e as regras de firewall.
 
 ## Gerar o instalador
 
-`powershell -ExecutionPolicy Bypass -File installer\build.ps1` → `dist\SSADesk-Setup.exe`. Baixa os binários oficiais (rustdesk-server 1.1.16, RustDesk 1.5.1), confere o SHA-256 e compila com Inno Setup 6.
+`powershell -ExecutionPolicy Bypass -File installer\build.ps1` → `dist\SSADesk-Setup.exe`. Requer Inno Setup 6.

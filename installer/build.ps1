@@ -1,8 +1,8 @@
 <#
-Gera dist\SSADesk-Setup.exe (instalador universal: servidor e/ou computador).
+Gera dist\SSADesk-Setup.exe (instalador unico: conexao direta IPv4/IPv6).
   powershell -ExecutionPolicy Bypass -File installer\build.ps1
 Requer Inno Setup 6 (winget install JRSoftware.InnoSetup).
-Todos os binários são oficiais do RustDesk e têm o SHA-256 conferido.
+Todos os binarios sao oficiais do RustDesk e tem o SHA-256 conferido.
 #>
 $ErrorActionPreference = "Stop"
 $here    = $PSScriptRoot
@@ -40,7 +40,7 @@ try {
 
 # Windows PowerShell 5.1 e o Inno precisam de UTF-8 com BOM para acentos
 $bom = New-Object System.Text.UTF8Encoding($true)
-foreach ($f in "configure-server.ps1", "configure-client.ps1", "SSADesk.iss") {
+foreach ($f in "configure.ps1", "SSADesk.iss") {
     [IO.File]::WriteAllText("$payload\$f", [IO.File]::ReadAllText("$here\$f"), $bom)
 }
 
