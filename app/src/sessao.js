@@ -1,0 +1,50 @@
+// SSADesk — barrinha da sessão: soltar arquivos para enviar, chat, chamada, encerrar
+const $ = id => document.getElementById(id)
+const api = window.ssadesk
+const params = new URLSearchParams(location.search)
+const padrao = 'Arraste arquivos aqui para enviar'
+
+function mostrarNome (nome) {
+  nome = nome || 'Computador conectado'
+  $('nome').textContent = nome
+  $('inicial').textContent = (nome.trim()[0] || '?').toUpperCase()
+}
+mostrarNome(params.get('nome'))
+api.sessao.onAtualizar(s => mostrarNome(s.nome))
+
+document.querySelectorAll('[data-acao]').forEach(b => b.addEventListener('click', async () => {
+  if (b.dataset.acao === 'arquivos') { const r = await api.arquivos.escolher(); if (r && r.ok === false && r.msg) estado(r.msg, true) } else api.sessao.acao(b.dataset.acao)
+}))
+
+let voltar
+function estado (texto, temporario) {
+  $('estado').textContent = texto
+  clearTimeout(voltar)
+  if (temporario) voltar = setTimeout(() => { $('estado').textContent = padrao }, 3500)
+}
+
+// ---------- Soltar arquivos ----------
+let dentro = 0
+addEventListener('dragenter', e => { e.preventDefault(); dentro++; document.body.classList.add('soltar'); estado('Solte para enviar a ' + $('nome').textContent) })
+addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy' })
+addEventListener('dragleave', () => { if (--dentro <= 0) { dentro = 0; document.body.classList.remove('soltar'); estado(padrao) } })
+addEventListener('drop', async e => {
+  e.preventDefault(); dentro = 0; document.body.classList.remove('soltar')
+  const caminhos = [...e.dataTransfer.files].map(f => api.arquivos.caminhoDe(f)).filter(Boolean)
+  if (!caminhos.length) return estado(padrao)
+  const r = await api.arquivos.enviar(caminhos)
+  if (!r.ok) estado(r.msg || 'Não foi possível enviar.', true)
+})
+
+// ---------- Progresso ----------
+const mb = n => n >= 1048576 ? (n / 1048576).toFixed(1).replace('.', ',') + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB'
+api.arquivos.onProgresso(p => {
+  if (p.concluido) {
+    document.body.classList.remove('enviando'); $('progFill').style.width = '0'
+    return estado(p.arquivos === 1 ? 'Arquivo enviado ✓' : p.arquivos + ' arquivos enviados ✓', true)
+  }
+  document.body.classList.add('enviando')
+  const pct = p.total ? Math.round(p.enviado / p.total * 100) : 100
+  $('progFill').style.width = pct + '%'
+  estado('Enviando ' + (p.arquivos > 1 ? p.arquivos + ' arquivos' : String(p.atual).split(/[\\/]/).pop()) + ' · ' + mb(p.enviado) + ' de ' + mb(p.total))
+})

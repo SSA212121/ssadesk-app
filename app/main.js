@@ -127,6 +127,7 @@ let canal = null
 let sessao = { ativa: false, papel: null, nome: '', permissoes: { ...PERMISSOES_PADRAO } }
 let estadoChamada = { fase: 'aguardando', nome: '' }
 let pendente = null // conexão pelo código esperando a resposta do outro lado
+let arquivos = null
 let ultimoDestino = ''
 function enviarEstadoChamada () { if (callWin && !callWin.isDestroyed()) callWin.webContents.send('chamada-estado', estadoChamada) }
 function avisarPainel (canalNome, dados) { if (win && !win.isDestroyed()) win.webContents.send(canalNome, dados) }
@@ -161,6 +162,8 @@ function iniciarCanal () {
   })
   canal.on('desconectado', () => {
     sessao.ativa = false
+    if (arquivos) arquivos.sessaoEncerrada()
+    fecharBarra()
     estadoChamada = { ...estadoChamada, fase: 'encerrada' }; enviarEstadoChamada()
     if (pendente) { pendente.reject(new Error('O outro computador encerrou a conexão.')); pendente = null }
     avisarPainel('sessao', { ativa: false })
@@ -192,12 +195,21 @@ function iniciarCanal () {
       case 'quadro-chave': if (callWin && !callWin.isDestroyed()) callWin.webContents.send('chamada-quadro-chave'); break
       case 'tchau': estadoChamada = { ...estadoChamada, fase: 'encerrada' }; enviarEstadoChamada(); break
     }
-    if (typeof aoControleArquivos === 'function') aoControleArquivos(msg)
+    if (arquivos && /^arq-/.test(msg.t)) arquivos.controle(msg)
   })
   canal.on('midia', (tipo, dados) => {
     if (callWin && !callWin.isDestroyed()) callWin.webContents.send('chamada-midia', tipo, dados)
   })
-  canal.on('arquivo', dados => { if (typeof aoPedacoArquivo === 'function') aoPedacoArquivo(dados) })
+  canal.on('arquivo', dados => { if (arquivos) arquivos.pedaco(dados) })
+  // Arquivos: quem acessa envia; chegam na Área de Trabalho de quem foi acessado (se a permissão estiver ligada)
+  const { criarArquivos } = require('./arquivos')
+  arquivos = criarArquivos({
+    canal,
+    pastaDestino: () => process.env.SSADESK_DESTINO || app.getPath('desktop'),
+    podeReceber: () => sessao.ativa && sessao.papel === 'acessado' && sessao.permissoes.arquivos !== false,
+    aoProgresso: p => { if (barraWin && !barraWin.isDestroyed()) barraWin.webContents.send('arquivos-progresso', p) },
+    aoRecebido: r => avisarRecebido(r)
+  })
   canal._swarm() // liga o nó P2P já na abertura: as próximas conexões saem rápidas
   // Fica disponível para ser encontrado pelo código (e pela chave de internet)
   canal.escutar({ codigo: meuCodigo(), chave: minhaChave() }).catch(() => {})
@@ -231,6 +243,74 @@ function mostrarPedido (dados) {
 ipcMain.handle('pedido-dados', () => pedidoAtual && pedidoAtual.dados)
 ipcMain.on('pedido-adiar', () => { if (pedidoAtual) pedidoAtual.adiar() }) // mexeu nas permissões: espera a decisão da pessoa
 ipcMain.on('pedido-resposta', (_e, r) => { if (pedidoAtual) pedidoAtual.responder({ permitir: !!(r && r.permitir), permissoes: (r && r.permissoes) || PERMISSOES_PADRAO }) })
+
+// ---------- Barrinha da sessão (quem acessa): soltar arquivos, chamada, chat, encerrar ----------
+let barraWin = null
+function abrirBarra () {
+  if (process.env.SSADESK_CODIGO_TESTE) return
+  if (barraWin && !barraWin.isDestroyed()) { barraWin.showInactive(); barraWin.webContents.send('barra-sessao', { nome: sessao.nome }); return }
+  const area = require('electron').screen.getPrimaryDisplay().workArea
+  const W = 420; const H = 64
+  barraWin = new BrowserWindow({
+    width: W, height: H, x: Math.round(area.x + (area.width - W) / 2), y: area.y + 12,
+    frame: false, transparent: true, resizable: false, maximizable: false, minimizable: false, skipTaskbar: true,
+    alwaysOnTop: true, show: false, title: 'SSADesk', hasShadow: false,
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true }
+  })
+  barraWin.setAlwaysOnTop(true, 'floating')
+  barraWin.loadFile(path.join(__dirname, 'src', 'sessao.html'), { query: { nome: sessao.nome || '' } })
+  barraWin.once('ready-to-show', () => barraWin.showInactive())
+  barraWin.on('closed', () => { barraWin = null })
+}
+function fecharBarra () { if (barraWin && !barraWin.isDestroyed()) barraWin.destroy(); barraWin = null }
+
+async function enviarArquivos (caminhos) {
+  const { Notification } = require('electron')
+  const lista = (caminhos || []).filter(c => c && fs.existsSync(c))
+  if (!lista.length) return { ok: false, msg: 'Nenhum arquivo.' }
+  if (!(canal && canal.conectado() && sessao.ativa && sessao.papel === 'acessando')) {
+    new Notification({ title: 'SSADesk', body: 'Conecte-se a um computador para enviar arquivos.' }).show()
+    mostrarPainel(); return { ok: false, msg: 'Sem conexão.' }
+  }
+  if (sessao.permissoes.arquivos === false) return { ok: false, msg: (sessao.nome || 'O outro computador') + ' não permite receber arquivos.' }
+  abrirBarra()
+  try { const n = await arquivos.enviar(lista); return { ok: true, n } } catch (e) { return { ok: false, msg: e.message } }
+}
+ipcMain.handle('arquivos-enviar', (_e, caminhos) => enviarArquivos(caminhos))
+ipcMain.handle('arquivos-escolher', async () => {
+  const r = await dialog.showOpenDialog(barraWin || win, { title: 'Enviar para ' + (sessao.nome || 'o outro computador'), properties: ['openFile', 'multiSelections'] })
+  return r.canceled ? { ok: false } : enviarArquivos(r.filePaths)
+})
+ipcMain.on('sessao-acao', (_e, acao) => {
+  if (acao === 'chamada') ipcMain.emit('abrir-chamada')
+  if (acao === 'chat') abrirChatJanela()
+  if (acao === 'encerrar') { if (canal) canal.encerrar(); fecharBarra() }
+})
+ipcMain.handle('sessao-info', () => ({ nome: sessao.nome, ativa: sessao.ativa }))
+
+// Quem foi acessado: aviso discreto ao receber (um por item enviado, não um por arquivo de uma pasta)
+let ultimoAviso = { raiz: '', em: 0 }
+function avisarRecebido ({ nome, caminho, raiz }) {
+  const { Notification } = require('electron')
+  const agora = Date.now()
+  if (raiz === ultimoAviso.raiz && agora - ultimoAviso.em < 4000) return
+  ultimoAviso = { raiz, em: agora }
+  const n = new Notification({ title: (sessao.nome || 'Alguém') + ' enviou um arquivo', body: raiz + ' — salvo na Área de Trabalho' })
+  n.on('click', () => shell.showItemInFolder(caminho)); n.show()
+}
+
+// "Enviar para → SSADesk" no botão direito do Windows
+function registrarEnviarPara () {
+  if (!isWin || !app.isPackaged) return
+  try {
+    const lnk = path.join(app.getPath('appData'), 'Microsoft', 'Windows', 'SendTo', 'SSADesk.lnk')
+    shell.writeShortcutLink(lnk, { target: process.execPath, args: '--enviar', icon: path.join(DIR, 'ssadesk.ico'), iconIndex: 0, description: 'Enviar para o computador conectado no SSADesk' })
+  } catch {}
+}
+function arquivosDaLinha (argv) {
+  const i = argv.indexOf('--enviar')
+  return i < 0 ? [] : argv.slice(i + 1).filter(a => !a.startsWith('--'))
+}
 
 // ---------- Túnel de acesso remoto dentro do app ----------
 // Usa o nó da rede P2P que o app mantém ligado em segundo plano: não precisa 'entrar' na rede a cada conexão.
@@ -298,6 +378,7 @@ async function conectarPorCodigo (codigo) {
   if (!process.env.SSADESK_CODIGO_TESTE) abrirRustDesk(destino)
   savePrefs({ ...loadPrefs(), ultimoCodigo: soDigitos(codigo) })
   avisarPainel('sessao', { ativa: true, nome: sessao.nome })
+  abrirBarra()
   return sessao.nome
 }
 
@@ -536,13 +617,22 @@ app.whenReady().then(() => {
   if (process.env.SSADESK_CODIGO_TESTE) {
     iniciarCanal()
     conectarPorCodigo(process.env.SSADESK_CODIGO_TESTE)
-      .then(n => fs.writeFileSync(process.env.SSADESK_LOG, 'conectado: ' + n + ' via ' + ultimoDestino + '\n', { flag: 'a' }))
+      .then(async n => {
+        fs.writeFileSync(process.env.SSADESK_LOG, 'conectado: ' + n + ' via ' + ultimoDestino + '\n', { flag: 'a' })
+        if (process.env.SSADESK_ENVIAR_TESTE) {
+          const t0 = Date.now(); const r = await enviarArquivos(process.env.SSADESK_ENVIAR_TESTE.split('|'))
+          fs.writeFileSync(process.env.SSADESK_LOG, 'envio: ' + JSON.stringify(r) + ' em ' + (Date.now() - t0) + ' ms\n', { flag: 'a' })
+        }
+      })
       .catch(e => fs.writeFileSync(process.env.SSADESK_LOG, 'erro: ' + e.message + '\n', { flag: 'a' }))
     return
   }
   if (MODO !== 'app') { createWindow(); return }
   iniciarCanal()
   criarBandeja()
+  registrarEnviarPara()
+  const paraEnviar = arquivosDaLinha(process.argv)
+  if (paraEnviar.length) { enviarArquivos(paraEnviar); return }
   if (!SEGUNDO_PLANO) createWindow()
 })
 
@@ -564,7 +654,11 @@ function criarBandeja () {
   ]))
   bandeja.on('click', mostrarPainel)
 }
-app.on('second-instance', () => { if (MODO === 'app') mostrarPainel() })
+app.on('second-instance', (_e, argv) => {
+  if (MODO !== 'app') return
+  const lista = arquivosDaLinha(argv)
+  if (lista.length) enviarArquivos(lista); else mostrarPainel()
+})
 // Fechar o painel não encerra o app: ele segue no ícone perto do relógio para receber chamadas
 app.on('window-all-closed', () => { if (MODO !== 'app' || !bandeja) app.quit() })
 app.on('before-quit', () => { if (canal) canal.destruir() })

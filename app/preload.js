@@ -1,5 +1,5 @@
 // Ponte segura entre a interface e o processo principal
-const { contextBridge, ipcRenderer } = require('electron')
+const { contextBridge, ipcRenderer, webUtils } = require('electron')
 
 contextBridge.exposeInMainWorld('ssadesk', {
   info: () => ipcRenderer.invoke('info'),
@@ -9,6 +9,18 @@ contextBridge.exposeInMainWorld('ssadesk', {
   nome: nome => ipcRenderer.invoke('nome', nome),
   onStatus: cb => ipcRenderer.on('conectar-status', (_e, s) => cb(s)),
   onSessao: cb => ipcRenderer.on('sessao', (_e, s) => cb(s)),
+  sessao: {
+    info: () => ipcRenderer.invoke('sessao-info'),
+    acao: a => ipcRenderer.send('sessao-acao', a),
+    onAtualizar: cb => ipcRenderer.on('barra-sessao', (_e, s) => cb(s))
+  },
+  arquivos: {
+    // Caminho real de um arquivo arrastado (o Electron não expõe mais File.path)
+    caminhoDe: arquivo => webUtils.getPathForFile(arquivo),
+    enviar: caminhos => ipcRenderer.invoke('arquivos-enviar', caminhos),
+    escolher: () => ipcRenderer.invoke('arquivos-escolher'),
+    onProgresso: cb => ipcRenderer.on('arquivos-progresso', (_e, p) => cb(p))
+  },
   pedido: {
     dados: () => ipcRenderer.invoke('pedido-dados'),
     responder: r => ipcRenderer.send('pedido-resposta', r),
