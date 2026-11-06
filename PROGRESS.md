@@ -2,7 +2,7 @@
 
 **Regra:** atualizar a % total após concluir cada subtarefa (marcar `[x]`, recalcular soma). Ao atingir **90%**, o SSADesk é considerado **funcional e pronto para uso no dia a dia**; os **10% finais (Fase 7)** são refinamentos, não bloqueiam o uso.
 
-**Progresso total: 31,25%**
+**Progresso total: 35%**
 
 > **Mudança de arquitetura (2026-11-06, decisão do usuário):** sem servidor central/VPS. Instalador único e igual em todos os computadores; cada um acessa e pode ser acessado por **conexão direta IPv4/IPv6** (porta TCP 21118), com código único e senha permanente. A Fase 1 foi reescrita para refletir isso.
 
@@ -22,7 +22,7 @@
 ## Fase 2 — Windows acessado (peso: 15%)
 > Validado no notebook SSA-Atendimento, por decisão do usuário (se funciona aqui, funciona no servidor de Lages e em clientes).
 - [x] SSADesk instalado como serviço no Windows (inicia com o sistema)
-- [ ] Acesso pela internet. O instalador já diagnostica e configura sozinho (IPv6, UPnP, CGNAT). Esta rede: CGNAT confirmado, sem IPv6, sem UPnP → próximo passo: túnel P2P (Hyperswarm) para atravessar CGNAT sem servidor
+- [x] Acesso pela internet: túnel P2P (Hyperswarm) atravessando CGNAT, sem servidor e sem roteador. Testado de um notebook no 4G até o SSA-Atendimento (CGNAT). Lento na 1ª conexão (refino pendente: abrir o túnel antes do SSADesk)
 - [x] Acesso não assistido configurado com senha permanente fixa
 - [x] Testado: ver tela, controlar mouse/teclado por conexão direta via IP (192.168.3.17), com senha
 
@@ -73,3 +73,4 @@
 - 2026-11-06 — 31,25% — Fase 2: conexão direta por IP (192.168.3.17) com controle de tela, mouse e teclado funcionando
 - 2026-11-06 — 31,25% — Instalador 2.1: diagnóstico automático de rede (IPv4/IPv6, UPnP automático, detecção de CGNAT) na instalação e a cada hora, com resultado em linguagem simples; validado no notebook (detectou CGNAT)
 - 2026-11-06 — 31,25% — Instalador 2.2: túnel P2P (Hyperswarm/hypertele) embutido, liga com o Windows e gera "chave de internet"; atalho "Conectar pela internet". Testado em loop no notebook; aguardando teste real com segundo notebook no 4G
+- 2026-11-06 — 35% — Conexão pela internet funcionando: notebook no 4G → SSA-Atendimento (CGNAT) pelo túnel P2P, sem servidor; Fase 2 concluída (conexão inicial lenta, com várias tentativas)
