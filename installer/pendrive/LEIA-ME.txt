@@ -1,0 +1,17 @@
+﻿SSADesk - instalação
+
+1. Dê dois cliques em SSADesk-Setup.exe.
+
+2. Se aparecer "O controle inteligente de aplicativos bloqueou um aplicativo":
+   - Clique em OK.
+   - Dê dois cliques em "Se o Windows bloquear - clique aqui".
+     Abre direto a tela certa do Windows.
+   - Em "Controle inteligente de aplicativos", escolha "Desativado" e confirme.
+   - Volte ao passo 1.
+
+   Por que isso acontece: esta versão do SSADesk ainda não tem assinatura digital,
+   e essa proteção do Windows só aceita programas assinados.
+   Atenção: depois de desativada, o Windows só permite religar essa proteção
+   reinstalando o sistema. Na versão assinada do SSADesk este passo não será necessário.
+
+3. Siga as telas: pasta, senha e Instalar.

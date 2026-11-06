@@ -78,10 +78,10 @@ button { border: 0; background: none; cursor: default; }
 @keyframes drift { to { transform: translate(-30px, 40px) scale(1.08); } }
 
 /* Barra de título */
-.titlebar { -webkit-app-region: drag; height: 56px; display: flex; align-items: center; justify-content: center; position: relative; flex: none; }
+.titlebar { -webkit-app-region: drag; app-region: drag; height: 56px; display: flex; align-items: center; justify-content: center; position: relative; flex: none; }
 .brand { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13.5px; letter-spacing: -.01em; }
 .brand img { width: 20px; height: 20px; border-radius: 5px; }
-.winctl { position: absolute; right: 14px; display: flex; gap: 6px; -webkit-app-region: no-drag; }
+.winctl { position: absolute; right: 14px; display: flex; gap: 6px; -webkit-app-region: no-drag; app-region: no-drag; }
 .wbtn { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; color: var(--text-2);
   background: transparent; transition: background .25s var(--ease), color .25s var(--ease), transform .3s var(--spring); }
 .wbtn svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; }

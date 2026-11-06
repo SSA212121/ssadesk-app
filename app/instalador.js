@@ -98,7 +98,7 @@ async function removerAnterior (dir) {
 
 function copiar (payload, destino) {
   fs.mkdirSync(destino, { recursive: true })
-  for (const nome of ['app', 'p2p', 'bin', 'tools', 'ssadesk.ico', 'ssadesk.png', 'LICENSE-RUSTDESK-AGPL.txt', 'LICENSE-SERVER-AGPL.txt']) {
+  for (const nome of ['app', 'bin', 'tools', 'ssadesk.ico', 'ssadesk.png', 'LICENSE-RUSTDESK-AGPL.txt', 'LICENSE-SERVER-AGPL.txt']) {
     const src = path.join(payload, nome)
     if (fs.existsSync(src)) fs.cpSync(src, path.join(destino, nome), { recursive: true, force: true })
   }

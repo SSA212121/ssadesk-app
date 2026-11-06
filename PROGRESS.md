@@ -100,3 +100,4 @@
 - 2026-11-06 — 60% — Fase 6 (em teste): chamada e chat reais pelo canal P2P próprio; app em segundo plano para receber chamadas (v3.1)
 - 2026-11-06 — 60% — v3.2: instalação mais rápida (chave calculada na hora, diagnóstico em segundo plano, pacote 258→193 MB) e conexão mais rápida (túnel dentro do app com rede P2P aquecida: ~8 s → ~1 s)
 - 2026-11-06 — 60% — v3.2.1/3.2.2: limpeza de instalação interrompida; Setup detecta o Controle Inteligente de Aplicativos e orienta o usuário (o 2º notebook bloqueou o app por falta de assinatura digital)
+- 2026-11-06 — 60% — v3.3: instalador abre em ~2 s (telas na janela leve WebView2 do Windows; pacote pesado extraído em segundo plano), túnel usa o motor do app (sem Node separado), Setup 193→162 MB; pendrive com atalho de um clique para a tela do Controle Inteligente de Aplicativos

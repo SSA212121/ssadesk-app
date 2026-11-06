@@ -1,7 +1,7 @@
 {
   "name": "ssadesk",
   "productName": "SSADesk",
-  "version": "3.2.2",
+  "version": "3.3.0",
   "description": "SSADesk - acesso remoto e chamada de vídeo da SSA Comércio",
   "main": "main.js",
   "private": true,
@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@fontsource-variable/inter": "5.3.0",
-    "hyperswarm": "^4.17.2"
+    "hyperswarm": "^4.17.2",
+    "hypertele": "^1.1.4"
   }
 }

@@ -15,6 +15,17 @@ const arg = n => { const a = process.argv.find(x => x.startsWith('--' + n)); ret
 const MODO = arg('instalar') ? 'instalar' : arg('desinstalar') ? 'desinstalar' : 'app'
 const PAYLOAD = typeof arg('payload') === 'string' ? arg('payload').replace(/^"|"$/g, '') : null
 const motor = isWin ? require('./instalador') : null
+// Instalação: avisa o envelope (Setup.exe) que a tela está aberta, para ele manter a pasta temporária
+if (MODO !== 'app' && PAYLOAD) {
+  const marca = n => { try { fs.writeFileSync(path.join(PAYLOAD, n), String(Date.now())) } catch {} }
+  marca('vivo.flag'); setInterval(() => marca('vivo.flag'), 2000)
+  process.on('exit', () => marca('fim.flag'))
+}
+// O resto do pacote é extraído enquanto o usuário passa pelas telas: espera o sinal 'pronto'
+async function esperarPacote () {
+  if (!PAYLOAD) return
+  for (let i = 0; i < 600 && !fs.existsSync(path.join(PAYLOAD, 'pronto.flag')); i++) await new Promise(r => setTimeout(r, 200))
+}
 // --segundo-plano: inicia com o Windows, sem janela, só com o ícone perto do relógio (para receber chamadas)
 const SEGUNDO_PLANO = !!arg('segundo-plano')
 
@@ -366,6 +377,7 @@ let instalado = null
 ipcMain.handle('setup-instalar', async (_e, { destino, senha }) => {
   if (!motor || !PAYLOAD) return { ok: false, msg: 'Pacote de instalação não encontrado.' }
   try {
+    await esperarPacote()
     instalado = await motor.instalar({ payload: PAYLOAD, destino, senha, versao: app.getVersion() },
       ev => win.webContents.send('setup-passo', ev.passo))
     return { ok: true, codigo: instalado.codigo }

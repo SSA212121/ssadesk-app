@@ -24,7 +24,7 @@ SetupIconFile=ssadesk.ico
 OutputDir=..\..\dist
 OutputBaseFilename=SSADesk-Setup
 Compression=lzma2/fast
-SolidCompression=yes
+SolidCompression=no
 DisableWelcomePage=yes
 DisableReadyPage=yes
 DisableFinishedPage=yes
@@ -33,7 +33,10 @@ DisableFinishedPage=yes
 Name: "ptbr"; MessagesFile: "compiler:Languages\BrazilianPortuguese.isl"
 
 [Files]
-Source: "stage\*"; DestDir: "{tmp}\pkg"; Flags: dontcopy recursesubdirs createallsubdirs
+; 1º a janela leve das telas (~2 MB, abre em ~0,5 s); o resto é extraído em paralelo
+Source: "ui\*"; DestDir: "{tmp}\ui"; Flags: dontcopy recursesubdirs createallsubdirs
+Source: "stage\app\*"; DestDir: "{tmp}\pkg\app"; Flags: dontcopy recursesubdirs createallsubdirs
+Source: "stage\*"; Excludes: "\app"; DestDir: "{tmp}\pkg"; Flags: dontcopy recursesubdirs createallsubdirs
 
 [Code]
 { Controle Inteligente de Aplicativos (Smart App Control) do Windows 11:
@@ -65,16 +68,42 @@ end;
 
 function InitializeSetup(): Boolean;
 var
-  Code: Integer;
+  Code, Parado: Integer;
+  Vivo, Agora: AnsiString;
 begin
   if ControleInteligenteLigado() then
   begin
     Result := OrientarControleInteligente();
     Exit;
   end;
-  { Extrai o pacote e abre a tela de instalação do SSADesk; o Inno não mostra nada }
-  ExtractTemporaryFiles('{tmp}\pkg\*');
-  Exec(ExpandConstant('{tmp}\pkg\app\SSADesk.exe'), '--instalar --payload="' + ExpandConstant('{tmp}\pkg') + '"',
-       ExpandConstant('{tmp}\pkg'), SW_SHOW, ewWaitUntilTerminated, Code);
+  { 1. Telas de instalação na janela leve (WebView2 do Windows): aparecem quase na hora }
+  ForceDirectories(ExpandConstant('{tmp}\pkg'));
+  ExtractTemporaryFiles('{tmp}\ui\*');
+  Exec(ExpandConstant('{tmp}\ui\SetupUI.exe'), '"' + ExpandConstant('{tmp}\ui') + '" "' + ExpandConstant('{tmp}\pkg') + '" "{#AppVersion}"',
+       ExpandConstant('{tmp}\ui'), SW_SHOW, ewNoWait, Code);
+  { 2. O pacote pesado é extraído enquanto o usuário passa pelas telas }
+  ExtractTemporaryFiles('{tmp}\pkg\app\*');
+  ExtractTemporaryFiles('{tmp}\pkg\bin\*');
+  ExtractTemporaryFiles('{tmp}\pkg\tools\*');
+  ExtractTemporaryFiles('{tmp}\pkg\rustdesk.msi');
+  ExtractTemporaryFiles('{tmp}\pkg\ssadesk.*');
+  ExtractTemporaryFiles('{tmp}\pkg\LICENSE*');
+  SaveStringToFile(ExpandConstant('{tmp}\pkg\pronto.flag'), '1', False);
+  { Plano B: sem WebView2 (Windows antigo), as telas abrem pelo próprio app }
+  if FileExists(ExpandConstant('{tmp}\pkg\ui-falhou.flag')) then
+  begin
+    DeleteFile(ExpandConstant('{tmp}\pkg\vivo.flag'));
+    Exec(ExpandConstant('{tmp}\pkg\app\SSADesk.exe'), '--instalar --payload="' + ExpandConstant('{tmp}\pkg') + '"',
+         ExpandConstant('{tmp}\pkg'), SW_SHOW, ewNoWait, Code);
+  end;  { 3. Mantém a pasta temporária enquanto a tela de instalação estiver aberta (sinal de vida a cada 2 s) }
+  Vivo := ''; Parado := 0;
+  { sem sinal: espera até 2 min o app abrir; depois do 1º sinal, 20 s sem sinal = app fechado }
+  while not FileExists(ExpandConstant('{tmp}\pkg\fim.flag')) and (((Vivo = '') and (Parado < 240)) or ((Vivo <> '') and (Parado < 40))) do
+  begin
+    Sleep(500);
+    if LoadStringFromFile(ExpandConstant('{tmp}\pkg\vivo.flag'), Agora) and (Agora <> Vivo) then
+    begin Vivo := Agora; Parado := 0; end
+    else Parado := Parado + 1;
+  end;
   Result := False; { encerra o envelope (a pasta temporária é apagada ao sair) }
 end;

@@ -51,17 +51,11 @@ try {
 
 # 2. Scripts de configuração (Windows PowerShell 5.1 precisa de UTF-8 com BOM para acentos)
 $bom = New-Object System.Text.UTF8Encoding($true)
-foreach ($f in "configure.ps1", "network.ps1", "tunel.ps1") {
+foreach ($f in "configure.ps1", "network.ps1", "tunel.ps1", "chave.js") {
     [IO.File]::WriteAllText("$stage\tools\$f", [IO.File]::ReadAllText("$here\$f"), $bom)
 }
 
-# 3. Túnel P2P: Node.js + hypertele
-Push-Location $p2pSrc
-try { npm ci --ignore-scripts --no-audit --no-fund | Out-Null; if ($LASTEXITCODE -ne 0) { throw "npm ci (p2p) falhou" } } finally { Pop-Location }
-New-Item -ItemType Directory -Force "$stage\p2p" | Out-Null
-Copy-Item (Get-Command node).Source "$stage\p2p\node.exe"
-Copy-Item "$p2pSrc\node_modules" "$stage\p2p\node_modules" -Recurse
-Copy-Item "$p2pSrc\package.json", "$p2pSrc\cliente.js", "$p2pSrc\diagnostico.js" "$stage\p2p\"
+# 3. Túnel P2P: roda no motor do próprio app (SSADesk.exe modo Node); hypertele vem nas dependências do app
 
 # 4. Identidade visual
 & (Join-Path $here "make-icon.ps1") | Out-Null
@@ -81,7 +75,7 @@ Copy-Item "$appSrc\node_modules\electron\dist" $appOut -Recurse
 Remove-Item "$appOut\resources\default_app.asar" -ErrorAction SilentlyContinue
 Rename-Item "$appOut\electron.exe" "SSADesk.exe"
 New-Item -ItemType Directory -Force "$appOut\resources\app" | Out-Null
-Copy-Item "$appSrc\main.js", "$appSrc\preload.js", "$appSrc\instalador.js", "$appSrc\package.json" "$appOut\resources\app\"
+Copy-Item "$appSrc\main.js", "$appSrc\preload.js", "$appSrc\instalador.js", "$appSrc\instalar-cli.js", "$appSrc\package.json" "$appOut\resources\app\"
 Copy-Item "$appSrc\src", "$appSrc\assets" "$appOut\resources\app\" -Recurse
 Copy-Item "$appSrc\canal.js" "$appOut\resources\app\"
 # Dependências de produção (rede P2P da chamada); electron e rcedit são só de build
@@ -98,15 +92,38 @@ function Remove-OutrasPlataformas($raiz) {
         Get-ChildItem $_.FullName -Directory | Where-Object { $_.Name -ne "win32-x64" } | Remove-Item -Recurse -Force
     }
 }
-Remove-OutrasPlataformas "$stage\p2p\node_modules"
 Remove-OutrasPlataformas "$appOut\resources\app\node_modules"
 Get-ChildItem "$appOut\locales" -Filter *.pak | Where-Object { $_.Name -notin "pt-BR.pak", "en-US.pak" } | Remove-Item -Force
 $mb = [math]::Round(((Get-ChildItem $stage -Recurse -File | Measure-Object Length -Sum).Sum / 1MB), 0)
 Write-Host "Pacote: $mb MB"
 
-# 7. Envelope (Setup.exe)
+# 7. Janela leve de instalação (WebView2 do Windows): abre em ~0,5 s com as mesmas telas do app
+$wvVer = "1.0.4314.35"
+$ui = Join-Path $stage "..\ui"; New-Item -ItemType Directory -Force "$ui\src\fonts", "$ui\assets" | Out-Null
+$tmpWv = Join-Path $env:TEMP "ssadesk-wv2-$([guid]::NewGuid())"; New-Item -ItemType Directory $tmpWv | Out-Null
+try {
+    Invoke-WebRequest "https://api.nuget.org/v3-flatcontainer/microsoft.web.webview2/$wvVer/microsoft.web.webview2.$wvVer.nupkg" -OutFile "$tmpWv\p.zip" -UseBasicParsing
+    Expand-Archive "$tmpWv\p.zip" "$tmpWv\x"
+    $dlls = "$tmpWv\x\lib\net462\Microsoft.Web.WebView2.Core.dll", "$tmpWv\x\lib\net462\Microsoft.Web.WebView2.WinForms.dll", "$tmpWv\x\runtimes\win-x64\native\WebView2Loader.dll"
+    foreach ($d in $dlls) { $s = Get-AuthenticodeSignature $d; if ($s.Status -ne "Valid" -or $s.SignerCertificate.Subject -notmatch "Microsoft Corporation") { throw "Assinatura Microsoft inválida: $d" } }
+    Copy-Item $dlls $ui
+} finally { Remove-Item -Recurse -Force $tmpWv -ErrorAction SilentlyContinue }
+$csc = "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
+& $csc /nologo /target:winexe /platform:x64 /optimize+ /out:"$ui\SetupUI.exe" /win32icon:"$here\assets\ssadesk.ico" `
+    /r:"$ui\Microsoft.Web.WebView2.Core.dll" /r:"$ui\Microsoft.Web.WebView2.WinForms.dll" /r:System.Web.Extensions.dll /r:System.Windows.Forms.dll /r:System.Drawing.dll "$here\setup-ui\SetupUI.cs"
+if ($LASTEXITCODE -ne 0) { throw "csc falhou" }
+Copy-Item "$here\assets\ssadesk.ico" $ui
+Copy-Item "$appSrc\src\setup.html", "$appSrc\src\setup.css", "$appSrc\src\styles.css", "$appSrc\src\setup.js", "$appSrc\src\ponte-webview.js" "$ui\src\"
+Copy-Item "$appSrc\src\fonts\inter.woff2" "$ui\src\fonts\"; Copy-Item "$appSrc\assets\icon.png" "$ui\assets\"
+
+# 8. Envelope (Setup.exe)
 $iss = [IO.File]::ReadAllText("$here\SSADesk.iss") -replace '#define AppVersion ".*"', "#define AppVersion `"$version`""
 [IO.File]::WriteAllText("$payload\SSADesk.iss", $iss, $bom)
 & $iscc /Qp "$payload\SSADesk.iss"
 if ($LASTEXITCODE -ne 0) { throw "ISCC falhou ($LASTEXITCODE)." }
+# Pasta pronta para o pendrive: instalador + atalho de um clique para liberar o bloqueio do Windows
+$pen = Join-Path $here "..\dist\Pendrive-SSADesk"
+if (Test-Path $pen) { Remove-Item -Recurse -Force $pen }
+New-Item -ItemType Directory -Force $pen | Out-Null
+Copy-Item (Join-Path $here "..\dist\SSADesk-Setup.exe"), "$here\pendrive\*" $pen
 Write-Host "OK: $(Resolve-Path (Join-Path $here '..\dist\SSADesk-Setup.exe'))"

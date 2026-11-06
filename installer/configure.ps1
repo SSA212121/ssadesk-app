@@ -37,7 +37,7 @@ foreach ($t in $oldTasks) {
     }
 }
 Get-Process hbbs, hbbr -ErrorAction SilentlyContinue | Stop-Process -Force
-Get-CimInstance Win32_Process -Filter "Name='node.exe'" -ErrorAction SilentlyContinue | Where-Object { $_.ExecutablePath -like "$InstallDir*" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.Name -in 'node.exe', 'SSADesk.exe' -and $_.ExecutablePath -like "$InstallDir*" -and $_.CommandLine -match 'hypertele' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 foreach ($f in $oldFw) { Get-NetFirewallRule -DisplayName $f -ErrorAction SilentlyContinue | Remove-NetFirewallRule }
 
 function Get-RustDeskProduct {
@@ -116,8 +116,10 @@ Write-Host "ETAPA tunel"
 # 6b. Túnel P2P (Hyperswarm/HyperDHT): acesso pela internet mesmo com CGNAT, sem servidor e sem roteador.
 #     A porta 21118 local é publicada na rede P2P com uma chave fixa deste computador.
 #     Quem tem a chave ainda precisa da senha permanente para entrar.
-$node    = Join-Path $InstallDir "p2p\node.exe"
-$htServer = Join-Path $InstallDir "p2p\node_modules\hypertele\server.js"
+# O túnel roda no motor do próprio app (SSADesk.exe no modo Node): nada de Node.js separado
+$node    = Join-Path $InstallDir "app\SSADesk.exe"
+$mods    = Join-Path $InstallDir "app\resources\app\node_modules"
+$htServer = Join-Path $mods "hypertele\server.js"
 $p2pCfg  = Join-Path $data "p2p.json"
 if (-not (Test-Path $p2pCfg)) {
     $b = New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b)
@@ -125,17 +127,22 @@ if (-not (Test-Path $p2pCfg)) {
 }
 $p2pLog = Join-Path $data "p2p.log"
 Remove-Item $p2pLog -ErrorAction SilentlyContinue
-$a = New-ScheduledTaskAction -Execute "$env:SystemRoot\System32\cmd.exe" -Argument "/c `"`"$node`" `"$htServer`" -l $Port --address 127.0.0.1 -c `"$p2pCfg`" > `"$p2pLog`" 2>&1`"" -WorkingDirectory $data
+$a = New-ScheduledTaskAction -Execute "$env:SystemRoot\System32\cmd.exe" -Argument "/c `"set ELECTRON_RUN_AS_NODE=1&& `"$node`" `"$htServer`" -l $Port --address 127.0.0.1 -c `"$p2pCfg`" > `"$p2pLog`" 2>&1`"" -WorkingDirectory $data
 Register-ScheduledTask -TaskName "SSADesk-p2p" -Action $a -Trigger (New-ScheduledTaskTrigger -AtStartup) -Settings $settings -Principal $principal -Force | Out-Null
 Start-ScheduledTask -TaskName "SSADesk-p2p"
-New-NetFirewallRule -DisplayName "SSADesk tunel P2P" -Direction Inbound -Action Allow -Program $node | Out-Null
 # Chamada de vídeo/chat: o app SSADesk usa a mesma rede P2P (sem pedir permissão ao usuário)
 New-NetFirewallRule -DisplayName "SSADesk chamada P2P" -Direction Inbound -Action Allow -Program (Join-Path $InstallDir "app\SSADesk.exe") | Out-Null
 # Chave de internet = chave pública derivada da semente (mesma conta do hypertele-server):
 # calculada na hora, sem esperar o túnel responder pela rede.
 $seed = (Get-Content $p2pCfg -Raw | ConvertFrom-Json).seed
-$dhtMod = (Join-Path $InstallDir "p2p\node_modules\hyperdht") -replace "\\", "/"
-$p2pKey = (& $node -e "process.stdout.write(require('$dhtMod').keyPair(Buffer.from('$seed','hex')).publicKey.toString('hex'))" 2>$null)
+$dhtMod = Join-Path $mods "hypertele\node_modules\hyperdht"
+if (-not (Test-Path $dhtMod)) { $dhtMod = Join-Path $mods "hyperdht" }
+$keyOut = Join-Path $data "chave.tmp"
+$env:ELECTRON_RUN_AS_NODE = "1"
+Start-Process -Wait -WindowStyle Hidden $node -ArgumentList "`"$(Join-Path $InstallDir 'tools\chave.js')`"", "`"$dhtMod`"", $seed, "`"$keyOut`""
+Remove-Item Env:ELECTRON_RUN_AS_NODE
+$p2pKey = if (Test-Path $keyOut) { (Get-Content $keyOut -Raw).Trim() } else { "" }
+Remove-Item $keyOut -ErrorAction SilentlyContinue
 if ($p2pKey -notmatch "^[0-9a-f]{64}$") { $p2pKey = "" }
 if ($p2pKey) {
     $p2pKey | Set-Content -Path (Join-Path $InstallDir "chave-internet.txt") -Encoding ASCII
