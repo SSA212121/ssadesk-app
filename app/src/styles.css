@@ -255,3 +255,6 @@ body.ajustes-aberto .folha { transform: none; }
 .switch input:checked + i::after { transform: translateX(18px); }
 .switch input:focus-visible + i, .opcao input:focus-visible { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent); }
 .nota { margin: 12px 4px 0; font-size: 12px; color: var(--text-2); }
+
+/* Desempenho: animações de fundo param com a janela escondida */
+html.oculto .ambient i, html.oculto .status.ok .dot::after { animation-play-state: paused; }

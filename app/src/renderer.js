@@ -117,6 +117,7 @@ async function montarBiblioteca () {
 api.biblioteca.onMudou(montarBiblioteca)
 if (new URLSearchParams(location.search).get('pagina') === 'ajustes') setTimeout(abrirAjustes, 300)
 montarBiblioteca()
-setInterval(montarBiblioteca, 60000) // atualiza o online/offline a cada minuto
+setInterval(() => { if (!document.hidden) montarBiblioteca() }, 60000) // online/offline a cada minuto, só com o painel visível
+api.onVisivel(() => { montarBiblioteca(); carregar() }) // ao reabrir: dados atualizados na hora
 
 carregar()

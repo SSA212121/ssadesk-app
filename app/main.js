@@ -67,13 +67,19 @@ function createWindow () {
     // Vidro nativo
     ...(isWin ? { titleBarStyle: 'hidden', backgroundMaterial: 'acrylic' } : {}),
     ...(isMac ? { titleBarStyle: 'hiddenInset', vibrancy: 'under-window', visualEffectState: 'active', trafficLightPosition: { x: 18, y: 20 } } : {}),
-    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true }
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, spellcheck: false }
   })
   const pagina = MODO === 'app' ? 'index.html' : 'setup.html'
   const query = { platform: process.platform }
   if (process.env.SSADESK_PAGE) query.pagina = process.env.SSADESK_PAGE
   win.loadFile(path.join(__dirname, 'src', pagina), { query })
+  win.on('close', e => {
+    if (MODO !== 'app' || !bandeja || app.saindo) return
+    e.preventDefault(); win.hide()
+    clearTimeout(win._liberar); win._liberar = setTimeout(() => { if (win && !win.isDestroyed() && !win.isVisible()) win.destroy() }, 5 * 60 * 1000)
+  })
   win.once('ready-to-show', () => {
+    if (process.env.SSADESK_TEMPO) fs.writeFileSync(process.env.SSADESK_TEMPO, String(Math.round(process.uptime() * 1000)))
     if (process.env.SSADESK_SNAPSHOT && !process.env.SSADESK_CALL) return snapshot(win)
     win.show()
   })
@@ -95,7 +101,7 @@ function abrirChamada (dados = {}) {
     icon: path.join(__dirname, 'assets', 'icon.png'),
     ...(isWin ? { titleBarStyle: 'hidden', roundedCorners: true } : {}),
     ...(isMac ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 16, y: 16 } } : {}),
-    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true }
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, spellcheck: false }
   })
   callWin.loadFile(path.join(__dirname, 'src', 'chamada.html'), { query: { platform: process.platform, nome: dados.nome || '', demo: process.env.SSADESK_DEMO ? '1' : '', autoteste: process.env.SSADESK_AUTOTESTE ? '1' : '', tela: dados.tela ? '1' : '' } })
   callWin.once('ready-to-show', () => {
@@ -279,7 +285,7 @@ function mostrarPedido (dados) {
       title: 'SSADesk', backgroundColor: '#00000000', icon: path.join(__dirname, 'assets', 'icon.png'),
       ...(isWin ? { titleBarStyle: 'hidden', backgroundMaterial: 'acrylic' } : {}),
       ...(isMac ? { titleBarStyle: 'hiddenInset', vibrancy: 'hud', visualEffectState: 'active' } : {}),
-      webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true }
+      webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, spellcheck: false }
     })
     pedidoWin.setAlwaysOnTop(true, 'screen-saver')
     pedidoWin.loadFile(path.join(__dirname, 'src', 'pedido.html'), { query: { platform: process.platform } })
@@ -302,7 +308,7 @@ function abrirBarra () {
     width: W, height: H, x: Math.round(area.x + (area.width - W) / 2), y: area.y + 12,
     frame: false, transparent: true, resizable: false, maximizable: false, minimizable: false, skipTaskbar: true,
     alwaysOnTop: true, show: false, title: 'SSADesk', hasShadow: false,
-    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true }
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, spellcheck: false }
   })
   barraWin.setAlwaysOnTop(true, 'floating')
   barraWin.loadFile(path.join(__dirname, 'src', 'sessao.html'), { query: { nome: sessao.nome || '' } })
@@ -371,7 +377,7 @@ function abrirLousa () {
   lousaWin = new BrowserWindow({
     x: d.x, y: d.y, width: d.width, height: d.height, frame: false, transparent: true, resizable: false, movable: false,
     skipTaskbar: true, alwaysOnTop: true, hasShadow: false, show: false, title: 'SSADesk — Lousa', fullscreenable: false,
-    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true }
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, spellcheck: false }
   })
   lousaWin.setAlwaysOnTop(true, 'screen-saver')
   if (process.env.SSADESK_LOG) {
@@ -546,7 +552,7 @@ function abrirChatJanela () {
     icon: path.join(__dirname, 'assets', 'icon.png'),
     ...(isWin ? { titleBarStyle: 'hidden', backgroundMaterial: 'acrylic' } : {}),
     ...(isMac ? { titleBarStyle: 'hiddenInset', vibrancy: 'hud', visualEffectState: 'active' } : {}),
-    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true }
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, spellcheck: false }
   })
   chatWin.setAlwaysOnTop(true, 'floating')
   chatWin.loadFile(path.join(__dirname, 'src', 'chat.html'))
@@ -747,6 +753,8 @@ ipcMain.handle('setup-desinstalar', async () => {
 
 // Câmera e microfone: liberados só para as páginas do próprio app
 if (process.env.SSADESK_SNAPSHOT || process.env.SSADESK_FAKE) app.commandLine.appendSwitch('use-fake-device-for-media-stream')
+// Desempenho: sem processo reserva do Chromium e sem recursos de mídia do sistema que o app não usa
+app.commandLine.appendSwitch('disable-features', 'SpareRendererForSitePerProcess,HardwareMediaKeyHandling,MediaSessionService,Translate,AutofillServerCommunication')
 // A voz do outro lado toca sem precisar de clique
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
 app.whenReady().then(() => {
@@ -801,7 +809,7 @@ app.whenReady().then(() => {
 // ---------- Ícone perto do relógio (o SSADesk continua disponível para chamadas) ----------
 let bandeja = null
 function mostrarPainel () {
-  if (win && !win.isDestroyed()) { win.show(); win.focus() } else createWindow()
+  if (win && !win.isDestroyed()) { clearTimeout(win._liberar); win.show(); win.focus(); win.webContents.send('painel-visivel') } else createWindow()
 }
 function criarBandeja () {
   if (bandeja || process.env.SSADESK_SNAPSHOT) return
@@ -812,7 +820,7 @@ function criarBandeja () {
     { label: 'Abrir SSADesk', click: mostrarPainel },
     { label: 'Chamada de vídeo', click: () => ipcMain.emit('abrir-chamada') },
     { type: 'separator' },
-    { label: 'Sair do SSADesk', click: () => { app.exit(0) } }
+    { label: 'Sair do SSADesk', click: () => { app.saindo = true; app.exit(0) } }
   ]))
   bandeja.on('click', mostrarPainel)
 }

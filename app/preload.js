@@ -17,6 +17,7 @@ contextBridge.exposeInMainWorld('ssadesk', {
   },
   onStatus: cb => ipcRenderer.on('conectar-status', (_e, s) => cb(s)),
   onSessao: cb => ipcRenderer.on('sessao', (_e, s) => cb(s)),
+  onVisivel: cb => ipcRenderer.on('painel-visivel', () => cb()),
   sessao: {
     info: () => ipcRenderer.invoke('sessao-info'),
     acao: a => ipcRenderer.send('sessao-acao', a),
