@@ -11,6 +11,15 @@ contextBridge.exposeInMainWorld('ssadesk', {
     abrir: dados => ipcRenderer.send('abrir-chamada', dados),
     janela: acao => ipcRenderer.send('janela-chamada', acao)
   },
+  chat: {
+    abrir: () => ipcRenderer.send('chat-abrir'),
+    enviar: texto => ipcRenderer.send('chat-enviar', texto),
+    historico: () => ipcRenderer.invoke('chat-historico'),
+    janela: acao => ipcRenderer.send('chat-janela', acao),
+    onMsg: cb => ipcRenderer.on('chat-msg', (_e, m) => cb(m)),
+    onRecebida: cb => ipcRenderer.on('chat-recebida', (_e, d) => cb(d)),
+    onVisivel: cb => ipcRenderer.on('chat-visivel', (_e, v) => cb(v))
+  },
   setup: {
     info: () => ipcRenderer.invoke('setup-info'),
     escolherPasta: atual => ipcRenderer.invoke('setup-pasta', atual),

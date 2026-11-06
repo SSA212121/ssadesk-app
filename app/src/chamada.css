@@ -91,3 +91,17 @@ body.ocioso { cursor: none; }
 /* Seu quadradinho só aparece com a sua câmera ligada */
 .pip.sem-video { opacity: 0; transform: scale(.85); pointer-events: none; }
 .pip { transition: left .5s var(--spring), top .5s var(--spring), width .3s var(--ease), height .3s var(--ease), transform .35s var(--spring), opacity .3s var(--ease); }
+
+/* Aba (aparece quando o chat está guardado) */
+.chat-tab { position: absolute; right: 0; top: 50%; transform: translateY(-50%); z-index: 5; width: 34px; height: 52px; display: grid; place-items: center;
+  border-radius: 14px 0 0 14px; background: rgba(40, 40, 44, .6); backdrop-filter: blur(30px) saturate(180%); border: .5px solid var(--stroke); border-right: 0;
+  color: rgba(255, 255, 255, .85); transition: transform .45s var(--ease), opacity .4s var(--ease), background .2s, width .3s var(--spring); }
+.chat-tab:hover { background: rgba(60, 60, 66, .75); width: 40px; color: #fff; }
+.chat-tab svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linejoin: round; }
+body.chat-visivel .chat-tab { transform: translate(100%, -50%); opacity: 0; pointer-events: none; }
+body.ocioso:not(.tem-nao-lidas) .chat-tab { opacity: 0; }
+.badge { position: absolute; top: 5px; left: 4px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: #ff3b30; color: #fff;
+  font-size: 10.5px; font-weight: 700; display: grid; place-items: center; transform: scale(0); transition: transform .35s var(--spring); }
+body.tem-nao-lidas .badge { transform: scale(1); }
+body.tem-nao-lidas .chat-tab { animation: cutuca 1.6s var(--ease) 2; }
+@keyframes cutuca { 20% { transform: translate(-6px, -50%); } 40% { transform: translateY(-50%); } }

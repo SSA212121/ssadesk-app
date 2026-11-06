@@ -66,10 +66,12 @@ const MARGEM = 10
 let canto = localStorage.getItem('pipCanto') || 'inf-dir'
 let largura = Number(localStorage.getItem('pipLargura')) || 0
 
-function limitesLargura () { return { min: 72, max: Math.max(90, Math.min(innerWidth * 0.7, (innerHeight - 40) * 4 / 3)) } }
+// Largura útil do vídeo (desconta o chat aberto)
+function areaW () { return innerWidth }
+function limitesLargura () { return { min: 72, max: Math.max(90, Math.min(areaW() * 0.7, (innerHeight - 40) * 4 / 3)) } }
 function aplicarTamanho () {
   const { min, max } = limitesLargura()
-  if (!largura) largura = Math.round(innerWidth * 0.28)
+  if (!largura) largura = Math.round(areaW() * 0.28)
   const w = Math.round(Math.min(max, Math.max(min, largura)))
   pip.style.width = w + 'px'; pip.style.height = Math.round(w * 3 / 4) + 'px'
 }
@@ -77,7 +79,7 @@ function posicionar () {
   aplicarTamanho()
   const w = pip.offsetWidth; const h = pip.offsetHeight
   const baixo = document.body.classList.contains('ocioso') ? 0 : $('controles').offsetHeight + 18
-  const x = canto.endsWith('dir') ? innerWidth - w - MARGEM : MARGEM
+  const x = canto.endsWith('dir') ? areaW() - w - MARGEM : MARGEM
   const y = canto.startsWith('inf') ? innerHeight - h - MARGEM - baixo : MARGEM + 34
   pip.dataset.canto = canto
   pip.style.left = x + 'px'; pip.style.top = Math.max(MARGEM, y) + 'px'
@@ -97,7 +99,7 @@ pip.addEventListener('pointerup', () => {
   if (!arraste) return
   arraste = null; pip.classList.remove('arrastando')
   const cx = pip.offsetLeft + pip.offsetWidth / 2; const cy = pip.offsetTop + pip.offsetHeight / 2
-  canto = (cy > innerHeight / 2 ? 'inf' : 'sup') + '-' + (cx > innerWidth / 2 ? 'dir' : 'esq')
+  canto = (cy > innerHeight / 2 ? 'inf' : 'sup') + '-' + (cx > areaW() / 2 ? 'dir' : 'esq')
   localStorage.setItem('pipCanto', canto)
   posicionar()
 })
@@ -135,6 +137,7 @@ addEventListener('mousemove', acordar); addEventListener('keydown', acordar); ac
 
 // Atalhos: M = microfone, V = câmera, F = tela cheia
 addEventListener('keydown', e => {
+  if (e.target && e.target.tagName === 'INPUT') return
   const k = e.key.toLowerCase()
   if (k === 'm') $('mic').click()
   if (k === 'v') $('cam').click()

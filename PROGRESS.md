@@ -57,7 +57,7 @@
 - [ ] **Botão de print** (captura da tela remota) (sugestão: Fase 6)
 - [ ] **Modo My**: a tela do PC acessado ocupa toda a área da janela/monitor de quem acessa, ajustada de forma responsiva (resolução, escala, botões legíveis), sem a "janelinha pequena" do AnyDesk/TeamViewer; **atalho na tela para sair do Modo My** (sugestão: Fase 6)
 
-- [ ] **Chat de texto na chamada**: aba lateral direita que abre/guarda, com som de aviso a cada mensagem recebida (interface na Fase 5/6, envio real na Fase 6)
+- [ ] **Chat de texto na chamada**: janela própria flutuante e redimensionável, aberta pela aba da chamada; som a cada mensagem recebida e contador de não lidas. Interface pronta e validada (modo demonstração); falta o envio real entre os computadores (Fase 6)
 
 ## Fase 7 — Refinamentos finais (peso: 10%)
 - [ ] Wake-on-LAN (ligar a máquina de Lages totalmente desligada) — decidir caminho (roteador vs. dispositivo sempre ligado) e implementar
@@ -94,3 +94,4 @@
 - 2026-11-06 — 50% — Fase 5: chamada de vídeo dentro do app SSADesk (Electron + WebRTC)
 - 2026-11-06 — 55% — Fase 5: microfone e câmera ligam sob demanda, cada lado o seu, testados no notebook
 - 2026-11-06 — 60% — Fase 5: janela flutuante estilo FaceTime, redimensionável, com sua imagem arrastável/redimensionável; Fase 5 concluída
+- 2026-11-06 — 60% — Chat de texto da chamada (janela flutuante, som de aviso, não lidas) validado em modo demonstração

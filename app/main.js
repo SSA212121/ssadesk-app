@@ -79,15 +79,76 @@ function abrirChamada (dados = {}) {
     ...(isMac ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 16, y: 16 } } : {}),
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true }
   })
-  callWin.loadFile(path.join(__dirname, 'src', 'chamada.html'), { query: { platform: process.platform, nome: dados.nome || '' } })
+  callWin.loadFile(path.join(__dirname, 'src', 'chamada.html'), { query: { platform: process.platform, nome: dados.nome || '', demo: process.env.SSADESK_DEMO ? '1' : '' } })
   callWin.once('ready-to-show', () => {
     if (process.env.SSADESK_SNAPSHOT && process.env.SSADESK_CALL) return snapshot(callWin)
     callWin.show()
   })
   callWin.setAlwaysOnTop(true, 'floating')
-  callWin.on('closed', () => { callWin = null })
+  callWin.on('closed', () => {
+    callWin = null
+    // Fim da chamada: fecha o chat e apaga a conversa
+    if (chatWin && !chatWin.isDestroyed()) { chatWin.destroy() }
+    chatWin = null; mensagens.length = 0
+  })
 }
 ipcMain.on('abrir-chamada', (_e, dados) => abrirChamada(dados))
+
+// ---------- Chat de texto (janela própria, flutuante e redimensionável) ----------
+// A conversa fica aqui no processo principal: guardar a janela não apaga nada.
+const mensagens = []
+let chatWin = null
+const chatVisivel = () => !!(chatWin && !chatWin.isDestroyed() && chatWin.isVisible() && !chatWin.isMinimized())
+function avisarVisibilidade () { if (callWin && !callWin.isDestroyed()) callWin.webContents.send('chat-visivel', chatVisivel()) }
+
+function abrirChatJanela () {
+  if (chatWin && !chatWin.isDestroyed()) { chatWin.show(); chatWin.focus(); avisarVisibilidade(); return }
+  const W = 300; const H = 420
+  const ref = callWin && !callWin.isDestroyed() ? callWin.getBounds() : null
+  const area = require('electron').screen.getPrimaryDisplay().workArea
+  const x = ref ? Math.max(area.x, ref.x - W - 12) : area.x + area.width - W - 24
+  const y = ref ? Math.max(area.y, ref.y + ref.height - H) : area.y + area.height - H - 24
+  chatWin = new BrowserWindow({
+    width: W, height: H, minWidth: 240, minHeight: 260, x, y,
+    alwaysOnTop: true, show: false, title: 'SSADesk — Mensagens', backgroundColor: '#00000000',
+    icon: path.join(__dirname, 'assets', 'icon.png'),
+    ...(isWin ? { titleBarStyle: 'hidden', backgroundMaterial: 'acrylic' } : {}),
+    ...(isMac ? { titleBarStyle: 'hiddenInset', vibrancy: 'hud', visualEffectState: 'active' } : {}),
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true }
+  })
+  chatWin.setAlwaysOnTop(true, 'floating')
+  chatWin.loadFile(path.join(__dirname, 'src', 'chat.html'))
+  chatWin.once('ready-to-show', () => { chatWin.show(); avisarVisibilidade() })
+  // Fechar = guardar (esconde, mantém a conversa)
+  chatWin.on('close', e => { if (callWin && !callWin.isDestroyed()) { e.preventDefault(); chatWin.hide(); avisarVisibilidade() } })
+  for (const ev of ['show', 'hide', 'minimize', 'restore']) chatWin.on(ev, avisarVisibilidade)
+}
+
+function registrar (texto, quem) {
+  const m = { texto: String(texto).slice(0, 2000), quem, hora: Date.now() }
+  mensagens.push(m)
+  if (chatWin && !chatWin.isDestroyed()) chatWin.webContents.send('chat-msg', m)
+  return m
+}
+// Recebida do outro lado (a Fase 6 chama esta função quando chega pelo túnel P2P)
+function receberMensagem (texto) {
+  if (!String(texto || '').trim()) return
+  registrar(texto, 'outro')
+  if (callWin && !callWin.isDestroyed()) callWin.webContents.send('chat-recebida', { visivel: chatVisivel() })
+}
+ipcMain.on('chat-abrir', () => abrirChatJanela())
+ipcMain.handle('chat-historico', () => mensagens)
+ipcMain.on('chat-enviar', (_e, texto) => {
+  if (!String(texto || '').trim()) return
+  registrar(texto, 'eu')
+  // Fase 6: enviar ao outro computador. Modo demonstração: responde sozinho para testar.
+  if (process.env.SSADESK_DEMO) setTimeout(() => receberMensagem('Recebi: ' + texto), 1400)
+})
+ipcMain.on('chat-janela', (_e, acao) => {
+  if (!chatWin || chatWin.isDestroyed()) return
+  if (acao === 'guardar') chatWin.hide()
+  if (acao === 'minimizar') chatWin.minimize()
+})
 ipcMain.on('janela-chamada', (_e, acao) => {
   if (!callWin) return
   if (acao === 'fechar') callWin.close()
