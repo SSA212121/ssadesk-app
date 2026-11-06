@@ -1,0 +1,24 @@
+SSADesk para Mac
+
+INSTALAR (uma vez, leva menos de 1 minuto)
+1. Copie a pasta Mac-SSADesk do pendrive para a Mesa (Desktop) do Mac.
+2. Dê dois cliques em "Instalar SSADesk.command".
+   - Se o Mac disser que não pode abrir: clique com o botão direito > Abrir > Abrir.
+   - Se ainda assim não abrir: Ajustes do Sistema > Privacidade e Segurança > "Abrir Mesmo Assim".
+3. Espere aparecer "Pronto!" e feche a janela.
+   Se houver uma versão anterior, ela é removida antes (instalação sempre limpa).
+
+ACESSAR UM COMPUTADOR PELA INTERNET (qualquer rede, inclusive CGNAT)
+1. Abra em Aplicativos: "SSADesk - Conectar pela internet".
+2. Cole a chave de internet do outro computador (está no arquivo
+   SSADESK-ESTE-COMPUTADOR.txt dele) e clique em Conectar.
+3. Aguarde o RustDesk abrir e digite a senha permanente do outro computador.
+   A primeira conexão pode levar alguns segundos enquanto o túnel atravessa as redes.
+
+NA MESMA REDE
+Abra o RustDesk e digite o IP do outro computador (ex.: 192.168.3.17).
+
+OBSERVAÇÕES
+- O Mac não usa os servidores públicos do RustDesk. Por isso o RustDesk pode mostrar
+  "não está pronto" no rodapé: é normal, o acesso por chave/IP funciona assim mesmo.
+- Na primeira conexão, o macOS pode pedir permissão de rede para o "node": clique em Permitir.

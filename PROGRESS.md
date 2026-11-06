@@ -77,3 +77,4 @@
 - 2026-11-06 — 31,25% — Instalador 2.2: túnel P2P (Hyperswarm/hypertele) embutido, liga com o Windows e gera "chave de internet"; atalho "Conectar pela internet". Testado em loop no notebook; aguardando teste real com segundo notebook no 4G
 - 2026-11-06 — 35% — Conexão pela internet funcionando: notebook no 4G → SSA-Atendimento (CGNAT) pelo túnel P2P, sem servidor; Fase 2 concluída (conexão inicial lenta, com várias tentativas)
 - 2026-11-06 — 35% — v2.3: cliente P2P próprio que abre o túnel antes do SSADesk (30 ms no teste local); no 4G não conectou e a atualização por cima pediu "ignorar arquivo". Ambos ficaram pendentes na Fase 7 a pedido do usuário
+- 2026-11-06 — 35% — Fase 3 iniciada: pacote macOS `dist/Mac-SSADesk` (RustDesk 1.5.1 Intel/Apple Silicon, túnel P2P, app "Conectar pela internet", instalação sempre limpa, sem servidores públicos). Gerado, ainda não testado num Mac
