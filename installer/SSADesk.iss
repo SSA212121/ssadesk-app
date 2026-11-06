@@ -5,7 +5,7 @@
 ; Base: RustDesk (AGPL-3.0), binários oficiais sem modificação.
 
 #define AppName "SSADesk"
-#define AppVersion "2.0.0"
+#define AppVersion "2.1.0"
 
 [Setup]
 AppId={{6B1F4C2E-8D3A-4E7B-9A51-5A1D35C0A001}
@@ -41,6 +41,7 @@ Type: files; Name: "{app}\tools\configure-client.ps1"
 Source: "hbbs.exe";             DestDir: "{app}\bin"; Flags: ignoreversion
 Source: "rustdesk.msi";         DestDir: "{tmp}"; Flags: deleteafterinstall
 Source: "configure.ps1";        DestDir: "{app}\tools"; Flags: ignoreversion
+Source: "network.ps1";          DestDir: "{app}\tools"; Flags: ignoreversion
 Source: "LICENSE-RUSTDESK-AGPL.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "LICENSE-SERVER-AGPL.txt";   DestDir: "{app}"; Flags: ignoreversion
 
@@ -125,10 +126,10 @@ begin
   Msg := '';
   if LoadStringsFromFile(ExpandConstant('{app}\SSADESK-ESTE-COMPUTADOR.txt'), Lines) then
     for I := 2 to GetArrayLength(Lines) - 1 do
-      if (Pos('Código', Lines[I]) = 1) or (Pos('IPv6 (', Trim(Lines[I])) = 1) or (Pos('IPv4 (rede', Trim(Lines[I])) = 1) then
+      if (Pos('Código', Lines[I]) = 1) or (Pos('Na mesma rede', Trim(Lines[I])) = 1) or (Pos('Pela internet', Trim(Lines[I])) = 1) or
+         (Pos('RESULTADO', Lines[I]) = 1) or (Pos('Pela internet, esta rede', Lines[I]) = 1) or (Pos('Motivo', Lines[I]) = 1) then
         Msg := Msg + Trim(Lines[I]) + #13#10;
   if Msg = '' then Msg := 'Veja ' + ExpandConstant('{app}\instalacao.log') + #13#10;
   WizardForm.FinishedLabel.Caption := 'SSADesk instalado.' + #13#10#13#10 + Msg + #13#10 +
-    'Este computador já pode acessar outros e ser acessado (com a senha).' + #13#10 +
-    'Tudo salvo em ' + ExpandConstant('{app}\SSADESK-ESTE-COMPUTADOR.txt');
+    'Diagnóstico completo em ' + ExpandConstant('{app}\SSADESK-ESTE-COMPUTADOR.txt');
 end;

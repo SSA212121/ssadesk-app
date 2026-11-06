@@ -24,7 +24,7 @@ $Port      = 21118
 $LocalPort = 21126   # hbbs local (usa 21125, 21126, 21128)
 $taskName  = "SSADesk-local"
 $fwName    = "SSADesk conexao direta TCP $Port"
-$oldTasks  = "SSADesk-hbbs", "SSADesk-hbbr", $taskName
+$oldTasks  = "SSADesk-hbbs", "SSADesk-hbbr", $taskName, "SSADesk-rede"
 $oldFw     = "SSADesk TCP 21115-21119", "SSADesk UDP 21116", $fwName, "SSADesk bloqueio componente local"
 
 # Limpa estado anterior (inclusive da versão antiga com servidor de Lages)
@@ -43,6 +43,7 @@ function Get-RustDeskProduct {
 }
 
 if ($Mode -eq "uninstall") {
+    & (Join-Path $InstallDir "tools\network.ps1") -InstallDir $InstallDir -Remove
     $u = Get-RustDeskProduct
     if ($u) { Start-Process msiexec.exe -ArgumentList "/x $($u.PSChildName) /qn /norestart" -Wait }
     Stop-Transcript | Out-Null; exit 0
@@ -105,23 +106,13 @@ for ($i = 0; $i -lt 30 -and -not $id; $i++) {
     if (-not $id) { Start-Sleep 1 }
 }
 $fmt = ($id -replace '(\d{3})(?=\d)', '$1 ').Trim()
-$ips = Get-NetIPAddress -ErrorAction SilentlyContinue | Where-Object {
-    $_.AddressState -eq "Preferred" -and $_.InterfaceAlias -notmatch "Loopback|vEthernet|VirtualBox|VMware|WSL" -and
-    $_.IPAddress -notlike "169.254*" -and $_.IPAddress -notlike "fe80*"
-}
-$v4 = $ips | Where-Object AddressFamily -eq IPv4 | ForEach-Object IPAddress
-# IPv6 global (2000::/3); temporários por último
-$v6 = $ips | Where-Object { $_.AddressFamily -eq "IPv6" -and $_.IPAddress -match '^[23]' } |
-      Sort-Object { $_.SuffixOrigin -eq "Random" } | ForEach-Object IPAddress
+$fmt | Set-Content -Path (Join-Path $InstallDir "codigo.txt") -Encoding ASCII
 
-$lines = @("SSADesk — este computador", "", "Código: $fmt", "")
-$lines += "Para conectar a este computador, digite no SSADesk um destes endereços:"
-foreach ($a in $v6) { $lines += "  IPv6 (internet, sem configurar roteador): [$a]" }
-foreach ($a in $v4) { $lines += "  IPv4 (rede local): $a" }
-$lines += "  IPv4 (internet): IP público desta rede, com a porta TCP $Port redirecionada no roteador para $(@($v4)[0])"
-$lines += ""
-$lines += "Porta: $Port (TCP). Senha: a senha permanente definida na instalação."
-$lines += "Observação: o IPv6 pode mudar se o provedor trocar o prefixo; use DNS dinâmico se precisar fixar."
-$lines | Set-Content -Path (Join-Path $InstallDir "SSADESK-ESTE-COMPUTADOR.txt") -Encoding UTF8
-Write-Host ($lines -join "`n")
+# 7. Diagnóstico e configuração automática de rede (UPnP, IPv6, CGNAT), refeito a cada boot e a cada hora
+$net = Join-Path $InstallDir "tools\network.ps1"
+& $net -InstallDir $InstallDir
+$a = New-ScheduledTaskAction -Execute "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$net`" -InstallDir `"$InstallDir`""
+$trig = @((New-ScheduledTaskTrigger -AtStartup), (New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Hours 1)))
+Register-ScheduledTask -TaskName "SSADesk-rede" -Action $a -Trigger $trig -Settings (New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable) -Principal $principal -Force | Out-Null
+Get-Content (Join-Path $InstallDir "SSADESK-ESTE-COMPUTADOR.txt") | Write-Host
 Stop-Transcript | Out-Null

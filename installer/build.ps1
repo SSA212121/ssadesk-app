@@ -40,7 +40,7 @@ try {
 
 # Windows PowerShell 5.1 e o Inno precisam de UTF-8 com BOM para acentos
 $bom = New-Object System.Text.UTF8Encoding($true)
-foreach ($f in "configure.ps1", "SSADesk.iss") {
+foreach ($f in "configure.ps1", "network.ps1", "SSADesk.iss") {
     [IO.File]::WriteAllText("$payload\$f", [IO.File]::ReadAllText("$here\$f"), $bom)
 }
 

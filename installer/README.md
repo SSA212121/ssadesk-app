@@ -24,6 +24,16 @@ Abra o SSADesk (RustDesk) e, no campo de ID, digite o endereço do outro computa
 
 Depois, digite a senha permanente do computador acessado.
 
+## Diagnóstico automático de rede
+
+Na instalação, e depois a cada inicialização e a cada hora (tarefa `SSADesk-rede`), o `network.ps1`:
+- descobre IPv4 local e IPv6 público;
+- tenta abrir a porta 21118 no roteador sozinho via **UPnP** (ninguém precisa entrar no roteador);
+- detecta **CGNAT** (IP compartilhado pelo provedor, onde nada local resolve);
+- explica o resultado em linguagem simples em `SSADESK-ESTE-COMPUTADOR.txt` (e `rede.json`).
+
+O IP público é consultado em `api.ipify.org` só para o diagnóstico.
+
 ## Detalhes técnicos
 
 - `configure.ps1` instala o MSI oficial do RustDesk 1.5.1 e ativa `direct-server` na porta 21118 (o RustDesk escuta em `::`, que atende IPv4 e IPv6).
