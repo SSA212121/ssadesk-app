@@ -15,7 +15,8 @@ Teste feito no notebook SSA-Atendimento ("Augusto", 120 358 953) acessando o not
 | 9 | Visual | Barra do motor tem Chat próprio, duplicando o chat do SSAdesk | Corrigido: removido da barra do motor |
 | 15 | Visual | Tela remota com aba no estilo do motor (aba, "+", X da aba) | Corrigido: barra de título "SSAdesk · nome", conferida na tela |
 | 10 | Visual | Barra do motor recolhe sozinha quando o mouse sai, dificultando os menus | Pendente (avaliar fixar por padrão) |
-| 11 | **Segurança** | Escudo vermelho na aba: conexão direta pela rede local (IP) não é criptografada pelo motor | Pendente: passar também a rede local pelo túnel criptografado |
+| 11 | **Segurança** | Escudo vermelho na aba: conexão direta pela rede local (IP) não é criptografada pelo motor | Corrigido: a tela vai sempre pelo túnel criptografado (testado com o Samuel: conectou em 7 s via túnel); escudo verde no túnel; IP direto só como reserva |
 | 12 | Funcional | Fechar a janela da tela remota não encerra a sessão do SSAdesk (barrinha/chamada continuam) | Pendente: decidir se encerra junto ou pergunta |
 | 13 | Teste | As janelas do SSAdesk (barrinha, lousa, chamada, chat, ⓘ) ficam fora da captura de tela de propósito, então prints automáticos não as mostram | Testar com prints feitos pela pessoa no outro computador |
 | 14 | Funcional | Reconexão pediu permissão? A reconexão abriu em ~6 s sem passar visivelmente pelo pedido | Verificar no outro computador |
+| 16 | Funcional | Computador já em sessão derrubava a segunda conexão sem explicar ("O outro computador encerrou a conexão") | Corrigido: avisa "Esse computador já está em outra conexão agora" |

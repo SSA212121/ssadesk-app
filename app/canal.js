@@ -129,7 +129,10 @@ class Canal extends EventEmitter {
 
   _nova (sock, info) {
     sock.on('error', () => {})
-    if (this.conexao) { sock.destroy(); return } // já em sessão
+    if (this.conexao) { // já em sessão: avisa quem tentou (em vez de só derrubar) e fecha
+      try { const j = Buffer.from(JSON.stringify({ t: 'ocupado' }), 'utf8'); const h = Buffer.alloc(5); h[0] = TIPO.CONTROLE; h.writeUInt32BE(j.length, 1); sock.write(Buffer.concat([h, j])) } catch {}
+      setTimeout(() => sock.destroy(), 400); return
+    }
     this.conexao = sock
     this.cheio = false
     sock.on('drain', () => { this.cheio = false })

@@ -333,6 +333,7 @@ function iniciarCanal () {
         break
       }
       case 'aceito': sessao.senha = typeof msg.senha === 'string' ? msg.senha.slice(0, 128) : ''; sessao.nome = String(msg.nome || '').slice(0, 40); sessao.remoto = { mac: String(msg.mac || '').slice(0, 17), ipPublico: String(msg.ipPublico || '').slice(0, 45) }; sessao.permissoes = { ...PERMISSOES_PADRAO, ...msg.permissoes }; if (pendente) { pendente.resolve(msg); pendente = null } break
+      case 'ocupado': if (pendente) { pendente.reject(new Error('Esse computador já está em outra conexão agora. Tente de novo quando ela terminar.')); pendente = null } break
       case 'negado': if (pendente) { pendente.reject(new Error(msg.texto === 'Chamada recusada.' ? 'A chamada foi recusada.' : 'O outro computador negou o acesso.')); pendente = null } break
       case 'chamada':
         if (!sessao.permissoes.chamada) { canal.controle({ t: 'aviso', texto: 'Chamada de vídeo não permitida.' }); break }
@@ -701,11 +702,20 @@ function testarTcp (host, porta, ms) {
   })
 }
 // Tenta todos os caminhos ao mesmo tempo (rede local, IPv6, túnel P2P) e usa o primeiro que responder
+// Segurança: a tela remota passa SEMPRE pelo túnel P2P (criptografado de ponta a ponta e autenticado pela
+// chave do outro computador), inclusive na mesma rede. O motor sozinho não criptografa conexão direta por IP,
+// então o IP direto fica só como reserva, se o túnel não abrir (e o motor mostra o escudo vermelho).
 async function melhorCaminho ({ chave, ips = [] }) {
-  const tentativas = ips.map(ip => testarTcp(ip, 21118, 3500).then(() => ip.includes(':') ? '[' + ip + ']' : ip))
-  if (chave) tentativas.push((async () => { const porta = await tunelInterno(chave); if (!porta) throw new Error('túnel'); await abrirCaminhoP2P(chave, 45000); return '127.0.0.1:' + porta })())
-  if (!tentativas.length) throw new Error('O outro computador não liberou o controle da tela.')
-  try { return await Promise.any(tentativas) } catch { throw new Error('Não foi possível alcançar o outro computador por nenhum caminho.') }
+  const direto = () => Promise.any(ips.map(ip => testarTcp(ip, 21118, 3500).then(() => ip.includes(':') ? '[' + ip + ']' : ip)))
+  if (chave) {
+    try {
+      const porta = await tunelInterno(chave); if (!porta) throw new Error('túnel')
+      await abrirCaminhoP2P(chave, 45000)
+      return '127.0.0.1:' + porta
+    } catch (e) { if (process.env.SSADESK_LOG) fs.appendFileSync(process.env.SSADESK_LOG, 'túnel falhou, tentando IP direto: ' + e.message + '\n') }
+  }
+  if (!ips.length) throw new Error(chave ? 'Não foi possível abrir o caminho seguro até o outro computador.' : 'O outro computador não liberou o controle da tela.')
+  try { return await direto() } catch { throw new Error('Não foi possível alcançar o outro computador por nenhum caminho.') }
 }
 
 // ---------- Biblioteca de conexões: computadores já acessados, com online/offline ----------
