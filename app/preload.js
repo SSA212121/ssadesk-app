@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld('ssadesk', {
   copiar: texto => ipcRenderer.invoke('copiar', texto),
   tema: tema => ipcRenderer.invoke('tema', tema),
   ligar: d => ipcRenderer.invoke('ligar', d),
+  altura: h => ipcRenderer.send('painel-altura', h),
   conectar: destino => ipcRenderer.invoke('conectar', destino),
   nome: nome => ipcRenderer.invoke('nome', nome),
   ajustes: { ler: () => ipcRenderer.invoke('ajustes'), salvar: a => ipcRenderer.invoke('ajustes-salvar', a), diagnostico: () => ipcRenderer.invoke('diagnostico') },

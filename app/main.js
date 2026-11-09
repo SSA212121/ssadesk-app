@@ -52,14 +52,29 @@ function savePrefs (p) { fs.mkdirSync(path.dirname(prefsFile()), { recursive: tr
 // Janelas flutuantes do SSAdesk ficam fora da captura de tela: quem acessa não as vê repetidas dentro da tela remota
 function foraDaCaptura (w) { try { if (isWin || isMac) w.setContentProtection(true) } catch {} return w }
 let win
+let ajusteAutomatico = false
+// Painel: ajusta a altura ao conteúdo (sem passar da tela), a menos que a pessoa tenha escolhido um tamanho
+ipcMain.on('painel-altura', (_e, alturaConteudo) => {
+  if (!win || win.isDestroyed() || win.isMaximized() || loadPrefs().janelaManual) return
+  const area = require('electron').screen.getDisplayMatching(win.getBounds()).workArea
+  const h = Math.max(480, Math.min(Math.round(Number(alturaConteudo) || 0), area.height - 24))
+  const [w, atual] = win.getContentSize()
+  if (Math.abs(atual - h) < 4) return
+  ajusteAutomatico = true
+  win.setContentSize(w, h)
+  const b = win.getBounds()
+  if (b.y + b.height > area.y + area.height) win.setPosition(b.x, Math.max(area.y, area.y + area.height - b.height))
+  setTimeout(() => { ajusteAutomatico = false }, 800)
+})
 function createWindow () {
   const prefs = loadPrefs()
   nativeTheme.themeSource = prefs.tema || 'system'
 
   win = new BrowserWindow({
     // Painel: redimensionável à vontade (lembra o último tamanho); instalação: tamanho fixo
-    width: MODO === 'app' && prefs.janela ? prefs.janela.w : 400,
-    height: MODO === 'app' && prefs.janela ? prefs.janela.h : 720,
+    // Altura: a escolhida pela pessoa (se ela redimensionou) ou a do conteúdo, ajustada sozinha depois de abrir
+    width: MODO === 'app' && prefs.janelaManual ? prefs.janelaManual.w : 400,
+    height: MODO === 'app' && prefs.janelaManual ? prefs.janelaManual.h : Math.min(640, require('electron').screen.getPrimaryDisplay().workArea.height - 40),
     minWidth: 340, minHeight: 480,
     resizable: MODO === 'app',
     maximizable: MODO === 'app',
@@ -79,7 +94,8 @@ function createWindow () {
   win.loadFile(path.join(__dirname, 'src', pagina), { query })
   if (MODO === 'app') {
     let salvar
-    win.on('resize', () => { clearTimeout(salvar); salvar = setTimeout(() => { if (!win || win.isDestroyed() || win.isMaximized()) return; const [w, h] = win.getSize(); savePrefs({ ...loadPrefs(), janela: { w, h } }) }, 500) })
+    // Só guarda o tamanho quando a PESSOA redimensiona (o ajuste automático não conta)
+    win.on('resize', () => { clearTimeout(salvar); salvar = setTimeout(() => { if (!win || win.isDestroyed() || win.isMaximized() || ajusteAutomatico) return; const [w, h] = win.getSize(); savePrefs({ ...loadPrefs(), janelaManual: { w, h } }) }, 500) })
   }
   win.on('close', e => {
     if (MODO !== 'app' || !bandeja || app.saindo) return
@@ -263,6 +279,7 @@ async function reconectar (codigo, nome) {
         pendente = { resolve: v => { clearTimeout(t); resolve(v) }, reject: e => { clearTimeout(t); reject(e) } }
         canal.procurar({ codigo })
       })
+      if (encerradoPeloUsuario) { canal.encerrar(); return } // a pessoa apertou X enquanto reconectava
       sessao.codigo = codigo; avisarBarraEstado('Reconectado ✓'); abrirBarra(); return
     } catch { await new Promise(r => setTimeout(r, 3000)) }
   }
@@ -475,8 +492,9 @@ function abrirBarra () {
   if (barraWin && !barraWin.isDestroyed()) { barraWin.showInactive(); barraWin.webContents.send('barra-sessao', { nome: sessao.nome }); return }
   const area = require('electron').screen.getPrimaryDisplay().workArea
   const W = 588; const H = 64
-  barraWin = foraDaCaptura(new BrowserWindow({
-    width: W, height: H, x: Math.round(area.x + (area.width - W) / 2), y: area.y + 12,
+  const acessado = sessao.papel === 'acessado'
+  barraWin = (acessado ? (w => w) : foraDaCaptura)(new BrowserWindow({
+    width: W, height: H, x: Math.round(area.x + (area.width - W) / 2), y: acessado ? area.y + area.height - H - 10 : area.y + 12,
     frame: false, transparent: true, resizable: false, maximizable: false, minimizable: false, skipTaskbar: true,
     alwaysOnTop: true, show: false, title: 'SSAdesk', hasShadow: false,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, spellcheck: false }
@@ -512,7 +530,13 @@ ipcMain.on('sessao-acao', (_e, acao) => {
   if (acao === 'chat') abrirChatJanela()
   if (acao === 'info') abrirInfo()
   if (acao === 'mais') abrirMais()
-  if (acao === 'encerrar') { encerradoPeloUsuario = true; if (canal) canal.encerrar(); fecharBarra() }
+  if (acao === 'encerrar') {
+    encerradoPeloUsuario = true
+    if (pendente) { try { pendente.reject(new Error('encerrada')) } catch {} pendente = null } // cancela reconexão em andamento
+    if (canal) { try { canal.pararProcura() } catch {} canal.encerrar() }
+    if (sessao.papel === 'acessando') comandoTela('fechar', '') // fecha também a janela da tela remota
+    fecharBarra()
+  }
 })
 // ---------- Painel ⓘ de informações da conexão (canto superior direito) ----------
 let infoWin = null

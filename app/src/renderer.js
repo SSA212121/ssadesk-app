@@ -180,3 +180,16 @@ setInterval(() => { if (!document.hidden) montarBiblioteca() }, 60000) // online
 api.onVisivel(() => { montarBiblioteca(); carregar() }) // ao reabrir: dados atualizados na hora
 
 carregar()
+// ---------- Altura automática do painel: a janela fica do tamanho do conteúdo ----------
+function ajustarAltura () {
+  const main = document.querySelector('main'); const topo = document.querySelector('.titlebar'); const rodape = document.querySelector('footer')
+  if (!main) return
+  const estilo = getComputedStyle(main)
+  const conteudo = [...main.children].filter(el => !el.hidden && el.offsetParent !== null).reduce((t, el) => t + el.offsetHeight, 0)
+  const espacos = Math.max(0, main.children.length - 1) * parseFloat(estilo.rowGap || estilo.gap || 12)
+  const total = (topo ? topo.offsetHeight : 0) + parseFloat(estilo.paddingTop) + conteudo + espacos + 18 + (rodape ? rodape.offsetHeight : 0)
+  api.altura(total)
+}
+const observaAltura = new ResizeObserver(() => { clearTimeout(ajustarAltura.t); ajustarAltura.t = setTimeout(ajustarAltura, 120) })
+document.querySelectorAll('main > *').forEach(el => observaAltura.observe(el)) // cada cartão (a lista cresce, mensagens mudam)
+setTimeout(ajustarAltura, 700)
