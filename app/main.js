@@ -208,6 +208,7 @@ let canal = null
 let sessao = { ativa: false, papel: null, nome: '', permissoes: { ...PERMISSOES_PADRAO } }
 let estadoChamada = { fase: 'aguardando', nome: '' }
 let pendente = null // conexão pelo código esperando a resposta do outro lado
+let modoPedido = 'acesso' // o que pedimos ao outro lado: 'acesso' (tela) ou 'chamada' (só vídeo)
 let arquivos = null
 let lan = null
 let ultimoDestino = ''
@@ -261,7 +262,7 @@ function iniciarCanal () {
       porta: process.env.SSADESK_PORTA !== undefined ? Number(process.env.SSADESK_PORTA) : undefined
     })
     canal.on('retransmissor', k => { if (process.env.SSADESK_LOG) fs.appendFileSync(process.env.SSADESK_LOG, 'retransmissor: ' + k + '\n') })
-  } catch (e) { console.error('canal P2P indisponível:', e.message); return }
+  } catch (e) { registrarErroRede('canal', e); return }
 
   canal.on('conectado', ({ recebida }) => {
     sessao = { ativa: true, papel: recebida ? 'acessado' : 'acessando', nome: '', permissoes: { ...PERMISSOES_PADRAO } }
@@ -269,7 +270,7 @@ function iniciarCanal () {
     if (!recebida && modoAcordar) { canal.controle({ t: 'acordar', mac: modoAcordar.mac }); return }
     if (!recebida) {
       const rede = readJson(path.join(DIR, 'rede.json')) || {}
-      canal.controle({ t: 'ola', nome: meuNome(), codigo: meuCodigo(), quer: 'acesso', ipPublico: rede.ip_publico || '' })
+      canal.controle({ t: 'ola', nome: meuNome(), codigo: meuCodigo(), quer: modoPedido, ipPublico: rede.ip_publico || '' })
     }
   })
   canal.on('desconectado', () => {
@@ -293,8 +294,18 @@ function iniciarCanal () {
         }
         break
       case 'acordado': if (modoAcordar) { modoAcordar.ok(); modoAcordar = null; canal.encerrar() } break
-      case 'ola': { // alguém quer acessar este computador
+      case 'ola': { // alguém quer acessar este computador (ou só ligar)
         sessao.nome = String(msg.nome || msg.codigo || 'Alguém').slice(0, 40)
+        if (msg.quer === 'chamada') {
+          const r = await mostrarPedido({ nome: sessao.nome, codigo: msg.codigo || '', tipo: 'chamada' })
+          if (!canal.conectado()) return
+          if (!r.permitir) { canal.controle({ t: 'negado', texto: 'Chamada recusada.' }); setTimeout(() => canal.encerrar(), 300); return }
+          sessao.tipo = 'chamada'
+          sessao.permissoes = { controlar: false, arquivos: false, chamada: true, chat: true }
+          canal.controle({ t: 'aceito', nome: meuNome(), permissoes: sessao.permissoes, tipo: 'chamada' })
+          estadoChamada = { fase: 'conectado', nome: sessao.nome }; abrirChamada({ nome: sessao.nome }); enviarEstadoChamada()
+          break
+        }
         const r = await mostrarPedido({ nome: sessao.nome, codigo: msg.codigo || '' })
         if (!canal.conectado()) return
         if (!r.permitir) { canal.controle({ t: 'negado' }); setTimeout(() => canal.encerrar(), 300); return }
@@ -306,10 +317,12 @@ function iniciarCanal () {
           chave: sessao.permissoes.controlar ? minhaChave() : '',
           ips: sessao.permissoes.controlar ? meusEnderecos(msg.ipPublico) : []
         })
+        sessao.tipo = 'acesso'
+        abrirBarra() // quem é acessado também tem chamada, chat e informações à mão
         break
       }
       case 'aceito': sessao.nome = String(msg.nome || '').slice(0, 40); sessao.remoto = { mac: String(msg.mac || '').slice(0, 17), ipPublico: String(msg.ipPublico || '').slice(0, 45) }; sessao.permissoes = { ...PERMISSOES_PADRAO, ...msg.permissoes }; if (pendente) { pendente.resolve(msg); pendente = null } break
-      case 'negado': if (pendente) { pendente.reject(new Error('O outro computador negou o acesso.')); pendente = null } break
+      case 'negado': if (pendente) { pendente.reject(new Error(msg.texto === 'Chamada recusada.' ? 'A chamada foi recusada.' : 'O outro computador negou o acesso.')); pendente = null } break
       case 'chamada':
         if (!sessao.permissoes.chamada) { canal.controle({ t: 'aviso', texto: 'Chamada de vídeo não permitida.' }); break }
         estadoChamada = { fase: 'conectado', nome: sessao.nome }; abrirChamada({ nome: sessao.nome }); enviarEstadoChamada(); break
@@ -336,6 +349,7 @@ function iniciarCanal () {
   })
   canal.on('arquivo', dados => { if (arquivos) arquivos.pedaco(dados) })
   // Arquivos: quem acessa envia; chegam na Área de Trabalho de quem foi acessado (se a permissão estiver ligada)
+  try {
   const { criarArquivos } = require('./arquivos')
   arquivos = criarArquivos({
     canal,
@@ -344,15 +358,24 @@ function iniciarCanal () {
     aoProgresso: p => { if (barraWin && !barraWin.isDestroyed()) barraWin.webContents.send('arquivos-progresso', p) },
     aoRecebido: r => avisarRecebido(r)
   })
-  canal._swarm() // liga o nó P2P já na abertura: as próximas conexões saem rápidas
-  // Descoberta na mesma rede (sem internet): responde quando alguém procura o meu código
+  } catch (e) { registrarErroRede('arquivos', e) }
+  ligarRede()
+}
+// Liga o nó P2P, a descoberta na rede local e fica disponível pelo código. Cada parte é independente:
+// se uma falhar, as outras continuam, e a falha fica registrada e visível no painel.
+let erroRede = ''
+function registrarErroRede (onde, e) {
+  erroRede = onde + ': ' + ((e && e.message) || e)
+  try { fs.appendFileSync(path.join(app.getPath('userData'), 'rede-erros.log'), new Date().toISOString() + ' ' + erroRede + '\n') } catch {}
+}
+function ligarRede () {
+  try { canal._swarm() } catch (e) { registrarErroRede('P2P', e) } // liga já na abertura: as conexões saem rápidas
   try {
     const { DescobertaLan } = require('./descoberta-lan')
     lan = new DescobertaLan({ meuCodigo, meuNome })
     lan.iniciar()
-  } catch {}
-  // Fica disponível para ser encontrado pelo código (e pela chave de internet)
-  canal.escutar({ codigo: meuCodigo(), chave: minhaChave() }).catch(() => {})
+  } catch (e) { registrarErroRede('rede local', e) }
+  canal.escutar({ codigo: meuCodigo(), chave: minhaChave() }).catch(e => registrarErroRede('anúncio', e))
 }
 ipcMain.handle('chamada-estado-atual', () => estadoChamada)
 // Tela principal para transmitir (captura direta: funciona mesmo quando a transmissão começa pela barrinha)
@@ -369,12 +392,15 @@ let pedidoWin = null
 let pedidoAtual = null
 function mostrarPedido (dados) {
   const aj = ajustes()
-  if (process.env.SSADESK_AUTOPERMITIR || aj.receber === 'direto') return Promise.resolve({ permitir: true, permissoes: aj.permissoes })
+  const chamada = dados.tipo === 'chamada'
+  if (process.env.SSADESK_AUTOPERMITIR || (!chamada && aj.receber === 'direto')) return Promise.resolve({ permitir: true, permissoes: aj.permissoes })
   return new Promise(resolve => {
     let respondido = false
     const responder = r => { if (respondido) return; respondido = true; clearTimeout(tempo); pedidoAtual = null; if (pedidoWin && !pedidoWin.isDestroyed()) pedidoWin.destroy(); pedidoWin = null; resolve(r) }
-    const tempo = aj.receber === 'auto' ? setTimeout(() => responder({ permitir: true, permissoes: aj.permissoes }), 15000) : null
-    pedidoAtual = { dados: { ...dados, segundos: aj.receber === 'auto' ? 15 : 0, permissoes: aj.permissoes }, responder, adiar: () => clearTimeout(tempo) }
+    // Chamada: toca por 40 s e, sem resposta, é recusada (ninguém atende uma ligação sozinho)
+    const tempo = chamada ? setTimeout(() => responder({ permitir: false }), 40000)
+      : aj.receber === 'auto' ? setTimeout(() => responder({ permitir: true, permissoes: aj.permissoes }), 15000) : null
+    pedidoAtual = { dados: { ...dados, segundos: !chamada && aj.receber === 'auto' ? 15 : 0, permissoes: aj.permissoes }, responder, adiar: () => clearTimeout(tempo) }
     pedidoWin = new BrowserWindow({
       width: 380, height: 420, resizable: false, maximizable: false, minimizable: false, alwaysOnTop: true, show: false,
       title: 'SSAdesk', backgroundColor: '#00000000', icon: path.join(__dirname, 'assets', 'icon.png'),
@@ -406,7 +432,7 @@ function abrirBarra () {
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, spellcheck: false }
   })
   barraWin.setAlwaysOnTop(true, 'floating')
-  barraWin.loadFile(path.join(__dirname, 'src', 'sessao.html'), { query: { nome: sessao.nome || '' } })
+  barraWin.loadFile(path.join(__dirname, 'src', 'sessao.html'), { query: { nome: sessao.nome || '', papel: sessao.papel || '' } })
   barraWin.once('ready-to-show', () => barraWin.showInactive())
   barraWin.on('closed', () => { barraWin = null })
 }
@@ -694,9 +720,10 @@ async function acordarComputador (codigo) {
 }
 
 // Conectar pelo código (9 dígitos), como no AnyDesk
-async function conectarPorCodigo (codigo) {
+async function conectarPorCodigo (codigo, modo = 'acesso') {
   const { soDigitos } = require('./canal')
   encerradoPeloUsuario = false
+  modoPedido = modo
   if (!canal) throw new Error('A rede P2P não iniciou. Reabra o SSAdesk.')
   if (soDigitos(codigo) === soDigitos(meuCodigo())) throw new Error('Este é o código deste computador.')
   if (canal.conectado()) { canal.encerrar(); await new Promise(r => setTimeout(r, 400)) }
@@ -708,11 +735,11 @@ async function conectarPorCodigo (codigo) {
   try {
     resposta = await new Promise((resolve, reject) => {
     // Achou na rede local: espera a sessão completa só mais um pouco; senão abre a tela direto pela rede local
-    buscaLocal.then(r => { if (r) setTimeout(() => { if (pendente) { pendente = null; canal.pararProcura(); reject(Object.assign(new Error('só rede local'), { local: true })) } }, 8000) })
+    if (modo === 'acesso') buscaLocal.then(r => { if (r) setTimeout(() => { if (pendente) { pendente = null; canal.pararProcura(); reject(Object.assign(new Error('só rede local'), { local: true })) } }, 8000) })
     const t = setTimeout(() => { if (pendente) { pendente = null; canal.pararProcura(); reject(new Error('Computador não encontrado. Ele está ligado, com internet e com o SSAdesk aberto?')) } }, 45000)
     pendente = { resolve: v => { clearTimeout(t); resolve(v) }, reject: e => { clearTimeout(t); reject(e) } }
     canal.procurar({ codigo })
-    canal.once('conectado', () => avisarPainel('conectar-status', 'Aguardando permissão…'))
+    canal.once('conectado', () => avisarPainel('conectar-status', modo === 'chamada' ? 'Chamando…' : 'Aguardando permissão…'))
   })
   } catch (e) {
     if (!(e.local && naRede)) throw e
@@ -722,13 +749,25 @@ async function conectarPorCodigo (codigo) {
     salvarNaBiblioteca(soDigitos(codigo), naRede.nome || '', null)
     return naRede.nome || soDigitos(codigo)
   }
+  sessao.codigo = soDigitos(codigo)
+  if (modo === 'chamada') { // só chamada: abre a janela da chamada nos dois lados, sem tela remota
+    sessao.tipo = 'chamada'
+    salvarNaBiblioteca(sessao.codigo, sessao.nome, sessao.remoto)
+    estadoChamada = { fase: 'conectado', nome: sessao.nome }; abrirChamada({ nome: sessao.nome }); enviarEstadoChamada()
+    avisarPainel('sessao', { ativa: true, nome: sessao.nome })
+    return sessao.nome
+  }
+  return concluirAcesso(resposta, naRede)
+}
+// Com a permissão dada: escolhe o caminho mais rápido e abre a tela remota
+async function concluirAcesso (resposta, naRede) {
   avisarPainel('conectar-status', 'Escolhendo o caminho mais rápido…')
+  sessao.tipo = 'acesso'
   if (naRede) resposta = { ...resposta, ips: [naRede.ip, ...(resposta.ips || [])] } // rede local primeiro
   const destino = await melhorCaminho(resposta)
   ultimoDestino = destino
-  sessao.codigo = soDigitos(codigo)
   if (!process.env.SSADESK_CODIGO_TESTE) abrirRustDesk(destino)
-  salvarNaBiblioteca(soDigitos(codigo), sessao.nome, sessao.remoto)
+  salvarNaBiblioteca(sessao.codigo, sessao.nome, sessao.remoto)
   avisarPainel('sessao', { ativa: true, nome: sessao.nome })
   abrirBarra()
   return sessao.nome
@@ -815,7 +854,8 @@ ipcMain.handle('info', () => {
   const rede = readJson(path.join(DIR, 'rede.json'))
   const chave = readText(path.join(DIR, 'chave-internet.txt'))
   let status = { tipo: 'desconhecido', texto: 'Verificando rede' }
-  if (rede) {
+  if (MODO === 'app' && (!canal || erroRede)) status = { tipo: 'erro', texto: 'Problema na rede do SSAdesk — reabra o app' }
+  else if (rede) {
     if (rede.internet_ipv6 || rede.internet_ipv4) status = { tipo: 'ok', texto: 'Disponível pela internet' }
     else if (chave) status = { tipo: 'ok', texto: 'Disponível pela internet' }
     else status = { tipo: 'local', texto: 'Disponível na rede local' }
@@ -872,6 +912,28 @@ function abrirRustDesk (destino) {
   spawn(exe, ['--connect', destino], { detached: true, stdio: 'ignore' }).unref()
 }
 
+ipcMain.handle('ligar', async (_e, bruto) => {
+  const codigo = String(bruto || '').replace(/\D/g, '')
+  if (!/^\d{6,12}$/.test(codigo)) return { ok: false, msg: 'Digite o código do outro computador.' }
+  try { const nome = await conectarPorCodigo(codigo, 'chamada'); return { ok: true, msg: 'Em chamada com ' + (nome || codigo) + '.' } } catch (e) { return { ok: false, msg: e.message } }
+})
+// Dentro de uma chamada: pede o acesso à tela do outro computador (atalho)
+ipcMain.handle('chamada-acessar', async () => {
+  if (!(canal && canal.conectado() && sessao.ativa)) return { ok: false, msg: 'A chamada não está ativa.' }
+  if (sessao.tipo === 'acesso') { if (ultimoDestino) abrirRustDesk(ultimoDestino); return { ok: true } }
+  if (sessao.papel !== 'acessando') return { ok: false, msg: 'Só quem ligou pode pedir o acesso por aqui.' }
+  try {
+    modoPedido = 'acesso'
+    const resposta = await new Promise((resolve, reject) => {
+      const t = setTimeout(() => { if (pendente) { pendente = null; reject(new Error('Sem resposta do outro lado.')) } }, 60000)
+      pendente = { resolve: v => { clearTimeout(t); resolve(v) }, reject: e => { clearTimeout(t); reject(e) } }
+      const rede = readJson(path.join(DIR, 'rede.json')) || {}
+      canal.controle({ t: 'ola', nome: meuNome(), codigo: meuCodigo(), quer: 'acesso', ipPublico: rede.ip_publico || '' })
+    })
+    await concluirAcesso(resposta, null)
+    return { ok: true }
+  } catch (e) { return { ok: false, msg: e.message } }
+})
 ipcMain.handle('conectar', async (_e, destinoBruto) => {
   const destino = String(destinoBruto || '').replace(/\s/g, '')
   if (!destino) return { ok: false, msg: 'Digite o código do outro computador.' }
@@ -977,7 +1039,7 @@ app.whenReady().then(() => {
   if (process.env.SSADESK_ACORDAR_TESTE) { iniciarCanal(); acordarComputador(process.env.SSADESK_ACORDAR_TESTE).then(r => fs.writeFileSync(process.env.SSADESK_LOG, JSON.stringify(r))); return }
   if (process.env.SSADESK_CODIGO_TESTE) {
     iniciarCanal()
-    conectarPorCodigo(process.env.SSADESK_CODIGO_TESTE)
+    conectarPorCodigo(process.env.SSADESK_CODIGO_TESTE, process.env.SSADESK_MODO_TESTE || 'acesso')
       .then(async n => {
         fs.writeFileSync(process.env.SSADESK_LOG, 'conectado: ' + n + ' via ' + ultimoDestino + '\n', { flag: 'a' })
         if (process.env.SSADESK_TELA_TESTE) ipcMain.emit('abrir-chamada', null, { tela: true })

@@ -78,6 +78,13 @@ function pararTela () {
   informarEstado()
 }
 $('tela').addEventListener('click', alternarTela)
+// Atalho: da ligação para o acesso à tela (o outro lado precisa permitir)
+$('acessar').addEventListener('click', async () => {
+  const b = $('acessar'); b.disabled = true; aviso('Pedindo acesso à tela…')
+  const r = await api.chamada.acessar()
+  b.disabled = false
+  aviso(r && r.ok ? 'Abrindo a tela remota' : ((r && r.msg) || 'Não foi possível acessar'))
+})
 if (params.get('tela') === '1') setTimeout(alternarTela, 600)
 $('mic').addEventListener('click', () => alternar('audio', $('mic'), 'Microfone ligado', 'Microfone desligado'))
 $('cam').addEventListener('click', () => alternar('video', $('cam'), 'Câmera ligada', 'Câmera desligada'))

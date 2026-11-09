@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld('ssadesk', {
   info: () => ipcRenderer.invoke('info'),
   copiar: texto => ipcRenderer.invoke('copiar', texto),
   tema: tema => ipcRenderer.invoke('tema', tema),
+  ligar: d => ipcRenderer.invoke('ligar', d),
   conectar: destino => ipcRenderer.invoke('conectar', destino),
   nome: nome => ipcRenderer.invoke('nome', nome),
   ajustes: { ler: () => ipcRenderer.invoke('ajustes'), salvar: a => ipcRenderer.invoke('ajustes-salvar', a), diagnostico: () => ipcRenderer.invoke('diagnostico') },
@@ -50,6 +51,7 @@ contextBridge.exposeInMainWorld('ssadesk', {
   janela: acao => ipcRenderer.send('janela', acao),
   chamada: {
     abrir: dados => ipcRenderer.send('abrir-chamada', dados),
+    acessar: () => ipcRenderer.invoke('chamada-acessar'),
     janela: acao => ipcRenderer.send('janela-chamada', acao),
     enviarMidia: (tipo, buf) => ipcRenderer.send('chamada-midia', tipo, buf),
     controle: obj => ipcRenderer.send('chamada-controle', obj),

@@ -28,7 +28,7 @@
 
     <button class="row glass reveal call-row" style="--d:1" id="chamada">
       <span class="call-ico"><svg viewBox="0 0 24 24"><rect x="3" y="6.5" width="13" height="11" rx="2.5"/><path d="M16 10.5l5-3v9l-5-3"/></svg></span>
-      <span class="row-text"><span class="call-title">Chamada de vídeo</span><span class="label">Câmera e microfone, separado do acesso</span></span>
+      <span class="row-text"><span class="call-title">Chamada de vídeo</span><span class="label" id="chamadaSub">Ligue para outro computador, sem acesso à tela</span></span>
       <svg class="chev" viewBox="0 0 24 24"><path d="M9.5 6l6 6-6 6"/></svg>
     </button>
 
@@ -36,12 +36,16 @@
       <p class="eyebrow">Conectar</p>
       <form id="form" class="field" autocomplete="off">
         <input id="destino" placeholder="Código do outro computador" spellcheck="false" inputmode="numeric" aria-label="Código do outro computador">
-        <button class="go" id="go" aria-label="Conectar">
+        <button type="button" class="go ligar-btn" id="ligarBtn" aria-label="Ligar (só chamada de vídeo)" title="Ligar: só chamada, sem acesso à tela">
+          <svg class="arrow" viewBox="0 0 24 24"><rect x="3" y="6.5" width="13" height="11" rx="2.5"/><path d="M16 10.5l5-3v9l-5-3"/></svg>
+          <span class="spinner"></span>
+        </button>
+        <button class="go" id="go" aria-label="Acessar a tela" title="Acessar a tela">
           <svg class="arrow" viewBox="0 0 24 24"><path d="M5 12h13M13 6.5 18.5 12 13 17.5"/></svg>
           <span class="spinner"></span>
         </button>
       </form>
-      <p class="hint" id="msg">Digite o código e a senha dele.</p>
+      <p class="hint" id="msg">Digite o código: <b>câmera</b> liga, <b>seta</b> acessa a tela.</p>
     </section>
 
     <section class="recentes glass reveal" style="--d:3" id="recentes" hidden>

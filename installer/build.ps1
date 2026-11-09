@@ -82,12 +82,26 @@ Copy-Item "$appSrc\node_modules\electron\dist" $appOut -Recurse
 Remove-Item "$appOut\resources\default_app.asar" -ErrorAction SilentlyContinue
 Rename-Item "$appOut\electron.exe" "SSAdeskApp.exe"
 New-Item -ItemType Directory -Force "$appOut\resources\app" | Out-Null
-Copy-Item "$appSrc\main.js", "$appSrc\preload.js", "$appSrc\instalador.js", "$appSrc\instalar-cli.js", "$appSrc\package.json" "$appOut\resources\app\"
+# Todos os módulos .js do app (a lista fixa deixou módulos novos de fora e o canal P2P não iniciava)
+Copy-Item "$appSrc\*.js", "$appSrc\package.json" "$appOut\resources\app\"
 Copy-Item "$appSrc\src", "$appSrc\assets" "$appOut\resources\app\" -Recurse
-Copy-Item "$appSrc\canal.js" "$appOut\resources\app\"
 # Dependências de produção (rede P2P da chamada); electron e rcedit são só de build
 robocopy "$appSrc\node_modules" "$appOut\resources\app\node_modules" /E /NFL /NDL /NJH /NJS /NP /XD electron rcedit @types | Out-Null
 if ($LASTEXITCODE -ge 8) { throw "robocopy falhou ($LASTEXITCODE)" }
+# Verificação: todo require('./x') do app precisa existir no pacote, e os módulos de rede precisam carregar
+$appPkg = "$appOut\resources\app"
+foreach ($js in Get-ChildItem $appPkg -Filter *.js) {
+  foreach ($m in [regex]::Matches((Get-Content $js.FullName -Raw), "require\('\./([\w-]+)'\)")) {
+    if (-not (Test-Path "$appPkg\$($m.Groups[1].Value).js")) { throw "Módulo ausente no pacote: $($m.Groups[1].Value).js (usado em $($js.Name))" }
+  }
+}
+$env:ELECTRON_RUN_AS_NODE = "1"
+$saidaTeste = Join-Path $env:TEMP "ssadesk-modulos.txt"; Remove-Item $saidaTeste -ErrorAction SilentlyContinue
+Start-Process "$appOut\SSAdeskApp.exe" -ArgumentList "`"$here\verificar-modulos.js`" `"$appPkg`" `"$saidaTeste`"" -Wait -WindowStyle Hidden
+$teste = Get-Content $saidaTeste -Raw -ErrorAction SilentlyContinue
+Remove-Item Env:ELECTRON_RUN_AS_NODE
+if ("$teste" -notmatch 'modulos-ok') { throw "Os módulos do app não carregam no pacote: $teste" }
+Write-Host "OK: módulos do app carregam no pacote"
 & "$appSrc\node_modules\rcedit\bin\rcedit-x64.exe" "$appOut\SSAdeskApp.exe" --set-icon "$here\assets\ssadesk.ico" `
     --set-version-string "ProductName" "SSAdesk" --set-version-string "FileDescription" "SSAdesk" `
     --set-version-string "CompanyName" "SSA Comercio" --set-file-version $version --set-product-version $version

@@ -26,6 +26,8 @@ async function carregar () {
   $('nome').value = info.nome || ''
   $('statusTxt').textContent = info.status.texto
   $('status').className = 'status ' + info.status.tipo
+  // Rede ainda sendo analisada (ou arquivo sendo regravado): confere de novo em instantes
+  clearTimeout(carregar.t); if (info.status.tipo === 'desconhecido') carregar.t = setTimeout(carregar, 4000)
   setTema(info.tema)
 
   $('codigo').onclick = () => { if (info.codigo) { api.copiar(info.codigo.replace(/\s/g, '')); toast('Código copiado') } }
@@ -51,7 +53,26 @@ $('form').addEventListener('submit', async e => {
   msg.textContent = r.msg
 })
 
-$('chamada').addEventListener('click', () => api.chamada.abrir({ nome: 'Chamada de vídeo' }))
+// Ligar (só chamada de vídeo, sem acesso à tela). Pela chamada dá para pedir o acesso depois, como atalho.
+async function ligarPara (codigo) {
+  const btn = $('ligarBtn'); const msg = $('msg')
+  if (btn.classList.contains('busy')) return
+  btn.classList.add('busy'); msg.className = 'hint'; msg.textContent = 'Ligando…'
+  const r = await api.ligar(codigo)
+  btn.classList.remove('busy')
+  msg.className = 'hint ' + (r.ok ? 'ok' : 'err'); msg.textContent = r.msg
+}
+$('ligarBtn').addEventListener('click', () => {
+  const v = $('destino').value.trim()
+  if (!v) { $('destino').focus(); const m = $('msg'); m.className = 'hint'; m.textContent = 'Digite o código de quem você quer ligar, ou escolha na lista.'; return }
+  ligarPara(v)
+})
+// O cartão "Chamada de vídeo" leva ao campo do código, pronto para ligar
+$('chamada').addEventListener('click', () => {
+  $('destino').focus()
+  const m = $('msg'); m.className = 'hint'; m.innerHTML = 'Digite o código e toque na <b>câmera verde</b> para ligar.'
+  $('ligarBtn').classList.add('destaque'); setTimeout(() => $('ligarBtn').classList.remove('destaque'), 1600)
+})
 
 // Nome opcional: salva sozinho ao sair do campo (aparece para o outro lado ao conectar)
 $('nome').addEventListener('change', () => { api.nome($('nome').value); toast($('nome').value.trim() ? 'Nome salvo' : 'Nome removido') })
@@ -109,7 +130,11 @@ async function montarBiblioteca () {
       const m = $('msg'); m.className = 'hint ' + (r.ok ? 'ok' : 'err'); m.textContent = r.msg
       if (r.ok) setTimeout(montarBiblioteca, 45000)
     })
-    li.append(av, tx, ligar, x)
+    // Ligar para ele (só chamada de vídeo)
+    const chamar = document.createElement('button'); chamar.className = 'chamar'; chamar.title = 'Ligar (chamada de vídeo)'; chamar.setAttribute('aria-label', 'Ligar para ' + (c.nome || fmt(c.codigo)))
+    chamar.innerHTML = '<svg viewBox="0 0 24 24"><rect x="3" y="6.5" width="13" height="11" rx="2.5"/><path d="M16 10.5l5-3v9l-5-3"/></svg>'
+    chamar.addEventListener('click', e => { e.stopPropagation(); $('destino').value = fmt(c.codigo); ligarPara(c.codigo) })
+    li.append(av, tx, chamar, ligar, x)
     li.addEventListener('click', () => { $('destino').value = fmt(c.codigo); $('form').requestSubmit() })
     ul.appendChild(li)
     // Bolinha verde (online) ou vermelha (offline), verificada na rede P2P

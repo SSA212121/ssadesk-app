@@ -2,7 +2,7 @@
 const $ = id => document.getElementById(id)
 const api = window.ssadesk
 const params = new URLSearchParams(location.search)
-const padrao = 'Arraste arquivos aqui para enviar'
+const padrao = new URLSearchParams(location.search).get('papel') === 'acessado' ? 'Está acessando este computador' : 'Arraste arquivos aqui para enviar'
 
 function mostrarNome (nome) {
   nome = nome || 'Computador conectado'
@@ -10,6 +10,11 @@ function mostrarNome (nome) {
   $('inicial').textContent = (nome.trim()[0] || '?').toUpperCase()
 }
 mostrarNome(params.get('nome'))
+$('estado').textContent = padrao
+if (params.get('papel') === 'acessado') {
+  document.body.classList.add('acessado')
+  for (const a of ['arquivos', 'tela']) { const b = document.querySelector('[data-acao="' + a + '"]'); if (b) b.remove() }
+}
 api.sessao.onAtualizar(s => mostrarNome(s.nome))
 api.sessao.onEstado(t => estado(t, /✓/.test(t)))
 
