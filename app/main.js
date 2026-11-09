@@ -46,8 +46,25 @@ const prefsFile = () => path.join(app.getPath('userData'), 'preferencias.json')
 
 function readText (p) { try { return fs.readFileSync(p, 'utf8').replace(/^\uFEFF/, '').trim() } catch { return '' } }
 function readJson (p) { try { return JSON.parse(readText(p)) } catch { return null } }
-function loadPrefs () { return readJson(prefsFile()) || { tema: 'system' } }
-function savePrefs (p) { fs.mkdirSync(path.dirname(prefsFile()), { recursive: true }); fs.writeFileSync(prefsFile(), JSON.stringify(p)) }
+// Preferências (nome, lista de computadores, ajustes...): leitura e gravação à prova de perda.
+// Antes, uma leitura no meio de uma gravação falhava, o app recomeçava do zero e gravava por cima (apagava tudo).
+let prefsMemoria = null
+function loadPrefs () {
+  const f = prefsFile()
+  const lido = readJson(f) || readJson(f + '.bak') // arquivo principal ou a cópia de reserva
+  if (lido && typeof lido === 'object') { prefsMemoria = lido; return { ...lido } }
+  if (prefsMemoria) return { ...prefsMemoria } // não conseguiu ler agora: usa a última leitura boa
+  return { tema: 'system' }
+}
+function savePrefs (p) {
+  const f = prefsFile()
+  fs.mkdirSync(path.dirname(f), { recursive: true })
+  const tmp = f + '.' + process.pid + '.tmp'
+  fs.writeFileSync(tmp, JSON.stringify(p))
+  try { if (fs.existsSync(f) && readJson(f)) fs.copyFileSync(f, f + '.bak') } catch {} // reserva da versão anterior boa
+  fs.renameSync(tmp, f) // troca de uma vez: quem lê nunca vê o arquivo pela metade
+  prefsMemoria = p
+}
 
 // Janelas flutuantes do SSAdesk ficam fora da captura de tela: quem acessa não as vê repetidas dentro da tela remota
 function foraDaCaptura (w) { try { if (isWin || isMac) w.setContentProtection(true) } catch {} return w }
@@ -904,11 +921,8 @@ async function conectarPorCodigo (codigo, modo = 'acesso') {
   })
   } catch (e) {
     if (!(e.local && naRede)) throw e
-    // Sem sessão pela internet, mas o computador está na mesma rede: acesso à tela direto (a senha é exigida)
-    ultimoDestino = naRede.ip
-    if (!process.env.SSADESK_CODIGO_TESTE) abrirRustDesk(naRede.ip)
-    salvarNaBiblioteca(soDigitos(codigo), naRede.nome || '', null)
-    return naRede.nome || soDigitos(codigo)
+    // Por segurança a porta direta do motor fica fechada: sem a sessão do SSAdesk (pedido + túnel), não há acesso
+    throw new Error((naRede.nome || 'O computador') + ' está na sua rede, mas não respondeu ao SSAdesk. Ele está com o SSAdesk aberto e atualizado?')
   }
   sessao.codigo = soDigitos(codigo)
   if (modo === 'chamada') { // só chamada: abre a janela da chamada nos dois lados, sem tela remota

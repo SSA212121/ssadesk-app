@@ -42,3 +42,8 @@ Teste feito no notebook SSA-Atendimento ("Augusto", 120 358 953) acessando o not
 | 35 | Funcional | Faltava ver/alterar senha e revogar acessos | Feito: Ajustes > Senha de acesso; Mostrar e Revogar testados no Samuel (Alterar não testado: exige digitar senha nova) |
 | 36 | Visual | Erro de conexão ainda oferecia 'Conectar via relay' (segundo lugar no motor) | Corrigido |
 | 37 | Visual | Moldura quadrada de seleção em botões | Corrigido em todas as telas do app e no motor |
+
+| 38 | **Segurança** | Porta 21118 do motor aberta na rede (e no roteador via UPnP/NAT-PMP): quem estivesse na rede com a senha entrava direto, sem o pedido Permitir/Negar | Corrigido: porta bloqueada no firewall e não é mais aberta no roteador; só o túnel do SSAdesk entra |
+| 39 | Funcional | Preferências (nome, lista) podiam ser apagadas se lidas no meio de uma gravação | Corrigido: gravação segura com cópia de reserva |
+| 40 | Visual | Painel abre em branco por alguns segundos logo após a instalação | Pendente |
+| 41 | Funcional | Instalador aberto pela tela remota pula as telas e já instala | Pendente: investigar |

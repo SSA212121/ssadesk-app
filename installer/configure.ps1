@@ -128,7 +128,12 @@ Set-Motor "--option", "allow-hide-cm", "Y"
 if (-not $manterSenha) { Set-Motor "--password", $password }
 $password = $null
 
-New-NetFirewallRule -DisplayName $fwName -Direction Inbound -Action Allow -Protocol TCP -LocalPort $Port -Program $exe | Out-Null
+# Segurança: a porta do motor (21118) fica FECHADA para a rede. Toda conexão entra pelo túnel do SSAdesk
+# (que chega por dentro, em 127.0.0.1), passando pelo pedido Permitir/Negar e pela criptografia do túnel.
+# Antes ela ficava aberta e quem estivesse na mesma rede, com a senha, entrava direto sem o pedido.
+Get-NetFirewallRule -DisplayName "SSAdesk conexao direta TCP*" -ErrorAction SilentlyContinue | Remove-NetFirewallRule -ErrorAction SilentlyContinue
+Get-NetFirewallRule -DisplayName "SSAdesk porta direta bloqueada*" -ErrorAction SilentlyContinue | Remove-NetFirewallRule -ErrorAction SilentlyContinue
+New-NetFirewallRule -DisplayName "SSAdesk porta direta bloqueada TCP $Port" -Direction Inbound -Action Block -Protocol TCP -LocalPort $Port -RemoteAddress Any | Out-Null
 Restart-Service SSAdesk -ErrorAction SilentlyContinue
 
 # 6. Código único + endereços para conectar

@@ -58,13 +58,13 @@ $upnp = "indisponivel"; $wan = $null
 $c = Get-UPnP
 if ($c -and $v4) {
     try {
+        # Segurança: a porta do motor (21118) NÃO é mais aberta no roteador; remove a abertura antiga, se houver.
         try { $c.Remove($Port, "TCP") } catch {}
-        $null = $c.Add($Port, "TCP", $Port, $v4, $true, $Desc)
-        $m = $c | Where-Object { $_.ExternalPort -eq $Port -and $_.Protocol -eq "TCP" } | Select-Object -First 1
-        if ($m) { $upnp = "ok"; $wan = $m.ExternalIPAddress } else { $upnp = "recusado" }
-        # Porta UDP da rede P2P do SSAdesk (21130): com ela aberta, este computador recebe conexões diretas
+        # Só a porta UDP da rede P2P do SSAdesk (21130): por ela chegam as conexões (túnel criptografado + pedido)
         try { $c.Remove(21130, "UDP") } catch {}
-        try { $null = $c.Add(21130, "UDP", 21130, $v4, $true, "SSAdesk P2P") } catch {}
+        $null = $c.Add(21130, "UDP", 21130, $v4, $true, "SSAdesk P2P")
+        $m = $c | Where-Object { $_.ExternalPort -eq 21130 -and $_.Protocol -eq "UDP" } | Select-Object -First 1
+        if ($m) { $upnp = "ok"; $wan = $m.ExternalIPAddress } else { $upnp = "recusado" }
     } catch { $upnp = "recusado" }
 }
 
@@ -85,8 +85,8 @@ function Abrir-NatPmp([int]$proto, [int]$porta) {
     } catch { return $false } finally { $u.Close() }
 }
 if ($gateway -and $upnp -ne "ok") {
-    $ok1 = Abrir-NatPmp 1 21130; $ok2 = Abrir-NatPmp 2 $Port
-    if ($ok1 -or $ok2) { $natpmp = "ok"; $upnp = "ok" }
+    $ok1 = Abrir-NatPmp 1 21130 # só a porta P2P (a 21118 do motor fica fechada)
+    if ($ok1) { $natpmp = "ok"; $upnp = "ok" }
 }
 
 # 2c. Autorreparo: o serviço do motor precisa existir e estar rodando (senão ninguém acessa este computador)
