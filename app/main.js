@@ -1,6 +1,6 @@
-﻿// SSAdesk â€” processo principal (Electron).
+// SSAdesk — processo principal (Electron).
 // Janela com material de vidro nativo (Acrylic no Windows 11, vibrancy no macOS),
-// tema AutomÃ¡tico/Claro/Escuro e aÃ§Ãµes: copiar, conectar por IP ou por chave de internet (tÃºnel P2P).
+// tema Automático/Claro/Escuro e ações: copiar, conectar por IP ou por chave de internet (túnel P2P).
 const { app, BrowserWindow, ipcMain, nativeTheme, clipboard, shell, dialog } = require('electron')
 const path = require('path')
 const fs = require('fs')
@@ -10,31 +10,31 @@ const { spawn } = require('child_process')
 const isMac = process.platform === 'darwin'
 const isWin = process.platform === 'win32'
 
-// Modos: app normal | --instalar --payload=<pasta> (tela de instalaÃ§Ã£o) | --desinstalar
+// Modos: app normal | --instalar --payload=<pasta> (tela de instalação) | --desinstalar
 const arg = n => { const a = process.argv.find(x => x.startsWith('--' + n)); return a ? (a.split('=')[1] || true) : null }
 const MODO = arg('instalar') ? 'instalar' : arg('desinstalar') ? 'desinstalar' : 'app'
 const PAYLOAD = typeof arg('payload') === 'string' ? arg('payload').replace(/^"|"$/g, '') : null
 const motor = isWin ? require('./instalador') : null
-// InstalaÃ§Ã£o: avisa o envelope (Setup.exe) que a tela estÃ¡ aberta, para ele manter a pasta temporÃ¡ria
+// Instalação: avisa o envelope (Setup.exe) que a tela está aberta, para ele manter a pasta temporária
 if (MODO !== 'app' && PAYLOAD) {
   const marca = n => { try { fs.writeFileSync(path.join(PAYLOAD, n), String(Date.now())) } catch {} }
   marca('vivo.flag'); setInterval(() => marca('vivo.flag'), 2000)
   process.on('exit', () => marca('fim.flag'))
 }
-// O resto do pacote Ã© extraÃ­do enquanto o usuÃ¡rio passa pelas telas: espera o sinal 'pronto'
+// O resto do pacote é extraído enquanto o usuário passa pelas telas: espera o sinal 'pronto'
 async function esperarPacote () {
   if (!PAYLOAD) return
   for (let i = 0; i < 600 && !fs.existsSync(path.join(PAYLOAD, 'pronto.flag')); i++) await new Promise(r => setTimeout(r, 200))
 }
-// --segundo-plano: inicia com o Windows, sem janela, sÃ³ com o Ã­cone perto do relÃ³gio (para receber chamadas)
+// --segundo-plano: inicia com o Windows, sem janela, só com o ícone perto do relógio (para receber chamadas)
 const SEGUNDO_PLANO = !!arg('segundo-plano')
 
-// Perfil separado (sÃ³ para testes automÃ¡ticos com duas cÃ³pias do app na mesma mÃ¡quina)
+// Perfil separado (só para testes automáticos com duas cópias do app na mesma máquina)
 if (process.env.SSADESK_PERFIL) app.setPath('userData', process.env.SSADESK_PERFIL)
-// Uma Ãºnica instÃ¢ncia do app: abrir de novo sÃ³ mostra o painel
+// Uma única instância do app: abrir de novo só mostra o painel
 if (MODO === 'app' && !process.env.SSADESK_SNAPSHOT && !app.requestSingleInstanceLock()) app.exit(0)
 
-// Pasta de instalaÃ§Ã£o do SSAdesk (onde ficam cÃ³digo, chave, RustDesk e tÃºnel)
+// Pasta de instalação do SSAdesk (onde ficam código, chave, RustDesk e túnel)
 function installDir () {
   if (process.env.SSADESK_DIR) return process.env.SSADESK_DIR
   if (app.isPackaged && isWin) return path.resolve(path.dirname(process.execPath), '..')
@@ -49,7 +49,7 @@ function readJson (p) { try { return JSON.parse(readText(p)) } catch { return nu
 function loadPrefs () { return readJson(prefsFile()) || { tema: 'system' } }
 function savePrefs (p) { fs.mkdirSync(path.dirname(prefsFile()), { recursive: true }); fs.writeFileSync(prefsFile(), JSON.stringify(p)) }
 
-// Janelas flutuantes do SSAdesk ficam fora da captura de tela: quem acessa nÃ£o as vÃª repetidas dentro da tela remota
+// Janelas flutuantes do SSAdesk ficam fora da captura de tela: quem acessa não as vê repetidas dentro da tela remota
 function foraDaCaptura (w) { try { if (isWin || isMac) w.setContentProtection(true) } catch {} return w }
 let win
 function createWindow () {
@@ -57,7 +57,7 @@ function createWindow () {
   nativeTheme.themeSource = prefs.tema || 'system'
 
   win = new BrowserWindow({
-    // Painel: redimensionÃ¡vel Ã  vontade (lembra o Ãºltimo tamanho); instalaÃ§Ã£o: tamanho fixo
+    // Painel: redimensionável à vontade (lembra o último tamanho); instalação: tamanho fixo
     width: MODO === 'app' && prefs.janela ? prefs.janela.w : 400,
     height: MODO === 'app' && prefs.janela ? prefs.janela.h : 720,
     minWidth: 340, minHeight: 480,
@@ -93,19 +93,19 @@ function createWindow () {
   })
 }
 
-// ---------- Janela de chamada de vÃ­deo (estilo FaceTime) ----------
-// Independente da sessÃ£o de controle de tela: abrir/fechar a chamada nÃ£o afeta o RustDesk.
+// ---------- Janela de chamada de vídeo (estilo FaceTime) ----------
+// Independente da sessão de controle de tela: abrir/fechar a chamada não afeta o RustDesk.
 let callWin = null
 function abrirChamada (dados = {}) {
   if (callWin && !callWin.isDestroyed()) { callWin.show(); callWin.focus(); return }
-  // Janela pequena, flutuante e sempre no topo (canto inferior direito), redimensionÃ¡vel Ã  vontade
+  // Janela pequena, flutuante e sempre no topo (canto inferior direito), redimensionável à vontade
   const area = require('electron').screen.getPrimaryDisplay().workArea
   const W = 360; const H = 270
   callWin = foraDaCaptura(new BrowserWindow({
     width: W, height: H, minWidth: 200, minHeight: 150,
     x: area.x + area.width - W - 24, y: area.y + area.height - H - 24,
     alwaysOnTop: true, skipTaskbar: false,
-    show: false, title: 'SSAdesk â€” Chamada', backgroundColor: '#000000',
+    show: false, title: 'SSAdesk — Chamada', backgroundColor: '#000000',
     icon: path.join(__dirname, 'assets', 'icon.png'),
     ...(isWin ? { titleBarStyle: 'hidden', roundedCorners: true } : {}),
     ...(isMac ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 16, y: 16 } } : {}),
@@ -114,7 +114,7 @@ function abrirChamada (dados = {}) {
   callWin.loadFile(path.join(__dirname, 'src', 'chamada.html'), { query: { platform: process.platform, nome: dados.nome || '', demo: process.env.SSADESK_DEMO ? '1' : '', autoteste: process.env.SSADESK_AUTOTESTE ? '1' : '', tela: dados.tela ? '1' : '' } })
   callWin.once('ready-to-show', () => {
     if (process.env.SSADESK_SNAPSHOT && process.env.SSADESK_CALL) return snapshot(callWin)
-    callWin.showInactive() // aparece sem roubar o foco de quem estÃ¡ trabalhando
+    callWin.showInactive() // aparece sem roubar o foco de quem está trabalhando
     enviarEstadoChamada()
   })
   if (process.env.SSADESK_LOG) callWin.webContents.on('console-message', (_e, _l, msg) => fs.appendFileSync(process.env.SSADESK_LOG, msg + '\n'))
@@ -127,18 +127,18 @@ function abrirChamada (dados = {}) {
   })
 }
 ipcMain.on('abrir-chamada', (_e, extra) => {
-  // A chamada usa a sessÃ£o jÃ¡ aberta com o outro computador (conectado pelo cÃ³digo)
+  // A chamada usa a sessão já aberta com o outro computador (conectado pelo código)
   const ativa = !!(canal && canal.conectado() && sessao.ativa)
   estadoChamada = ativa ? { fase: 'conectado', nome: sessao.nome } : { fase: 'sem-sessao', nome: '' }
-  abrirChamada({ nome: sessao.nome || 'Chamada de vÃ­deo', tela: !!(extra && extra.tela) })
+  abrirChamada({ nome: sessao.nome || 'Chamada de vídeo', tela: !!(extra && extra.tela) })
   if (ativa) canal.controle({ t: 'chamada' })
   enviarEstadoChamada()
 })
 
-// ---------- SessÃ£o P2P com o outro computador (pedido, chamada, chat, arquivos) ----------
+// ---------- Sessão P2P com o outro computador (pedido, chamada, chat, arquivos) ----------
 const PERMISSOES_PADRAO = { controlar: true, arquivos: true, chamada: true, chat: true }
 // ---------- Ajustes ----------
-// receber: 'auto' (pergunta e libera sozinho em 15 s) | 'perguntar' (sÃ³ com resposta) | 'direto' (sem janela; servidor sem ninguÃ©m)
+// receber: 'auto' (pergunta e libera sozinho em 15 s) | 'perguntar' (só com resposta) | 'direto' (sem janela; servidor sem ninguém)
 function ajustes () {
   const a = loadPrefs().ajustes || {}
   return { receber: ['auto', 'perguntar', 'direto'].includes(a.receber) ? a.receber : 'auto', permissoes: { ...PERMISSOES_PADRAO, ...(a.permissoes || {}) }, iniciar: a.iniciar !== false, retransmitir: a.retransmitir !== false }
@@ -150,51 +150,51 @@ ipcMain.handle('confiaveis', () => confiaveis())
 ipcMain.handle('confiaveis-remover', (_e, c) => { const p = loadPrefs(); const n = { ...(p.confiaveis || {}) }; delete n[String(c)]; savePrefs({ ...p, confiaveis: n }); return true })
 function aplicarInicioAutomatico () {
   if (!app.isPackaged || MODO !== 'app') return
-  // Inicia com o Windows (perfil do usuÃ¡rio), em segundo plano: necessÃ¡rio para receber conexÃµes e chamadas
+  // Inicia com o Windows (perfil do usuário), em segundo plano: necessário para receber conexões e chamadas
   app.setLoginItemSettings({ openAtLogin: ajustes().iniciar, path: process.execPath, args: ['--segundo-plano'] })
 }
 ipcMain.handle('ajustes', () => ajustes())
 
-// ---------- DiagnÃ³stico de conexÃ£o (relatÃ³rio na Ãrea de Trabalho, para enviar ao suporte) ----------
+// ---------- Diagnóstico de conexão (relatório na Área de Trabalho, para enviar ao suporte) ----------
 async function diagnosticoConexao () {
   const { execFile } = require('child_process')
   const cmd = (exe, args) => new Promise(r => execFile(exe, args, { windowsHide: true, timeout: 8000 }, (e, so, se) => r(String(so || se || (e && e.message) || '').trim())))
   const ok = v => (v ? 'OK' : 'FALHA')
   const linhas = []
   const L = s => linhas.push(s)
-  L('SSAdesk â€” diagnÃ³stico de conexÃ£o â€” ' + new Date().toLocaleString('pt-BR'))
-  L('VersÃ£o: ' + app.getVersion() + ' | Computador: ' + require('os').hostname() + ' | CÃ³digo: ' + (meuCodigo() || '(sem cÃ³digo)'))
+  L('SSAdesk — diagnóstico de conexão — ' + new Date().toLocaleString('pt-BR'))
+  L('Versão: ' + app.getVersion() + ' | Computador: ' + require('os').hostname() + ' | Código: ' + (meuCodigo() || '(sem código)'))
   L('')
   L('== Motor de acesso remoto ==')
   L('SSAdesk.exe instalado: ' + ok(fs.existsSync(path.join(DIR, 'SSAdesk.exe'))))
   const sc = await cmd('sc.exe', ['query', 'SSAdesk'])
-  L('ServiÃ§o SSAdesk: ' + (/RUNNING/.test(sc) ? 'rodando' : /STOPPED/.test(sc) ? 'PARADO' : 'NÃƒO EXISTE'))
+  L('Serviço SSAdesk: ' + (/RUNNING/.test(sc) ? 'rodando' : /STOPPED/.test(sc) ? 'PARADO' : 'NÃO EXISTE'))
   const porta = await new Promise(r => { const s = net.connect(21118, '127.0.0.1'); s.once('connect', () => { s.destroy(); r(true) }); s.once('error', () => r(false)); setTimeout(() => { s.destroy(); r(false) }, 2000) })
   L('Porta 21118 (acesso direto) aberta: ' + ok(porta))
   L('')
-  L('== Rede P2P (encontrar pelo cÃ³digo) ==')
+  L('== Rede P2P (encontrar pelo código) ==')
   const tr = canal && canal.tipoDeRede()
-  if (!tr) L('Rede P2P: NÃƒO INICIOU')
+  if (!tr) L('Rede P2P: NÃO INICIOU')
   else {
     L('Rede P2P conectada: ' + ok(!!tr.host) + (tr.host ? ' (visto como ' + tr.host + ':' + tr.port + ')' : ''))
-    L('Tipo de NAT: ' + (!tr.firewalled ? 'aberto (Ã³timo)' : tr.randomized ? 'aleatÃ³rio/restrito (precisa de retransmissÃ£o)' : 'consistente (bom para furo direto)'))
-    L('Retransmissores conhecidos: ' + tr.retransmissores + ' | Este computador retransmite: ' + (tr.souRetransmissor ? 'sim' : 'nÃ£o'))
+    L('Tipo de NAT: ' + (!tr.firewalled ? 'aberto (ótimo)' : tr.randomized ? 'aleatório/restrito (precisa de retransmissão)' : 'consistente (bom para furo direto)'))
+    L('Retransmissores conhecidos: ' + tr.retransmissores + ' | Este computador retransmite: ' + (tr.souRetransmissor ? 'sim' : 'não'))
   }
-  L('Anunciando o cÃ³digo na rede P2P: ' + ok(canal && canal.escutas && canal.escutas.size > 0))
+  L('Anunciando o código na rede P2P: ' + ok(canal && canal.escutas && canal.escutas.size > 0))
   L('Descoberta na rede local ativa: ' + ok(!!(lan && lan.sock)))
-  if (canal && meuCodigo()) L('Este cÃ³digo Ã© encontrado na rede P2P: ' + ok(await canal.online(meuCodigo(), 10000)))
+  if (canal && meuCodigo()) L('Este código é encontrado na rede P2P: ' + ok(await canal.online(meuCodigo(), 10000)))
   L('')
   L('== Rede deste computador ==')
   const rede = readJson(path.join(DIR, 'rede.json')) || {}
-  L('IPv4 local: ' + (rede.ipv4_local || '?') + ' | IP pÃºblico: ' + (rede.ip_publico || '?') + ' | IPv6 pÃºblico: ' + ((rede.ipv6 || []).length ? 'sim' : 'nÃ£o'))
-  L('Roteador abre porta sozinho (UPnP/NAT-PMP): ' + (rede.upnp === 'ok' ? 'sim' : 'nÃ£o') + ' | IP compartilhado (CGNAT): ' + (rede.cgnat ? 'SIM' : 'nÃ£o'))
+  L('IPv4 local: ' + (rede.ipv4_local || '?') + ' | IP público: ' + (rede.ip_publico || '?') + ' | IPv6 público: ' + ((rede.ipv6 || []).length ? 'sim' : 'não'))
+  L('Roteador abre porta sozinho (UPnP/NAT-PMP): ' + (rede.upnp === 'ok' ? 'sim' : 'não') + ' | IP compartilhado (CGNAT): ' + (rede.cgnat ? 'SIM' : 'não'))
   if (rede.reparo) L('Autorreparo: ' + rede.reparo)
   L('')
   L('== Windows ==')
   const fw = await cmd('powershell.exe', ['-NoProfile', '-Command', "(Get-NetFirewallRule -DisplayName 'SSAdesk*' -ErrorAction SilentlyContinue | Where-Object Enabled -eq True).DisplayName -join ', '"])
   L('Regras de firewall do SSAdesk: ' + (fw || 'NENHUMA'))
   const sac = await cmd('reg.exe', ['query', 'HKLM\\SYSTEM\\CurrentControlSet\\Control\\CI\\Policy', '/v', 'VerifiedAndReputablePolicyState'])
-  L('Controle Inteligente de Aplicativos: ' + (/0x1\b/.test(sac) ? 'LIGADO (bloqueia programas sem assinatura)' : /0x2\b/.test(sac) ? 'em avaliaÃ§Ã£o' : 'desligado'))
+  L('Controle Inteligente de Aplicativos: ' + (/0x1\b/.test(sac) ? 'LIGADO (bloqueia programas sem assinatura)' : /0x2\b/.test(sac) ? 'em avaliação' : 'desligado'))
   const arq = process.env.SSADESK_DIAG_TESTE || path.join(app.getPath('desktop'), 'SSAdesk-diagnostico.txt')
   fs.writeFileSync(arq, '\ufeff' + linhas.join('\r\n'), 'utf8')
   if (!process.env.SSADESK_DIAG_TESTE) shell.openPath(arq)
@@ -214,16 +214,16 @@ ipcMain.handle('ajustes-salvar', (_e, novo) => {
 let canal = null
 let sessao = { ativa: false, papel: null, nome: '', permissoes: { ...PERMISSOES_PADRAO } }
 let estadoChamada = { fase: 'aguardando', nome: '' }
-let pendente = null // conexÃ£o pelo cÃ³digo esperando a resposta do outro lado
-let modoPedido = 'acesso' // o que pedimos ao outro lado: 'acesso' (tela) ou 'chamada' (sÃ³ vÃ­deo)
+let pendente = null // conexão pelo código esperando a resposta do outro lado
+let modoPedido = 'acesso' // o que pedimos ao outro lado: 'acesso' (tela) ou 'chamada' (só vídeo)
 let arquivos = null
 let lan = null
 let ultimoDestino = ''
 let modoAcordar = null
 let encerradoPeloUsuario = false
-// A sessÃ£o caiu (rede oscilou): tenta reconectar sozinho algumas vezes, sem reabrir a tela remota
+// A sessão caiu (rede oscilou): tenta reconectar sozinho algumas vezes, sem reabrir a tela remota
 async function reconectar (codigo, nome) {
-  avisarBarraEstado('Reconectandoâ€¦')
+  avisarBarraEstado('Reconectando…')
   for (let i = 0; i < 6 && !encerradoPeloUsuario; i++) {
     try {
       await new Promise((resolve, reject) => {
@@ -231,10 +231,10 @@ async function reconectar (codigo, nome) {
         pendente = { resolve: v => { clearTimeout(t); resolve(v) }, reject: e => { clearTimeout(t); reject(e) } }
         canal.procurar({ codigo })
       })
-      sessao.codigo = codigo; avisarBarraEstado('Reconectado âœ“'); abrirBarra(); return
+      sessao.codigo = codigo; avisarBarraEstado('Reconectado ✓'); abrirBarra(); return
     } catch { await new Promise(r => setTimeout(r, 3000)) }
   }
-  avisarBarraEstado('ConexÃ£o perdida')
+  avisarBarraEstado('Conexão perdida')
 }
 function avisarBarraEstado (texto) { if (barraWin && !barraWin.isDestroyed()) barraWin.webContents.send('barra-estado', texto) }
 let ultimoDespertar = 0
@@ -244,7 +244,7 @@ function avisarPainel (canalNome, dados) { if (win && !win.isDestroyed()) win.we
 const meuCodigo = () => readText(path.join(DIR, 'codigo.txt'))
 const minhaChave = () => readText(path.join(DIR, 'chave-internet.txt'))
 const meuNome = () => (loadPrefs().nome || '').trim() || require('os').hostname()
-// EndereÃ§os diretos que o outro lado pode tentar: rede local (sÃ³ se estiver na mesma rede) e IPv6 pÃºblico
+// Endereços diretos que o outro lado pode tentar: rede local (só se estiver na mesma rede) e IPv6 público
 function meusEnderecos (ipPublicoDoOutro) {
   const rede = readJson(path.join(DIR, 'rede.json')) || {}
   const ips = []
@@ -288,12 +288,14 @@ function iniciarCanal () {
     if (!caiu) fecharBarra()
     if (lousaWin && !lousaWin.isDestroyed()) lousaWin.destroy()
     estadoChamada = { ...estadoChamada, fase: 'encerrada' }; enviarEstadoChamada()
-    if (pendente) { pendente.reject(new Error('O outro computador encerrou a conexÃ£o.')); pendente = null }
+    if (pendente) { pendente.reject(new Error('O outro computador encerrou a conexão.')); pendente = null }
     avisarPainel('sessao', { ativa: false })
+    avisarPainel('conectar-status', sessao.nome ? 'Conexão com ' + sessao.nome + ' encerrada.' : 'Conexão encerrada.')
+    sessao.senha = ''
   })
   canal.on('controle', async msg => {
     switch (msg.t) {
-      case 'acordar': // um computador da lista pede para eu ligar um vizinho desta mesma rede (sÃ³ envia o sinal)
+      case 'acordar': // um computador da lista pede para eu ligar um vizinho desta mesma rede (só envia o sinal)
         if (sessao.papel === 'acessado') {
           const agora = Date.now()
           if (agora - ultimoDespertar > 10000) { ultimoDespertar = agora; enviarPacoteDespertar(msg.mac) }
@@ -301,8 +303,8 @@ function iniciarCanal () {
         }
         break
       case 'acordado': if (modoAcordar) { modoAcordar.ok(); modoAcordar = null; canal.encerrar() } break
-      case 'ola': { // alguÃ©m quer acessar este computador (ou sÃ³ ligar)
-        sessao.nome = String(msg.nome || msg.codigo || 'AlguÃ©m').slice(0, 40)
+      case 'ola': { // alguém quer acessar este computador (ou só ligar)
+        sessao.nome = String(msg.nome || msg.codigo || 'Alguém').slice(0, 40)
         if (msg.quer === 'chamada') {
           const r = await mostrarPedido({ nome: sessao.nome, codigo: msg.codigo || '', tipo: 'chamada' })
           if (!canal.conectado()) return
@@ -320,32 +322,32 @@ function iniciarCanal () {
         const minhaRede = readJson(path.join(DIR, 'rede.json')) || {}
         canal.controle({
           t: 'aceito', nome: meuNome(), permissoes: sessao.permissoes, mac: minhaRede.mac || '', ipPublico: minhaRede.ip_publico || '',
-          // Sem permissÃ£o de controle, nÃ£o entrega os caminhos de acesso
+          // Sem permissão de controle, não entrega os caminhos de acesso
           chave: sessao.permissoes.controlar ? minhaChave() : '',
           // Senha só quando uma pessoa permitiu (clique ou "Permitir sempre"): quem acessa entra sem a tela de senha
           senha: sessao.permissoes.controlar && r.pessoa ? await require('./senha-local').ler() : '',
           ips: sessao.permissoes.controlar ? meusEnderecos(msg.ipPublico) : []
         })
         sessao.tipo = 'acesso'
-        abrirBarra() // quem Ã© acessado tambÃ©m tem chamada, chat e informaÃ§Ãµes Ã  mÃ£o
+        abrirBarra() // quem é acessado também tem chamada, chat e informações à mão
         break
       }
       case 'aceito': sessao.senha = typeof msg.senha === 'string' ? msg.senha.slice(0, 128) : ''; sessao.nome = String(msg.nome || '').slice(0, 40); sessao.remoto = { mac: String(msg.mac || '').slice(0, 17), ipPublico: String(msg.ipPublico || '').slice(0, 45) }; sessao.permissoes = { ...PERMISSOES_PADRAO, ...msg.permissoes }; if (pendente) { pendente.resolve(msg); pendente = null } break
       case 'negado': if (pendente) { pendente.reject(new Error(msg.texto === 'Chamada recusada.' ? 'A chamada foi recusada.' : 'O outro computador negou o acesso.')); pendente = null } break
       case 'chamada':
-        if (!sessao.permissoes.chamada) { canal.controle({ t: 'aviso', texto: 'Chamada de vÃ­deo nÃ£o permitida.' }); break }
+        if (!sessao.permissoes.chamada) { canal.controle({ t: 'aviso', texto: 'Chamada de vídeo não permitida.' }); break }
         estadoChamada = { fase: 'conectado', nome: sessao.nome }; abrirChamada({ nome: sessao.nome }); enviarEstadoChamada(); break
       case 'chamada-fim': if (callWin && !callWin.isDestroyed()) { estadoChamada = { ...estadoChamada, fase: 'encerrada' }; enviarEstadoChamada() } break
       case 'chat': if (sessao.permissoes.chat) receberMensagem(msg.texto); break
       case 'estado': if (callWin && !callWin.isDestroyed()) callWin.webContents.send('chamada-remoto', { mic: !!msg.mic, cam: !!msg.cam, tela: !!msg.tela }); break
       case 'quadro-chave': if (callWin && !callWin.isDestroyed()) callWin.webContents.send('chamada-quadro-chave'); break
       case 'tchau': estadoChamada = { ...estadoChamada, fase: 'encerrada' }; enviarEstadoChamada(); break
-      case 'lousa': // anotaÃ§Ãµes do outro lado (a lousa abre sozinha aqui para mostrar)
+      case 'lousa': // anotações do outro lado (a lousa abre sozinha aqui para mostrar)
         if (process.env.SSADESK_LOG) fs.appendFileSync(process.env.SSADESK_LOG, 'lousa recebida: ' + (msg.d && msg.d.acao) + '\n')
-        if (sessao.permissoes.controlar === false) { if (process.env.SSADESK_LOG) fs.appendFileSync(process.env.SSADESK_LOG, 'lousa bloqueada pela permissÃ£o\n'); break }
+        if (sessao.permissoes.controlar === false) { if (process.env.SSADESK_LOG) fs.appendFileSync(process.env.SSADESK_LOG, 'lousa bloqueada pela permissão\n'); break }
         abrirLousa(true); if (lousaWin && !lousaWin.isDestroyed()) { if (lousaPronta) lousaWin.webContents.send('lousa-remoto', msg.d); else lousaFila.push(msg.d) }
         break
-      // Painel â“˜: latÃªncia (ida e volta pelo canal) e informaÃ§Ãµes do outro computador
+      // Painel ⓘ: latência (ida e volta pelo canal) e informações do outro computador
       case 'ping': canal.controle({ t: 'pong', em: msg.em }); break
       case 'pong': if (typeof msg.em === 'number') infoSessao.latencia = Math.max(0, Date.now() - msg.em); break
       case 'info-pedir': canal.controle({ t: 'info', d: require('./info-sistema').coletar() }); break
@@ -357,7 +359,7 @@ function iniciarCanal () {
     if (callWin && !callWin.isDestroyed()) callWin.webContents.send('chamada-midia', tipo, dados)
   })
   canal.on('arquivo', dados => { if (arquivos) arquivos.pedaco(dados) })
-  // Arquivos: quem acessa envia; chegam na Ãrea de Trabalho de quem foi acessado (se a permissÃ£o estiver ligada)
+  // Arquivos: quem acessa envia; chegam na Área de Trabalho de quem foi acessado (se a permissão estiver ligada)
   try {
   const { criarArquivos } = require('./arquivos')
   arquivos = criarArquivos({
@@ -370,24 +372,24 @@ function iniciarCanal () {
   } catch (e) { registrarErroRede('arquivos', e) }
   ligarRede()
 }
-// Liga o nÃ³ P2P, a descoberta na rede local e fica disponÃ­vel pelo cÃ³digo. Cada parte Ã© independente:
-// se uma falhar, as outras continuam, e a falha fica registrada e visÃ­vel no painel.
+// Liga o nó P2P, a descoberta na rede local e fica disponível pelo código. Cada parte é independente:
+// se uma falhar, as outras continuam, e a falha fica registrada e visível no painel.
 let erroRede = ''
 function registrarErroRede (onde, e) {
   erroRede = onde + ': ' + ((e && e.message) || e)
   try { fs.appendFileSync(path.join(app.getPath('userData'), 'rede-erros.log'), new Date().toISOString() + ' ' + erroRede + '\n') } catch {}
 }
 function ligarRede () {
-  try { canal._swarm() } catch (e) { registrarErroRede('P2P', e) } // liga jÃ¡ na abertura: as conexÃµes saem rÃ¡pidas
+  try { canal._swarm() } catch (e) { registrarErroRede('P2P', e) } // liga já na abertura: as conexões saem rápidas
   try {
     const { DescobertaLan } = require('./descoberta-lan')
     lan = new DescobertaLan({ meuCodigo, meuNome })
     lan.iniciar()
   } catch (e) { registrarErroRede('rede local', e) }
-  canal.escutar({ codigo: meuCodigo(), chave: minhaChave() }).catch(e => registrarErroRede('anÃºncio', e))
+  canal.escutar({ codigo: meuCodigo(), chave: minhaChave() }).catch(e => registrarErroRede('anúncio', e))
 }
 ipcMain.handle('chamada-estado-atual', () => estadoChamada)
-// Tela principal para transmitir (captura direta: funciona mesmo quando a transmissÃ£o comeÃ§a pela barrinha)
+// Tela principal para transmitir (captura direta: funciona mesmo quando a transmissão começa pela barrinha)
 ipcMain.handle('tela-fonte', async () => {
   const s = await require('electron').desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 0, height: 0 } })
   const principal = require('electron').screen.getPrimaryDisplay().id
@@ -395,8 +397,8 @@ ipcMain.handle('tela-fonte', async () => {
   return f ? f.id : null
 })
 
-// ---------- Pedido "Fulano deseja conectar" (Permitir / Negar, com permissÃµes) ----------
-// Se ninguÃ©m responder em 15 s, permite (o servidor pode estar sem ninguÃ©m na frente; a senha continua exigida)
+// ---------- Pedido "Fulano deseja conectar" (Permitir / Negar, com permissões) ----------
+// Se ninguém responder em 15 s, permite (o servidor pode estar sem ninguém na frente; a senha continua exigida)
 let pedidoWin = null
 let pedidoAtual = null
 function mostrarPedido (dados) {
@@ -408,7 +410,7 @@ function mostrarPedido (dados) {
   return new Promise(resolve => {
     let respondido = false
     const responder = r => { if (respondido) return; respondido = true; clearTimeout(tempo); pedidoAtual = null; if (pedidoWin && !pedidoWin.isDestroyed()) pedidoWin.destroy(); pedidoWin = null; resolve(r) }
-    // Chamada: toca por 40 s e, sem resposta, Ã© recusada (ninguÃ©m atende uma ligaÃ§Ã£o sozinho)
+    // Chamada: toca por 40 s e, sem resposta, é recusada (ninguém atende uma ligação sozinho)
     const tempo = chamada ? setTimeout(() => responder({ permitir: false }), 40000)
       : aj.receber === 'auto' ? setTimeout(() => responder({ permitir: true, permissoes: aj.permissoes }), 15000) : null
     pedidoAtual = { dados: { ...dados, segundos: !chamada && aj.receber === 'auto' ? 15 : 0, permissoes: aj.permissoes }, responder, adiar: () => clearTimeout(tempo) }
@@ -426,14 +428,14 @@ function mostrarPedido (dados) {
   })
 }
 ipcMain.handle('pedido-dados', () => pedidoAtual && pedidoAtual.dados)
-ipcMain.on('pedido-adiar', () => { if (pedidoAtual) pedidoAtual.adiar() }) // mexeu nas permissÃµes: espera a decisÃ£o da pessoa
+ipcMain.on('pedido-adiar', () => { if (pedidoAtual) pedidoAtual.adiar() }) // mexeu nas permissões: espera a decisão da pessoa
 ipcMain.on('pedido-resposta', (_e, r) => {
   if (!pedidoAtual) return
   if (r && r.permitir && r.sempre) confiar(pedidoAtual.dados.codigo, pedidoAtual.dados.nome)
   pedidoAtual.responder({ permitir: !!(r && r.permitir), pessoa: true, permissoes: (r && r.permissoes) || PERMISSOES_PADRAO })
 })
 
-// ---------- Barrinha da sessÃ£o (quem acessa): soltar arquivos, chamada, chat, encerrar ----------
+// ---------- Barrinha da sessão (quem acessa): soltar arquivos, chamada, chat, encerrar ----------
 let barraWin = null
 function abrirBarra () {
   if (process.env.SSADESK_CODIGO_TESTE) return
@@ -459,9 +461,9 @@ async function enviarArquivos (caminhos) {
   if (!lista.length) return { ok: false, msg: 'Nenhum arquivo.' }
   if (!(canal && canal.conectado() && sessao.ativa && sessao.papel === 'acessando')) {
     new Notification({ title: 'SSAdesk', body: 'Conecte-se a um computador para enviar arquivos.' }).show()
-    mostrarPainel(); return { ok: false, msg: 'Sem conexÃ£o.' }
+    mostrarPainel(); return { ok: false, msg: 'Sem conexão.' }
   }
-  if (sessao.permissoes.arquivos === false) return { ok: false, msg: (sessao.nome || 'O outro computador') + ' nÃ£o permite receber arquivos.' }
+  if (sessao.permissoes.arquivos === false) return { ok: false, msg: (sessao.nome || 'O outro computador') + ' não permite receber arquivos.' }
   abrirBarra()
   try { const n = await arquivos.enviar(lista); return { ok: true, n } } catch (e) { return { ok: false, msg: e.message } }
 }
@@ -478,30 +480,46 @@ ipcMain.on('sessao-acao', (_e, acao) => {
   if (acao === 'info') abrirInfo()
   if (acao === 'encerrar') { encerradoPeloUsuario = true; if (canal) canal.encerrar(); fecharBarra() }
 })
-// ---------- Painel â“˜ de informaÃ§Ãµes da conexÃ£o (canto superior direito) ----------
+// ---------- Painel ⓘ de informações da conexão (canto superior direito) ----------
 let infoWin = null
 let infoTimer = null
 const infoSessao = { latencia: null, remoto: null }
 function caminhoDaConexao () {
   const d = String(ultimoDestino || '')
-  if (!d) return { tipo: 'SessÃ£o SSAdesk (P2P)', detalhe: '' }
+  if (!d) return { tipo: 'Sessão SSAdesk (P2P)', detalhe: '' }
   if (d.startsWith('127.0.0.1:')) {
-    return precisaRetransmissao.size ? { tipo: 'Internet Â· retransmissÃ£o cega', detalhe: 'Criptografado de ponta a ponta' } : { tipo: 'Internet Â· P2P direto', detalhe: 'Criptografado de ponta a ponta' }
+    return precisaRetransmissao.size ? { tipo: 'Internet · retransmissão cega', detalhe: 'Criptografado de ponta a ponta' } : { tipo: 'Internet · P2P direto', detalhe: 'Criptografado de ponta a ponta' }
   }
   const ip = d.replace(/^\[|\]$/g, '')
   if (/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.|fe80:)/i.test(ip)) return { tipo: 'Rede local', detalhe: ip }
-  return { tipo: ip.includes(':') ? 'Internet Â· IPv6 direto' : 'Internet Â· IPv4 direto', detalhe: ip }
+  return { tipo: ip.includes(':') ? 'Internet · IPv6 direto' : 'Internet · IPv4 direto', detalhe: ip }
 }
 function arquivoPadraoMotor () { return path.join(app.getPath('appData'), 'SSAdesk', 'config', 'SSAdesk_default.toml') }
 function fpsLigado () { try { return /show_quality_monitor\s*=\s*'Y'/.test(fs.readFileSync(arquivoPadraoMotor(), 'utf8')) } catch { return false } }
-// Liga/desliga o medidor de FPS, atraso e velocidade do prÃ³prio motor (aparece na janela da tela remota)
+// Liga/desliga o medidor de FPS, atraso e velocidade do próprio motor (aparece na janela da tela remota)
+// Padrões do motor para quem acessa: dois mouses (mostra o cursor do outro computador, como no AnyDesk)
+// e a tela remota ajustada à janela. Só define se a pessoa ainda não escolheu outra coisa.
+function padroesDoMotor () {
+  try {
+    const f = arquivoPadraoMotor()
+    let t = ''; try { t = fs.readFileSync(f, 'utf8') } catch {}
+    const quero = { show_remote_cursor: "'Y'", view_style: "'adaptive'" }
+    let mudou = false
+    for (const [k, v] of Object.entries(quero)) {
+      if (new RegExp('^' + k + '\\s*=', 'm').test(t)) continue
+      t = /^\[options\]/m.test(t) ? t.replace(/^\[options\]\r?\n/m, m => m + k + ' = ' + v + '\n') : t + (t && !t.endsWith('\n') ? '\n' : '') + '[options]\n' + k + ' = ' + v + '\n'
+      mudou = true
+    }
+    if (mudou) { fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, t) }
+  } catch {}
+}
 function definirFps (ligar) {
   const f = arquivoPadraoMotor()
   let t = ''; try { t = fs.readFileSync(f, 'utf8') } catch {}
   t = t.replace(/^show_quality_monitor\s*=.*\r?\n?/m, '')
   if (ligar) t = /^\[options\]/m.test(t) ? t.replace(/^\[options\]\r?\n/m, m => m + "show_quality_monitor = 'Y'\n") : t + (t && !t.endsWith('\n') ? '\n' : '') + "[options]\nshow_quality_monitor = 'Y'\n"
   fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, t)
-  // computadores jÃ¡ acessados guardam a escolha prÃ³pria: aplica neles tambÃ©m
+  // computadores já acessados guardam a escolha própria: aplica neles também
   const pasta = path.join(app.getPath('appData'), 'SSAdesk', 'config', 'peers')
   try {
     for (const n of fs.readdirSync(pasta).filter(n => n.endsWith('.toml'))) {
@@ -520,13 +538,13 @@ function dadosInfo () {
   }
 }
 function abrirInfo () {
-  if (infoWin && !infoWin.isDestroyed()) { infoWin.close(); return } // o botÃ£o alterna
+  if (infoWin && !infoWin.isDestroyed()) { infoWin.close(); return } // o botão alterna
   const area = require('electron').screen.getPrimaryDisplay().workArea
   const W = 320; const H = 452
   infoWin = foraDaCaptura(new BrowserWindow({
     width: W, height: H, x: area.x + area.width - W - 14, y: area.y + 14,
     frame: false, transparent: true, resizable: false, maximizable: false, minimizable: false, skipTaskbar: true,
-    alwaysOnTop: true, show: false, title: 'InformaÃ§Ãµes da conexÃ£o', hasShadow: false,
+    alwaysOnTop: true, show: false, title: 'Informações da conexão', hasShadow: false,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, spellcheck: false }
   }))
   infoWin.setAlwaysOnTop(true, 'floating')
@@ -543,18 +561,18 @@ ipcMain.on('info-fechar', () => { if (infoWin && !infoWin.isDestroyed()) infoWin
 ipcMain.handle('info-fps', (_e, ligar) => { try { definirFps(!!ligar); return { ok: true, fps: fpsLigado() } } catch (e) { return { ok: false, msg: e.message } } })
 ipcMain.handle('sessao-info', () => ({ nome: sessao.nome, ativa: sessao.ativa }))
 
-// Quem foi acessado: aviso discreto ao receber (um por item enviado, nÃ£o um por arquivo de uma pasta)
+// Quem foi acessado: aviso discreto ao receber (um por item enviado, não um por arquivo de uma pasta)
 let ultimoAviso = { raiz: '', em: 0 }
 function avisarRecebido ({ nome, caminho, raiz }) {
   const { Notification } = require('electron')
   const agora = Date.now()
   if (raiz === ultimoAviso.raiz && agora - ultimoAviso.em < 4000) return
   ultimoAviso = { raiz, em: agora }
-  const n = new Notification({ title: (sessao.nome || 'AlguÃ©m') + ' enviou um arquivo', body: raiz + ' â€” salvo na Ãrea de Trabalho' })
+  const n = new Notification({ title: (sessao.nome || 'Alguém') + ' enviou um arquivo', body: raiz + ' — salvo na Área de Trabalho' })
   n.on('click', () => shell.showItemInFolder(caminho)); n.show()
 }
 
-// "Enviar para â†’ SSAdesk" no botÃ£o direito do Windows
+// "Enviar para → SSAdesk" no botão direito do Windows
 function registrarEnviarPara () {
   if (!isWin || !app.isPackaged) return
   try {
@@ -577,7 +595,7 @@ function abrirLousa (pelaOutraPonta = false) {
   if (process.env.SSADESK_LOG) fs.appendFileSync(process.env.SSADESK_LOG, 'abrindo lousa\n')
   lousaWin = foraDaCaptura(new BrowserWindow({
     x: d.x, y: d.y, width: d.width, height: d.height, frame: false, transparent: true, resizable: false, movable: false,
-    skipTaskbar: true, alwaysOnTop: true, hasShadow: false, show: false, title: 'SSAdesk â€” Lousa', fullscreenable: false,
+    skipTaskbar: true, alwaysOnTop: true, hasShadow: false, show: false, title: 'SSAdesk — Lousa', fullscreenable: false,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, spellcheck: false }
   }))
   lousaWin.setAlwaysOnTop(true, 'screen-saver')
@@ -615,9 +633,9 @@ ipcMain.on('lousa-enviar', (_e, d) => { if (canal && canal.conectado() && d && t
 ipcMain.on('lousa-atravessar', (_e, sim) => { if (lousaWin && !lousaWin.isDestroyed()) lousaWin.setIgnoreMouseEvents(!!sim, { forward: true }) })
 ipcMain.on('lousa-fechar', () => { if (lousaWin && !lousaWin.isDestroyed()) lousaWin.close() })
 
-// ---------- TÃºnel de acesso remoto dentro do app ----------
-// Usa o nÃ³ da rede P2P que o app mantÃ©m ligado em segundo plano: nÃ£o precisa 'entrar' na rede a cada conexÃ£o.
-// CompatÃ­vel com o hypertele-server do outro computador (bytes repassados sem alteraÃ§Ã£o).
+// ---------- Túnel de acesso remoto dentro do app ----------
+// Usa o nó da rede P2P que o app mantém ligado em segundo plano: não precisa 'entrar' na rede a cada conexão.
+// Compatível com o hypertele-server do outro computador (bytes repassados sem alteração).
 const tuneis = new Map() // chave -> { porta, servidor }
 async function tunelInterno (chave) {
   if (!canal) return 0
@@ -639,20 +657,20 @@ async function tunelInterno (chave) {
     return porta
   } catch { return 0 }
 }
-// Abre um caminho P2P atÃ© a chave: direto (furo de NAT); se falhar por NAT incompatÃ­vel, pela retransmissÃ£o
+// Abre um caminho P2P até a chave: direto (furo de NAT); se falhar por NAT incompatível, pela retransmissão
 const ERROS_DE_FURO = ['HOLEPUNCH_ABORTED', 'HOLEPUNCH_DOUBLE_RANDOMIZED_NATS', 'CANNOT_HOLEPUNCH', 'REMOTE_NOT_HOLEPUNCHABLE', 'HOLEPUNCH_PROBE_TIMEOUT']
-const precisaRetransmissao = new Set() // chaves que jÃ¡ precisaram de retransmissÃ£o: vÃ£o direto por ela
+const precisaRetransmissao = new Set() // chaves que já precisaram de retransmissão: vão direto por ela
 function abrirSocket (remoto, relay, ms) {
   return new Promise((resolve, reject) => {
     const opts = { reusableSocket: true }
     if (relay) opts.relayThrough = relay
-    if (relay && process.env.SSADESK_SO_RETRANSMISSAO) { opts.holepunch = () => false; opts.localConnection = false } // teste: proÃ­be direto/rede local
+    if (relay && process.env.SSADESK_SO_RETRANSMISSAO) { opts.holepunch = () => false; opts.localConnection = false } // teste: proíbe direto/rede local
     const s = canal._swarm().dht.connect(remoto, opts)
     const t = setTimeout(() => { s.destroy(); reject(Object.assign(new Error('tempo'), { code: 'TEMPO' })) }, ms)
     s.on('error', e => { clearTimeout(t); reject(e) })
     s.once('open', () => {
       clearTimeout(t)
-      if (process.env.SSADESK_LOG) setTimeout(() => { const rs = s.rawStream; fs.appendFileSync(process.env.SSADESK_LOG, 'caminho da tela via ' + (rs ? rs.remoteHost + ':' + rs.remotePort : '?') + (relay ? ' (pedido pela retransmissÃ£o)' : ' (direto)') + '\n') }, 1000)
+      if (process.env.SSADESK_LOG) setTimeout(() => { const rs = s.rawStream; fs.appendFileSync(process.env.SSADESK_LOG, 'caminho da tela via ' + (rs ? rs.remoteHost + ':' + rs.remotePort : '?') + (relay ? ' (pedido pela retransmissão)' : ' (direto)') + '\n') }, 1000)
       resolve(s)
     })
   })
@@ -669,7 +687,7 @@ async function conectarComRetransmissao (remoto, ms = 30000) {
     return abrirSocket(remoto, r2, ms)
   }
 }
-// Confirma que o caminho P2P atÃ© o outro computador abriu de verdade (e jÃ¡ deixa o caminho "furado")
+// Confirma que o caminho P2P até o outro computador abriu de verdade (e já deixa o caminho "furado")
 async function abrirCaminhoP2P (chave, ms) {
   const s = await conectarComRetransmissao(Buffer.from(chave, 'hex'), ms)
   setTimeout(() => s.destroy(), 1500)
@@ -682,15 +700,15 @@ function testarTcp (host, porta, ms) {
     s.once('error', e => { clearTimeout(t); reject(e) })
   })
 }
-// Tenta todos os caminhos ao mesmo tempo (rede local, IPv6, tÃºnel P2P) e usa o primeiro que responder
+// Tenta todos os caminhos ao mesmo tempo (rede local, IPv6, túnel P2P) e usa o primeiro que responder
 async function melhorCaminho ({ chave, ips = [] }) {
   const tentativas = ips.map(ip => testarTcp(ip, 21118, 3500).then(() => ip.includes(':') ? '[' + ip + ']' : ip))
-  if (chave) tentativas.push((async () => { const porta = await tunelInterno(chave); if (!porta) throw new Error('tÃºnel'); await abrirCaminhoP2P(chave, 45000); return '127.0.0.1:' + porta })())
-  if (!tentativas.length) throw new Error('O outro computador nÃ£o liberou o controle da tela.')
-  try { return await Promise.any(tentativas) } catch { throw new Error('NÃ£o foi possÃ­vel alcanÃ§ar o outro computador por nenhum caminho.') }
+  if (chave) tentativas.push((async () => { const porta = await tunelInterno(chave); if (!porta) throw new Error('túnel'); await abrirCaminhoP2P(chave, 45000); return '127.0.0.1:' + porta })())
+  if (!tentativas.length) throw new Error('O outro computador não liberou o controle da tela.')
+  try { return await Promise.any(tentativas) } catch { throw new Error('Não foi possível alcançar o outro computador por nenhum caminho.') }
 }
 
-// ---------- Biblioteca de conexÃµes: computadores jÃ¡ acessados, com online/offline ----------
+// ---------- Biblioteca de conexões: computadores já acessados, com online/offline ----------
 function biblioteca () { return (loadPrefs().biblioteca || []).slice(0, 30) }
 function salvarNaBiblioteca (codigo, nome, extra) {
   const antigo = biblioteca().find(c => c.codigo === codigo) || {}
@@ -704,7 +722,7 @@ ipcMain.handle('biblioteca-remover', (_e, codigo) => { savePrefs({ ...loadPrefs(
 ipcMain.handle('biblioteca-online', async (_e, codigo) => (canal ? canal.online(codigo) : false))
 
 // ---------- Ligar um computador desligado (Wake-on-LAN), sem servidor ----------
-// O "pacote mÃ¡gico" precisa sair de dentro da mesma rede do computador desligado: ou daqui mesmo
+// O "pacote mágico" precisa sair de dentro da mesma rede do computador desligado: ou daqui mesmo
 // (se estou na mesma rede) ou de outro computador da lista que esteja ligado nessa rede.
 function enviarPacoteDespertar (mac) {
   const bytes = String(mac || '').split(/[-:]/).map(h => parseInt(h, 16))
@@ -722,14 +740,14 @@ function enviarPacoteDespertar (mac) {
 ipcMain.handle('biblioteca-acordar', (_e, codigo) => acordarComputador(codigo))
 async function acordarComputador (codigo) {
   const alvo = biblioteca().find(c => c.codigo === codigo)
-  if (!alvo || !alvo.mac) return { ok: false, msg: 'Este computador ainda nÃ£o informou o endereÃ§o da placa de rede. Conecte nele uma vez com ele ligado.' }
+  if (!alvo || !alvo.mac) return { ok: false, msg: 'Este computador ainda não informou o endereço da placa de rede. Conecte nele uma vez com ele ligado.' }
   const minha = readJson(path.join(DIR, 'rede.json')) || {}
   if (minha.ip_publico && alvo.ipPublico && minha.ip_publico === alvo.ipPublico) {
     enviarPacoteDespertar(alvo.mac)
-    return { ok: true, msg: 'Sinal enviado. Ele deve ligar em atÃ© 1 minuto.' }
+    return { ok: true, msg: 'Sinal enviado. Ele deve ligar em até 1 minuto.' }
   }
-  if (!canal) return { ok: false, msg: 'A rede P2P nÃ£o estÃ¡ pronta.' }
-  if (canal.conectado()) return { ok: false, msg: 'Encerre a conexÃ£o atual antes de ligar outro computador.' }
+  if (!canal) return { ok: false, msg: 'A rede P2P não está pronta.' }
+  if (canal.conectado()) return { ok: false, msg: 'Encerre a conexão atual antes de ligar outro computador.' }
   // Procura um vizinho ligado da mesma rede, entre os computadores da lista
   const vizinhos = biblioteca().filter(c => c.codigo !== codigo && c.ipPublico && c.ipPublico === alvo.ipPublico)
   for (const v of vizinhos) {
@@ -740,44 +758,44 @@ async function acordarComputador (codigo) {
         modoAcordar = { mac: alvo.mac, ok: () => { clearTimeout(t); resolve() } }
         canal.procurar({ codigo: v.codigo })
       })
-      return { ok: true, msg: 'Sinal enviado por ' + (v.nome || v.codigo) + '. Ele deve ligar em atÃ© 1 minuto.' }
+      return { ok: true, msg: 'Sinal enviado por ' + (v.nome || v.codigo) + '. Ele deve ligar em até 1 minuto.' }
     } catch {}
   }
-  return { ok: false, msg: 'Nenhum computador da mesma rede estÃ¡ ligado para enviar o sinal.' }
+  return { ok: false, msg: 'Nenhum computador da mesma rede está ligado para enviar o sinal.' }
 }
 
-// Conectar pelo cÃ³digo (9 dÃ­gitos), como no AnyDesk
+// Conectar pelo código (9 dígitos), como no AnyDesk
 async function conectarPorCodigo (codigo, modo = 'acesso') {
   const { soDigitos } = require('./canal')
   encerradoPeloUsuario = false
   modoPedido = modo
-  if (!canal) throw new Error('A rede P2P nÃ£o iniciou. Reabra o SSAdesk.')
-  if (soDigitos(codigo) === soDigitos(meuCodigo())) throw new Error('Este Ã© o cÃ³digo deste computador.')
+  if (!canal) throw new Error('A rede P2P não iniciou. Reabra o SSAdesk.')
+  if (soDigitos(codigo) === soDigitos(meuCodigo())) throw new Error('Este é o código deste computador.')
   if (canal.conectado()) { canal.encerrar(); await new Promise(r => setTimeout(r, 400)) }
-  avisarPainel('conectar-status', 'Procurando o computadorâ€¦')
-  // Em paralelo: procura na rede local (responde em milissegundos e nÃ£o depende da internet)
+  avisarPainel('conectar-status', 'Procurando o computador…')
+  // Em paralelo: procura na rede local (responde em milissegundos e não depende da internet)
   let naRede = null
-  const buscaLocal = lan ? lan.procurar(codigo, 3000).then(r => { naRede = r; if (r) avisarPainel('conectar-status', 'Encontrado na sua rede. Conectandoâ€¦'); return r }) : Promise.resolve(null)
+  const buscaLocal = lan ? lan.procurar(codigo, 3000).then(r => { naRede = r; if (r) avisarPainel('conectar-status', 'Encontrado na sua rede. Conectando…'); return r }) : Promise.resolve(null)
   let resposta
   try {
     resposta = await new Promise((resolve, reject) => {
-    // Achou na rede local: espera a sessÃ£o completa sÃ³ mais um pouco; senÃ£o abre a tela direto pela rede local
-    if (modo === 'acesso') buscaLocal.then(r => { if (r) setTimeout(() => { if (pendente) { pendente = null; canal.pararProcura(); reject(Object.assign(new Error('sÃ³ rede local'), { local: true })) } }, 8000) })
-    const t = setTimeout(() => { if (pendente) { pendente = null; canal.pararProcura(); reject(new Error('Computador nÃ£o encontrado. Ele estÃ¡ ligado, com internet e com o SSAdesk aberto?')) } }, 45000)
+    // Achou na rede local: espera a sessão completa só mais um pouco; senão abre a tela direto pela rede local
+    if (modo === 'acesso') buscaLocal.then(r => { if (r) setTimeout(() => { if (pendente) { pendente = null; canal.pararProcura(); reject(Object.assign(new Error('só rede local'), { local: true })) } }, 8000) })
+    const t = setTimeout(() => { if (pendente) { pendente = null; canal.pararProcura(); reject(new Error('Computador não encontrado. Ele está ligado, com internet e com o SSAdesk aberto?')) } }, 45000)
     pendente = { resolve: v => { clearTimeout(t); resolve(v) }, reject: e => { clearTimeout(t); reject(e) } }
     canal.procurar({ codigo })
-    canal.once('conectado', () => avisarPainel('conectar-status', modo === 'chamada' ? 'Chamandoâ€¦' : 'Aguardando permissÃ£oâ€¦'))
+    canal.once('conectado', () => avisarPainel('conectar-status', modo === 'chamada' ? 'Chamando…' : 'Aguardando permissão…'))
   })
   } catch (e) {
     if (!(e.local && naRede)) throw e
-    // Sem sessÃ£o pela internet, mas o computador estÃ¡ na mesma rede: acesso Ã  tela direto (a senha Ã© exigida)
+    // Sem sessão pela internet, mas o computador está na mesma rede: acesso à tela direto (a senha é exigida)
     ultimoDestino = naRede.ip
     if (!process.env.SSADESK_CODIGO_TESTE) abrirRustDesk(naRede.ip)
     salvarNaBiblioteca(soDigitos(codigo), naRede.nome || '', null)
     return naRede.nome || soDigitos(codigo)
   }
   sessao.codigo = soDigitos(codigo)
-  if (modo === 'chamada') { // sÃ³ chamada: abre a janela da chamada nos dois lados, sem tela remota
+  if (modo === 'chamada') { // só chamada: abre a janela da chamada nos dois lados, sem tela remota
     sessao.tipo = 'chamada'
     salvarNaBiblioteca(sessao.codigo, sessao.nome, sessao.remoto)
     estadoChamada = { fase: 'conectado', nome: sessao.nome }; abrirChamada({ nome: sessao.nome }); enviarEstadoChamada()
@@ -786,9 +804,9 @@ async function conectarPorCodigo (codigo, modo = 'acesso') {
   }
   return concluirAcesso(resposta, naRede)
 }
-// Com a permissÃ£o dada: escolhe o caminho mais rÃ¡pido e abre a tela remota
+// Com a permissão dada: escolhe o caminho mais rápido e abre a tela remota
 async function concluirAcesso (resposta, naRede) {
-  avisarPainel('conectar-status', 'Escolhendo o caminho mais rÃ¡pidoâ€¦')
+  avisarPainel('conectar-status', 'Escolhendo o caminho mais rápido…')
   sessao.tipo = 'acesso'
   if (naRede) resposta = { ...resposta, ips: [naRede.ip, ...(resposta.ips || [])] } // rede local primeiro
   const destino = await melhorCaminho(resposta)
@@ -803,8 +821,8 @@ async function concluirAcesso (resposta, naRede) {
 ipcMain.on('chamada-midia', (_e, tipo, dados) => { if (canal) canal.midia(tipo, Buffer.from(dados)) })
 ipcMain.on('chamada-controle', (_e, obj) => { if (canal && obj && typeof obj === 'object') canal.controle(obj) })
 
-// ---------- Chat de texto (janela prÃ³pria, flutuante e redimensionÃ¡vel) ----------
-// A conversa fica aqui no processo principal: guardar a janela nÃ£o apaga nada.
+// ---------- Chat de texto (janela própria, flutuante e redimensionável) ----------
+// A conversa fica aqui no processo principal: guardar a janela não apaga nada.
 const mensagens = []
 let chatWin = null
 const chatVisivel = () => !!(chatWin && !chatWin.isDestroyed() && chatWin.isVisible() && !chatWin.isMinimized())
@@ -819,7 +837,7 @@ function abrirChatJanela () {
   const y = ref ? Math.max(area.y, ref.y + ref.height - H) : area.y + area.height - H - 24
   chatWin = foraDaCaptura(new BrowserWindow({
     width: W, height: H, minWidth: 240, minHeight: 260, x, y,
-    alwaysOnTop: true, show: false, title: 'SSAdesk â€” Mensagens', backgroundColor: '#00000000',
+    alwaysOnTop: true, show: false, title: 'SSAdesk — Mensagens', backgroundColor: '#00000000',
     icon: path.join(__dirname, 'assets', 'icon.png'),
     ...(isWin ? { titleBarStyle: 'hidden', backgroundMaterial: 'acrylic' } : {}),
     ...(isMac ? { titleBarStyle: 'hiddenInset', vibrancy: 'hud', visualEffectState: 'active' } : {}),
@@ -828,7 +846,7 @@ function abrirChatJanela () {
   chatWin.setAlwaysOnTop(true, 'floating')
   chatWin.loadFile(path.join(__dirname, 'src', 'chat.html'))
   chatWin.once('ready-to-show', () => { chatWin.show(); avisarVisibilidade() })
-  // Fechar = guardar (esconde, mantÃ©m a conversa)
+  // Fechar = guardar (esconde, mantém a conversa)
   chatWin.on('close', e => { if (callWin && !callWin.isDestroyed()) { e.preventDefault(); chatWin.hide(); avisarVisibilidade() } })
   for (const ev of ['show', 'hide', 'minimize', 'restore']) chatWin.on(ev, avisarVisibilidade)
 }
@@ -839,7 +857,7 @@ function registrar (texto, quem) {
   if (chatWin && !chatWin.isDestroyed()) chatWin.webContents.send('chat-msg', m)
   return m
 }
-// Recebida do outro lado (a Fase 6 chama esta funÃ§Ã£o quando chega pelo tÃºnel P2P)
+// Recebida do outro lado (a Fase 6 chama esta função quando chega pelo túnel P2P)
 function receberMensagem (texto) {
   if (!String(texto || '').trim()) return
   registrar(texto, 'outro')
@@ -850,7 +868,7 @@ ipcMain.handle('chat-historico', () => mensagens)
 ipcMain.on('chat-enviar', (_e, texto) => {
   if (!String(texto || '').trim()) return
   registrar(texto, 'eu')
-  // Envia ao outro computador pelo canal P2P. Modo demonstraÃ§Ã£o: responde sozinho para testar.
+  // Envia ao outro computador pelo canal P2P. Modo demonstração: responde sozinho para testar.
   if (process.env.SSADESK_DEMO) setTimeout(() => receberMensagem('Recebi: ' + texto), 1400)
   else if (canal) canal.controle({ t: 'chat', texto: String(texto).slice(0, 2000) })
 })
@@ -866,7 +884,7 @@ ipcMain.on('janela-chamada', (_e, acao) => {
   if (acao === 'tela-cheia') callWin.setFullScreen(!callWin.isFullScreen())
 })
 
-// PrÃ©-visualizaÃ§Ã£o (usada no build para validar o visual): salva PNG e fecha
+// Pré-visualização (usada no build para validar o visual): salva PNG e fecha
 async function snapshot (w) {
   if (process.env.SSADESK_THEME) nativeTheme.themeSource = process.env.SSADESK_THEME
   w.setOpacity(0); w.show()
@@ -876,16 +894,16 @@ async function snapshot (w) {
   app.quit()
 }
 
-// ---------- InformaÃ§Ãµes deste computador ----------
+// ---------- Informações deste computador ----------
 ipcMain.handle('info', () => {
   const rede = readJson(path.join(DIR, 'rede.json'))
   const chave = readText(path.join(DIR, 'chave-internet.txt'))
   let status = { tipo: 'desconhecido', texto: 'Verificando rede' }
-  if (MODO === 'app' && (!canal || erroRede)) status = { tipo: 'erro', texto: 'Problema na rede do SSAdesk â€” reabra o app' }
+  if (MODO === 'app' && (!canal || erroRede)) status = { tipo: 'erro', texto: 'Problema na rede do SSAdesk — reabra o app' }
   else if (rede) {
-    if (rede.internet_ipv6 || rede.internet_ipv4) status = { tipo: 'ok', texto: 'DisponÃ­vel pela internet' }
-    else if (chave) status = { tipo: 'ok', texto: 'DisponÃ­vel pela internet' }
-    else status = { tipo: 'local', texto: 'DisponÃ­vel na rede local' }
+    if (rede.internet_ipv6 || rede.internet_ipv4) status = { tipo: 'ok', texto: 'Disponível pela internet' }
+    else if (chave) status = { tipo: 'ok', texto: 'Disponível pela internet' }
+    else status = { tipo: 'local', texto: 'Disponível na rede local' }
   }
   return {
     codigo: readText(path.join(DIR, 'codigo.txt')),
@@ -915,7 +933,7 @@ ipcMain.on('janela', (_e, acao) => {
 // ---------- Conectar ----------
 function rustdeskPath () {
   if (isMac) return '/Applications/RustDesk.app/Contents/MacOS/RustDesk'
-  // Motor prÃ³prio na raiz da instalaÃ§Ã£o; versÃµes antigas tinham o RustDesk numa subpasta
+  // Motor próprio na raiz da instalação; versões antigas tinham o RustDesk numa subpasta
   for (const p of [path.join(DIR, 'SSAdesk.exe'), path.join(DIR, 'RustDesk', 'rustdesk.exe')]) if (fs.existsSync(p)) return p
   return null
 }
@@ -951,7 +969,7 @@ function apelidoNoMotor (destino, nome) {
 function abrirRustDesk (destino) {
   apelidoNoMotor(destino, sessao.nome)
   const exe = rustdeskPath()
-  if (!exe || !fs.existsSync(exe)) throw new Error('SSAdesk nÃ£o estÃ¡ instalado corretamente.')
+  if (!exe || !fs.existsSync(exe)) throw new Error('SSAdesk não está instalado corretamente.')
   const args = ['--connect', destino]
   if (sessao.senha) args.push('--password', sessao.senha) // entregue pelo outro lado após o Permitir
   spawn(exe, args, { detached: true, stdio: 'ignore' }).unref()
@@ -959,14 +977,14 @@ function abrirRustDesk (destino) {
 
 ipcMain.handle('ligar', async (_e, bruto) => {
   const codigo = String(bruto || '').replace(/\D/g, '')
-  if (!/^\d{6,12}$/.test(codigo)) return { ok: false, msg: 'Digite o cÃ³digo do outro computador.' }
+  if (!/^\d{6,12}$/.test(codigo)) return { ok: false, msg: 'Digite o código do outro computador.' }
   try { const nome = await conectarPorCodigo(codigo, 'chamada'); return { ok: true, msg: 'Em chamada com ' + (nome || codigo) + '.' } } catch (e) { return { ok: false, msg: e.message } }
 })
-// Dentro de uma chamada: pede o acesso Ã  tela do outro computador (atalho)
+// Dentro de uma chamada: pede o acesso à tela do outro computador (atalho)
 ipcMain.handle('chamada-acessar', async () => {
-  if (!(canal && canal.conectado() && sessao.ativa)) return { ok: false, msg: 'A chamada nÃ£o estÃ¡ ativa.' }
+  if (!(canal && canal.conectado() && sessao.ativa)) return { ok: false, msg: 'A chamada não está ativa.' }
   if (sessao.tipo === 'acesso') { if (ultimoDestino) abrirRustDesk(ultimoDestino); return { ok: true } }
-  if (sessao.papel !== 'acessando') return { ok: false, msg: 'SÃ³ quem ligou pode pedir o acesso por aqui.' }
+  if (sessao.papel !== 'acessando') return { ok: false, msg: 'Só quem ligou pode pedir o acesso por aqui.' }
   try {
     modoPedido = 'acesso'
     const resposta = await new Promise((resolve, reject) => {
@@ -981,15 +999,15 @@ ipcMain.handle('chamada-acessar', async () => {
 })
 ipcMain.handle('conectar', async (_e, destinoBruto) => {
   const destino = String(destinoBruto || '').replace(/\s/g, '')
-  if (!destino) return { ok: false, msg: 'Digite o cÃ³digo do outro computador.' }
+  if (!destino) return { ok: false, msg: 'Digite o código do outro computador.' }
   try {
-    // CÃ³digo do computador (sÃ³ nÃºmeros), como no AnyDesk
+    // Código do computador (só números), como no AnyDesk
     if (/^\d{6,12}$/.test(destino)) {
       const nome = await conectarPorCodigo(destino)
-      return { ok: true, msg: 'Conectado a ' + (nome || destino) + '. Digite a senha dele.' }
+      return { ok: true, msg: 'Conectado a ' + (nome || destino) + (sessao.senha ? '.' : '. Digite a senha dele.') }
     }
     if (/^[0-9a-fA-F]{64}$/.test(destino)) {
-      // Qualquer rede: tÃºnel P2P. PreferÃªncia: dentro do prÃ³prio app, com a rede P2P jÃ¡ aquecida (bem mais rÃ¡pido).
+      // Qualquer rede: túnel P2P. Preferência: dentro do próprio app, com a rede P2P já aquecida (bem mais rápido).
       const rapido = await tunelInterno(destino.toLowerCase())
       if (rapido) {
         abrirRustDesk('127.0.0.1:' + rapido)
@@ -1004,16 +1022,16 @@ ipcMain.handle('conectar', async (_e, destinoBruto) => {
       } else {
         spawn('/bin/bash', [path.join(DIR, 'conectar.sh'), destino.toLowerCase(), String(port)], { detached: true, stdio: 'ignore' }).unref()
       }
-      if (!(await waitPort(port, 20000))) return { ok: false, msg: 'NÃ£o foi possÃ­vel abrir o tÃºnel.' }
+      if (!(await waitPort(port, 20000))) return { ok: false, msg: 'Não foi possível abrir o túnel.' }
       abrirRustDesk('127.0.0.1:' + port)
-      savePrefs({ ...loadPrefs(), ultimaChave: destino.toLowerCase() }) // a chamada de vÃ­deo usa esta chave
+      savePrefs({ ...loadPrefs(), ultimaChave: destino.toLowerCase() }) // a chamada de vídeo usa esta chave
       return { ok: true, msg: 'Conectando. A primeira vez leva alguns segundos.' }
     }
     if (/^[0-9a-zA-Z.:\-[\]%]+$/.test(destino)) {
       abrirRustDesk(destino)
       return { ok: true, msg: 'Conectando.' }
     }
-    return { ok: false, msg: 'CÃ³digo invÃ¡lido. Ele tem 9 nÃºmeros.' }
+    return { ok: false, msg: 'Código inválido. Ele tem 9 números.' }
   } catch (e) {
     return { ok: false, msg: e.message }
   }
@@ -1021,7 +1039,7 @@ ipcMain.handle('conectar', async (_e, destinoBruto) => {
 
 ipcMain.on('abrir-pasta', () => shell.openPath(DIR))
 
-// ---------- InstalaÃ§Ã£o / desinstalaÃ§Ã£o (telas glass) ----------
+// ---------- Instalação / desinstalação (telas glass) ----------
 ipcMain.handle('setup-info', () => ({
   modo: MODO,
   versao: app.getVersion(),
@@ -1039,7 +1057,7 @@ ipcMain.handle('setup-pasta', async (_e, atual) => {
 
 let instalado = null
 ipcMain.handle('setup-instalar', async (_e, { destino, senha }) => {
-  if (!motor || !PAYLOAD) return { ok: false, msg: 'Pacote de instalaÃ§Ã£o nÃ£o encontrado.' }
+  if (!motor || !PAYLOAD) return { ok: false, msg: 'Pacote de instalação não encontrado.' }
   try {
     await esperarPacote()
     instalado = await motor.instalar({ payload: PAYLOAD, destino, senha, versao: app.getVersion() },
@@ -1052,7 +1070,7 @@ ipcMain.handle('setup-instalar', async (_e, { destino, senha }) => {
 
 ipcMain.handle('setup-abrir', () => {
   if (instalado && fs.existsSync(instalado.exe)) {
-    // Abre como usuÃ¡rio normal (o instalador roda como administrador)
+    // Abre como usuário normal (o instalador roda como administrador)
     spawn('explorer.exe', [instalado.exe], { detached: true, stdio: 'ignore' }).unref()
   }
   setTimeout(() => app.quit(), 300)
@@ -1063,18 +1081,19 @@ ipcMain.handle('setup-desinstalar', async () => {
   return true
 })
 
-// CÃ¢mera e microfone: liberados sÃ³ para as pÃ¡ginas do prÃ³prio app
+// Câmera e microfone: liberados só para as páginas do próprio app
 if (process.env.SSADESK_SNAPSHOT || process.env.SSADESK_FAKE) app.commandLine.appendSwitch('use-fake-device-for-media-stream')
-// Desempenho: sem processo reserva do Chromium e sem recursos de mÃ­dia do sistema que o app nÃ£o usa
+// Desempenho: sem processo reserva do Chromium e sem recursos de mídia do sistema que o app não usa
 app.commandLine.appendSwitch('disable-features', 'SpareRendererForSitePerProcess,HardwareMediaKeyHandling,MediaSessionService,Translate,AutofillServerCommunication')
 // A voz do outro lado toca sem precisar de clique
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
 app.whenReady().then(() => {
+  if (MODO === 'app') padroesDoMotor()
   const { session } = require('electron')
   const proprio = url => String(url || '').startsWith('file://')
   session.defaultSession.setPermissionRequestHandler((wc, perm, cb) => cb(['media', 'display-capture', 'clipboard-sanitized-write'].includes(perm) && proprio(wc.getURL())))
   session.defaultSession.setPermissionCheckHandler((wc, perm) => ['media', 'display-capture'].includes(perm) && proprio(wc && wc.getURL()))
-  // Transmitir a tela: usa a tela principal (sem diÃ¡logo extra), sÃ³ para as pÃ¡ginas do prÃ³prio app
+  // Transmitir a tela: usa a tela principal (sem diálogo extra), só para as páginas do próprio app
   session.defaultSession.setDisplayMediaRequestHandler((req, cb) => {
     if (!proprio(req.frame && req.frame.url)) return cb({})
     require('electron').desktopCapturer.getSources({ types: ['screen'] }).then(s => cb(s.length ? { video: s[0] } : {})).catch(() => cb({}))
@@ -1088,7 +1107,7 @@ app.whenReady().then(() => {
       .then(async n => {
         fs.writeFileSync(process.env.SSADESK_LOG, 'conectado: ' + n + ' via ' + ultimoDestino + '\n', { flag: 'a' })
         if (process.env.SSADESK_TELA_TESTE) ipcMain.emit('abrir-chamada', null, { tela: true })
-        if (process.env.SSADESK_LOUSA_TESTE) { // desenha um cÃ­rculo e um traÃ§o, como se fosse a pessoa
+        if (process.env.SSADESK_LOUSA_TESTE) { // desenha um círculo e um traço, como se fosse a pessoa
           const pts = []; for (let a = 0; a <= 64; a++) pts.push([0.5 + 0.12 * Math.cos(a / 64 * 2 * Math.PI), 0.5 + 0.2 * Math.sin(a / 64 * 2 * Math.PI)])
           canal.controle({ t: 'lousa', d: { acao: 'inicio', id: 'c1', cor: '#ff3b30', larg: 6, alfa: 1, pts } })
           canal.controle({ t: 'lousa', d: { acao: 'inicio', id: 'm1', cor: '#ffd60a', larg: 22, alfa: 0.35, pts: [[0.3, 0.8], [0.7, 0.8]] } })
@@ -1100,7 +1119,7 @@ app.whenReady().then(() => {
       })
       .catch(e => {
         fs.writeFileSync(process.env.SSADESK_LOG, 'erro: ' + e.message + '\n', { flag: 'a' })
-        // A sessÃ£o P2P pode estar ativa mesmo sem caminho atÃ© a tela (teste da lousa nÃ£o depende disso)
+        // A sessão P2P pode estar ativa mesmo sem caminho até a tela (teste da lousa não depende disso)
         if (process.env.SSADESK_LOUSA_TESTE && canal.conectado()) {
           const pts = []; for (let a = 0; a <= 64; a++) pts.push([0.5 + 0.12 * Math.cos(a / 64 * 2 * Math.PI), 0.5 + 0.2 * Math.sin(a / 64 * 2 * Math.PI)])
           canal.controle({ t: 'lousa', d: { acao: 'inicio', id: 'c1', cor: '#ff3b30', larg: 6, alfa: 1, pts } })
@@ -1119,7 +1138,7 @@ app.whenReady().then(() => {
   if (!SEGUNDO_PLANO) createWindow()
 })
 
-// ---------- Ãcone perto do relÃ³gio (o SSAdesk continua disponÃ­vel para chamadas) ----------
+// ---------- Ícone perto do relógio (o SSAdesk continua disponível para chamadas) ----------
 let bandeja = null
 function mostrarPainel () {
   if (win && !win.isDestroyed()) { clearTimeout(win._liberar); win.show(); win.focus(); win.webContents.send('painel-visivel') } else createWindow()
@@ -1128,10 +1147,10 @@ function criarBandeja () {
   if (bandeja || process.env.SSADESK_SNAPSHOT) return
   const { Tray, Menu, nativeImage } = require('electron')
   bandeja = new Tray(nativeImage.createFromPath(path.join(__dirname, 'assets', isWin ? 'icon.ico' : 'icon.png')).resize({ width: 16, height: 16 }))
-  bandeja.setToolTip('SSAdesk â€” disponÃ­vel')
+  bandeja.setToolTip('SSAdesk — disponível')
   bandeja.setContextMenu(Menu.buildFromTemplate([
     { label: 'Abrir SSAdesk', click: mostrarPainel },
-    { label: 'Chamada de vÃ­deo', click: () => ipcMain.emit('abrir-chamada') },
+    { label: 'Chamada de vídeo', click: () => ipcMain.emit('abrir-chamada') },
     { type: 'separator' },
     { label: 'Sair do SSAdesk', click: () => { app.saindo = true; app.exit(0) } }
   ]))
@@ -1142,11 +1161,11 @@ app.on('second-instance', (_e, argv) => {
   const lista = arquivosDaLinha(argv)
   if (lista.length) enviarArquivos(lista); else mostrarPainel()
 })
-// Fechar o painel nÃ£o encerra o app: ele segue no Ã­cone perto do relÃ³gio para receber chamadas
+// Fechar o painel não encerra o app: ele segue no ícone perto do relógio para receber chamadas
 app.on('window-all-closed', () => { if (MODO !== 'app' || !bandeja) app.quit() })
 app.on('before-quit', () => { if (canal) canal.destruir() })
 
-// Teste: abre o painel â“˜ e salva uma foto dele (SSADESK_FOTO_INFO=caminho.png)
+// Teste: abre o painel ⓘ e salva uma foto dele (SSADESK_FOTO_INFO=caminho.png)
 if (process.env.SSADESK_FOTO_INFO) app.whenReady().then(() => setTimeout(() => {
   abrirInfo()
   setTimeout(async () => { try { fs.writeFileSync(process.env.SSADESK_FOTO_INFO, (await infoWin.webContents.capturePage()).toPNG()) } catch {} app.exit(0) }, 6000)

@@ -1,4 +1,4 @@
-﻿// Usado pelo build.ps1: confirma que os mÃ³dulos de rede do app carregam dentro do pacote final
+﻿// Usado pelo build.ps1: confirma que os módulos de rede do app carregam dentro do pacote final
 const path = require('path')
 const pasta = process.argv[2]
 try {
