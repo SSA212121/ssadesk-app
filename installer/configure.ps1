@@ -111,6 +111,9 @@ Set-Motor "--option", "approve-mode", "password"
 # Copiar e colar arquivos (Ctrl+C / Ctrl+V) entre os computadores; sem ícone extra do motor (o app já tem o seu)
 Set-Motor "--option", "enable-file-copy-paste", "Y"
 Set-Motor "--option", "hide-tray", "Y"
+# Sem a janelinha de conexão do motor no computador acessado (o SSAdesk já mostra a sua barrinha).
+# O motor só permite isso com acesso exclusivo por senha fixa, que é o nosso caso.
+Set-Motor "--option", "allow-hide-cm", "Y"
 Set-Motor "--password", $password
 $password = $null
 

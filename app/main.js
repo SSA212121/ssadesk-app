@@ -49,6 +49,8 @@ function readJson (p) { try { return JSON.parse(readText(p)) } catch { return nu
 function loadPrefs () { return readJson(prefsFile()) || { tema: 'system' } }
 function savePrefs (p) { fs.mkdirSync(path.dirname(prefsFile()), { recursive: true }); fs.writeFileSync(prefsFile(), JSON.stringify(p)) }
 
+// Janelas flutuantes do SSAdesk ficam fora da captura de tela: quem acessa não as vê repetidas dentro da tela remota
+function foraDaCaptura (w) { try { if (isWin || isMac) w.setContentProtection(true) } catch {} return w }
 let win
 function createWindow () {
   const prefs = loadPrefs()
@@ -99,7 +101,7 @@ function abrirChamada (dados = {}) {
   // Janela pequena, flutuante e sempre no topo (canto inferior direito), redimensionável à vontade
   const area = require('electron').screen.getPrimaryDisplay().workArea
   const W = 360; const H = 270
-  callWin = new BrowserWindow({
+  callWin = foraDaCaptura(new BrowserWindow({
     width: W, height: H, minWidth: 200, minHeight: 150,
     x: area.x + area.width - W - 24, y: area.y + area.height - H - 24,
     alwaysOnTop: true, skipTaskbar: false,
@@ -108,7 +110,7 @@ function abrirChamada (dados = {}) {
     ...(isWin ? { titleBarStyle: 'hidden', roundedCorners: true } : {}),
     ...(isMac ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 16, y: 16 } } : {}),
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, spellcheck: false }
-  })
+  }))
   callWin.loadFile(path.join(__dirname, 'src', 'chamada.html'), { query: { platform: process.platform, nome: dados.nome || '', demo: process.env.SSADESK_DEMO ? '1' : '', autoteste: process.env.SSADESK_AUTOTESTE ? '1' : '', tela: dados.tela ? '1' : '' } })
   callWin.once('ready-to-show', () => {
     if (process.env.SSADESK_SNAPSHOT && process.env.SSADESK_CALL) return snapshot(callWin)
@@ -334,7 +336,7 @@ function iniciarCanal () {
       case 'lousa': // anotações do outro lado (a lousa abre sozinha aqui para mostrar)
         if (process.env.SSADESK_LOG) fs.appendFileSync(process.env.SSADESK_LOG, 'lousa recebida: ' + (msg.d && msg.d.acao) + '\n')
         if (sessao.permissoes.controlar === false) { if (process.env.SSADESK_LOG) fs.appendFileSync(process.env.SSADESK_LOG, 'lousa bloqueada pela permissão\n'); break }
-        abrirLousa(); if (lousaWin && !lousaWin.isDestroyed()) { if (lousaPronta) lousaWin.webContents.send('lousa-remoto', msg.d); else lousaFila.push(msg.d) }
+        abrirLousa(true); if (lousaWin && !lousaWin.isDestroyed()) { if (lousaPronta) lousaWin.webContents.send('lousa-remoto', msg.d); else lousaFila.push(msg.d) }
         break
       // Painel ⓘ: latência (ida e volta pelo canal) e informações do outro computador
       case 'ping': canal.controle({ t: 'pong', em: msg.em }); break
@@ -401,13 +403,13 @@ function mostrarPedido (dados) {
     const tempo = chamada ? setTimeout(() => responder({ permitir: false }), 40000)
       : aj.receber === 'auto' ? setTimeout(() => responder({ permitir: true, permissoes: aj.permissoes }), 15000) : null
     pedidoAtual = { dados: { ...dados, segundos: !chamada && aj.receber === 'auto' ? 15 : 0, permissoes: aj.permissoes }, responder, adiar: () => clearTimeout(tempo) }
-    pedidoWin = new BrowserWindow({
+    pedidoWin = foraDaCaptura(new BrowserWindow({
       width: 380, height: 420, resizable: false, maximizable: false, minimizable: false, alwaysOnTop: true, show: false,
       title: 'SSAdesk', backgroundColor: '#00000000', icon: path.join(__dirname, 'assets', 'icon.png'),
       ...(isWin ? { titleBarStyle: 'hidden', backgroundMaterial: 'acrylic' } : {}),
       ...(isMac ? { titleBarStyle: 'hiddenInset', vibrancy: 'hud', visualEffectState: 'active' } : {}),
       webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, spellcheck: false }
-    })
+    }))
     pedidoWin.setAlwaysOnTop(true, 'screen-saver')
     pedidoWin.loadFile(path.join(__dirname, 'src', 'pedido.html'), { query: { platform: process.platform } })
     pedidoWin.once('ready-to-show', () => { pedidoWin.show(); pedidoWin.flashFrame(true) })
@@ -425,12 +427,12 @@ function abrirBarra () {
   if (barraWin && !barraWin.isDestroyed()) { barraWin.showInactive(); barraWin.webContents.send('barra-sessao', { nome: sessao.nome }); return }
   const area = require('electron').screen.getPrimaryDisplay().workArea
   const W = 544; const H = 64
-  barraWin = new BrowserWindow({
+  barraWin = foraDaCaptura(new BrowserWindow({
     width: W, height: H, x: Math.round(area.x + (area.width - W) / 2), y: area.y + 12,
     frame: false, transparent: true, resizable: false, maximizable: false, minimizable: false, skipTaskbar: true,
     alwaysOnTop: true, show: false, title: 'SSAdesk', hasShadow: false,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, spellcheck: false }
-  })
+  }))
   barraWin.setAlwaysOnTop(true, 'floating')
   barraWin.loadFile(path.join(__dirname, 'src', 'sessao.html'), { query: { nome: sessao.nome || '', papel: sessao.papel || '' } })
   barraWin.once('ready-to-show', () => barraWin.showInactive())
@@ -508,12 +510,12 @@ function abrirInfo () {
   if (infoWin && !infoWin.isDestroyed()) { infoWin.close(); return } // o botão alterna
   const area = require('electron').screen.getPrimaryDisplay().workArea
   const W = 320; const H = 452
-  infoWin = new BrowserWindow({
+  infoWin = foraDaCaptura(new BrowserWindow({
     width: W, height: H, x: area.x + area.width - W - 14, y: area.y + 14,
     frame: false, transparent: true, resizable: false, maximizable: false, minimizable: false, skipTaskbar: true,
     alwaysOnTop: true, show: false, title: 'Informações da conexão', hasShadow: false,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, spellcheck: false }
-  })
+  }))
   infoWin.setAlwaysOnTop(true, 'floating')
   infoWin.loadFile(path.join(__dirname, 'src', 'info.html'))
   infoWin.once('ready-to-show', () => infoWin.show())
@@ -554,17 +556,28 @@ function arquivosDaLinha (argv) {
 
 // ---------- Lousa digital (Modo My): camada transparente sobre a tela inteira, nos dois computadores ----------
 let lousaWin = null; let lousaPronta = false; const lousaFila = []
-function abrirLousa () {
+function abrirLousa (pelaOutraPonta = false) {
   if (lousaWin && !lousaWin.isDestroyed()) { lousaWin.showInactive(); return }
-  const d = require('electron').screen.getPrimaryDisplay().bounds
+  const scr = require('electron').screen
+  const d = scr.getPrimaryDisplay().bounds
   lousaPronta = false
   if (process.env.SSADESK_LOG) fs.appendFileSync(process.env.SSADESK_LOG, 'abrindo lousa\n')
-  lousaWin = new BrowserWindow({
+  lousaWin = foraDaCaptura(new BrowserWindow({
     x: d.x, y: d.y, width: d.width, height: d.height, frame: false, transparent: true, resizable: false, movable: false,
     skipTaskbar: true, alwaysOnTop: true, hasShadow: false, show: false, title: 'SSAdesk — Lousa', fullscreenable: false,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, spellcheck: false }
-  })
+  }))
   lousaWin.setAlwaysOnTop(true, 'screen-saver')
+  if (sessao.papel === 'acessando' && sessao.tipo === 'acesso') {
+    const lw = lousaWin
+    lw.pararAcompanhar = require('./janela-remota').acompanharJanelaRemota(r => {
+      if (lw.isDestroyed()) return
+      if (!r) { lw.hide(); return } // tela remota minimizada ou fechada: a lousa some junto
+      const b = isWin ? scr.screenToDipRect(null, r) : r
+      lw.setBounds({ x: Math.round(b.x), y: Math.round(b.y), width: Math.round(b.width), height: Math.round(b.height) })
+      if (!lw.isVisible() && lousaPronta) lw.showInactive()
+    })
+  }
   if (process.env.SSADESK_LOG) {
     const reg = s => fs.appendFileSync(process.env.SSADESK_LOG, s + '\n')
     lousaWin.webContents.on('did-fail-load', (_e, c, d) => reg('lousa falhou ao carregar: ' + c + ' ' + d))
@@ -572,7 +585,7 @@ function abrirLousa () {
     lousaWin.webContents.on('render-process-gone', (_e, d) => reg('lousa caiu: ' + d.reason))
     lousaWin.webContents.on('dom-ready', () => reg('lousa dom pronto'))
   }
-  lousaWin.loadFile(path.join(__dirname, 'src', 'lousa.html'))
+  lousaWin.loadFile(path.join(__dirname, 'src', 'lousa.html'), { query: { mouse: pelaOutraPonta ? '1' : '' } })
   lousaWin.webContents.once('dom-ready', () => {
     lousaPronta = true; while (lousaFila.length) lousaWin.webContents.send('lousa-remoto', lousaFila.shift())
     if (process.env.SSADESK_FOTO_LOUSA) setTimeout(async () => {
@@ -582,7 +595,8 @@ function abrirLousa () {
   lousaWin.once('ready-to-show', () => {
     lousaWin.show()
   })
-  lousaWin.on('closed', () => { lousaWin = null; lousaFila.length = 0 })
+  const essa = lousaWin
+  lousaWin.on('closed', () => { if (essa.pararAcompanhar) essa.pararAcompanhar(); lousaWin = null; lousaFila.length = 0 })
 }
 ipcMain.on('lousa-enviar', (_e, d) => { if (canal && canal.conectado() && d && typeof d === 'object') canal.controle({ t: 'lousa', d }) })
 ipcMain.on('lousa-atravessar', (_e, sim) => { if (lousaWin && !lousaWin.isDestroyed()) lousaWin.setIgnoreMouseEvents(!!sim, { forward: true }) })
@@ -790,14 +804,14 @@ function abrirChatJanela () {
   const area = require('electron').screen.getPrimaryDisplay().workArea
   const x = ref ? Math.max(area.x, ref.x - W - 12) : area.x + area.width - W - 24
   const y = ref ? Math.max(area.y, ref.y + ref.height - H) : area.y + area.height - H - 24
-  chatWin = new BrowserWindow({
+  chatWin = foraDaCaptura(new BrowserWindow({
     width: W, height: H, minWidth: 240, minHeight: 260, x, y,
     alwaysOnTop: true, show: false, title: 'SSAdesk — Mensagens', backgroundColor: '#00000000',
     icon: path.join(__dirname, 'assets', 'icon.png'),
     ...(isWin ? { titleBarStyle: 'hidden', backgroundMaterial: 'acrylic' } : {}),
     ...(isMac ? { titleBarStyle: 'hiddenInset', vibrancy: 'hud', visualEffectState: 'active' } : {}),
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, spellcheck: false }
-  })
+  }))
   chatWin.setAlwaysOnTop(true, 'floating')
   chatWin.loadFile(path.join(__dirname, 'src', 'chat.html'))
   chatWin.once('ready-to-show', () => { chatWin.show(); avisarVisibilidade() })

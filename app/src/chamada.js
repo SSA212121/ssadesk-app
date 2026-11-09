@@ -206,8 +206,9 @@ function aplicarEstado (s) {
     informarEstado(); window.ssadeskMidia.pedirQuadroChave()
     if (params.get('autoteste') === '1' && !aplicarEstado.testado) { aplicarEstado.testado = true; setTimeout(() => { $('cam').click(); $('mic').click() }, 1500) }
     if (!inicio) { inicio = Date.now(); relogio = setInterval(() => { const s = Math.floor((Date.now() - inicio) / 1000); $('tempo').textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') }, 1000) }
+    clearTimeout(aplicarEstado.fechar) // voltou a conectar: não fecha
   } else {
-    if (s.fase === 'encerrada') { clearInterval(relogio); inicio = 0; $('tempo').textContent = ''; remotoCam = false; window.ssadeskMidia.pararRecebimento(); mostrarPlaceholder() }
+    if (s.fase === 'encerrada') { clearInterval(relogio); inicio = 0; $('tempo').textContent = ''; remotoCam = false; window.ssadeskMidia.pararRecebimento(); mostrarPlaceholder(); clearTimeout(aplicarEstado.fechar); aplicarEstado.fechar = setTimeout(() => api.chamada.janela('fechar'), 2500) }
   }
 }
 api.chamada.onEstado(aplicarEstado)

@@ -11,7 +11,7 @@ body.desenhar canvas { cursor: crosshair; }
 body::after { content: ""; position: fixed; inset: 0; border: 3px solid rgba(10, 132, 255, .55); border-radius: 2px; pointer-events: none; transition: opacity .3s; }
 body:not(.desenhar)::after { opacity: .35; }
 
-.ferramentas { position: fixed; top: 14px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 4px; padding: 6px 8px;
+.ferramentas { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 4px; padding: 6px 8px;
   border-radius: 999px; background: rgba(28, 28, 30, .8); backdrop-filter: blur(30px) saturate(180%); border: .5px solid rgba(255, 255, 255, .14);
   box-shadow: 0 10px 30px rgba(0, 0, 0, .3); color: #fff; animation: entra .45s var(--spring); }
 @keyframes entra { from { opacity: 0; transform: translate(-50%, -12px) scale(.96); } }
@@ -29,7 +29,7 @@ body:not(.desenhar)::after { opacity: .35; }
 .txt:hover { background: rgba(255, 255, 255, .2); }
 .f:focus-visible, .cor:focus-visible, .txt:focus-visible { outline: 0; box-shadow: 0 0 0 3px rgba(10, 132, 255, .7); }
 
-.aviso { position: fixed; top: 70px; left: 50%; transform: translate(-50%, -6px); opacity: 0; padding: 7px 14px; border-radius: 999px; color: #fff; font-size: 13px;
+.aviso { position: fixed; bottom: 80px; left: 50%; transform: translate(-50%, -6px); opacity: 0; padding: 7px 14px; border-radius: 999px; color: #fff; font-size: 13px;
   background: rgba(28, 28, 30, .8); backdrop-filter: blur(30px); transition: opacity .3s var(--ease), transform .4s var(--spring); }
 .aviso.show { opacity: 1; transform: translate(-50%, 0); }
 

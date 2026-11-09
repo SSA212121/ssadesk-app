@@ -123,4 +123,6 @@ function aviso (t) { const a = $('aviso'); a.textContent = t; a.classList.add('s
 
 addEventListener('resize', ajustar)
 ajustar()
+// Aberta porque o outro lado desenhou: o mouse continua passando para a tela (quem controla não é bloqueado)
+if (new URLSearchParams(location.search).get('mouse') === '1') definirModo(false)
 aviso('Lousa ligada · Esc alterna entre desenhar e usar o mouse')
