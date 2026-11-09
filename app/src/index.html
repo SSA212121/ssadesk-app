@@ -84,6 +84,21 @@
       <li><span>Iniciar com o Windows</span><label class="switch"><input type="checkbox" id="ajIniciar"><i></i></label></li>
       <li><span>Ajudar outros a conectar<small class="sub-aj">Retransmite conexões criptografadas, sem ver o conteúdo</small></span><label class="switch"><input type="checkbox" id="ajRetransmitir"><i></i></label></li>
     </ul>
+    <p class="grupo">Senha de acesso</p>
+    <div class="senha-bloco glass">
+      <div class="senha-linha">
+        <span class="senha-valor" id="minhaSenha">••••••••</span>
+        <button class="link" id="verSenha">Mostrar</button>
+      </div>
+      <button class="acao-aj" id="abrirAlterar">Alterar senha</button>
+      <form class="alterar" id="formAlterar" hidden autocomplete="off">
+        <input class="campo-aj" id="novaSenha1" type="password" placeholder="Senha nova (8 caracteres ou mais)" autocomplete="new-password">
+        <input class="campo-aj" id="novaSenha2" type="password" placeholder="Confirmar senha nova" autocomplete="new-password">
+        <div class="alterar-botoes"><button type="button" class="pilula-aj cinza" id="cancelarAlterar">Cancelar</button><button type="submit" class="pilula-aj azul" id="salvarSenha">Salvar senha</button></div>
+      </form>
+      <button class="acao-aj perigo" id="revogar">Revogar acessos salvos</button>
+      <small class="senha-msg" id="senhaMsg">Quem tem "Permitir sempre" deixa de entrar sem perguntar.</small>
+    </div>
     <button class="diag glass" id="diagnostico"><span>Diagnóstico de conexão</span><small id="diagMsg">Gera um relatório na Área de Trabalho</small></button>
     <p class="nota">A senha deste computador é sempre exigida para controlar a tela.</p>
   </section>

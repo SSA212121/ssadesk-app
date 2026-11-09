@@ -147,6 +147,38 @@ function ajustes () {
 const confiaveis = () => (loadPrefs().confiaveis || {})
 function confiar (codigo, nome) { const c = String(codigo || '').replace(/\D/g, ''); if (!c) return; const p = loadPrefs(); savePrefs({ ...p, confiaveis: { ...(p.confiaveis || {}), [c]: { nome: nome || '', desde: Date.now(), permissoes: p.ajustes && p.ajustes.permissoes } } }) }
 ipcMain.handle('confiaveis', () => confiaveis())
+// ---------- Senha de acesso: ver, alterar (com permissão de administrador) e revogar ----------
+ipcMain.handle('senha-ver', async () => {
+  const s = await require('./senha-local').ler()
+  return s ? { ok: true, senha: s } : { ok: false, msg: 'A senha foi definida antes desta versão e não fica guardada aqui. Use "Alterar senha" para criar uma nova e poder vê-la depois.' }
+})
+ipcMain.handle('senha-alterar', async (_e, nova) => {
+  nova = String(nova || '')
+  if (nova.length < 8 || nova.length > 64) return { ok: false, msg: 'A senha precisa ter de 8 a 64 caracteres.' }
+  const exe = rustdeskPath()
+  if (!exe || !fs.existsSync(exe)) return { ok: false, msg: 'SSAdesk não está instalado corretamente.' }
+  // A senha vai num arquivo temporário só deste usuário (não aparece no comando de elevação); o processo com
+  // permissão de administrador lê, aplica no motor e apaga o arquivo.
+  const tmp = path.join(app.getPath('temp'), 'ssadesk-nova-' + process.pid + '.tmp')
+  fs.writeFileSync(tmp, nova, { mode: 0o600 })
+  const script = "$ErrorActionPreference='Stop'; $p=[IO.File]::ReadAllText('" + tmp.replace(/'/g, "''") + "'); Remove-Item -LiteralPath '" + tmp.replace(/'/g, "''") + "' -Force; " +
+    "$r=Start-Process -FilePath '" + exe.replace(/'/g, "''") + "' -ArgumentList @('--password',$p) -Wait -PassThru -WindowStyle Hidden; exit $r.ExitCode"
+  const cod = Buffer.from(script, 'utf16le').toString('base64')
+  const r = await new Promise(resolve => {
+    const ps = spawn('powershell.exe', ['-NoProfile', '-Command', "try { $p = Start-Process powershell.exe -Verb RunAs -WindowStyle Hidden -Wait -PassThru -ArgumentList '-NoProfile','-EncodedCommand','" + cod + "'; exit $p.ExitCode } catch { exit 1223 }"], { windowsHide: true })
+    ps.on('exit', c => resolve(c)); ps.on('error', () => resolve(-1))
+  })
+  try { fs.rmSync(tmp, { force: true }) } catch {}
+  if (r === 1223) return { ok: false, msg: 'A permissão do Windows foi recusada. A senha não mudou.' }
+  if (r !== 0) return { ok: false, msg: 'Não foi possível alterar a senha (código ' + r + ').' }
+  try { await require('./senha-local').guardar(nova) } catch {}
+  return { ok: true }
+})
+ipcMain.handle('senha-revogar', () => {
+  const p = loadPrefs(); const n = Object.keys(p.confiaveis || {}).length
+  savePrefs({ ...p, confiaveis: {} })
+  return { ok: true, n }
+})
 ipcMain.handle('confiaveis-remover', (_e, c) => { const p = loadPrefs(); const n = { ...(p.confiaveis || {}) }; delete n[String(c)]; savePrefs({ ...p, confiaveis: n }); return true })
 function aplicarInicioAutomatico () {
   if (!app.isPackaged || MODO !== 'app') return

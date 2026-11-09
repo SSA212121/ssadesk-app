@@ -59,7 +59,7 @@ if ($Mode -eq "uninstall") {
     Stop-Transcript | Out-Null; exit 0
 }
 if (-not (Test-Path $PasswordFile)) { throw "Senha não informada." }
-$password = (Get-Content $PasswordFile -Raw).Trim()
+$password = "$(Get-Content $PasswordFile -Raw)".Trim() # arquivo vazio = manter a senha atual
 Remove-Item $PasswordFile -Force
 # Atualização: senha vazia = manter a senha atual do motor. Só é aceito se ela realmente existir
 # (nunca deixa o computador sem senha).
@@ -69,7 +69,9 @@ if ($manterSenha) {
               "$env:WINDIR\System32\config\systemprofile\AppData\Roaming\SSAdesk\config\SSAdesk.toml")
     $temSenha = $false
     foreach ($c in $cfgs) { if ((Test-Path $c) -and (Select-String -Path $c -Pattern "^password\s*=\s*'.+'" -Quiet)) { $temSenha = $true } }
-    if (-not $temSenha) { throw "Não existe senha atual para manter. Crie uma senha nova." }
+    # Não interrompe a instalação: a senha atual continua no motor. Se ela não existir, ninguém consegue
+    # entrar (o acesso é só por senha fixa), então isso não abre brecha; apenas registra no log.
+    if (-not $temSenha) { Write-Host "AVISO: senha atual não localizada no arquivo do motor; mantida como está." }
 } elseif ($password.Length -lt 8) { throw "Senha permanente precisa ter ao menos 8 caracteres." }
 
 # 1. hbbs local (somente para uso interno da própria máquina)

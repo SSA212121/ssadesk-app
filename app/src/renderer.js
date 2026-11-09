@@ -95,6 +95,33 @@ function fecharAjustes () { document.body.classList.remove('ajustes-aberto'); $(
 $('abrirAjustes').addEventListener('click', abrirAjustes)
 $('diagnostico').addEventListener('click', async () => { $('diagMsg').textContent = 'Verificando… (até 20 s)'; await api.ajustes.diagnostico(); $('diagMsg').textContent = 'Relatório salvo na Área de Trabalho' })
 $('fecharAjustes').addEventListener('click', fecharAjustes)
+
+// ---------- Senha de acesso (Ajustes) ----------
+function msgSenha (texto, tipo) { const m = $('senhaMsg'); m.textContent = texto; m.className = 'senha-msg ' + (tipo || '') }
+let senhaVisivel = false
+$('verSenha').addEventListener('click', async () => {
+  if (senhaVisivel) { $('minhaSenha').textContent = '••••••••'; $('verSenha').textContent = 'Mostrar'; senhaVisivel = false; return }
+  const r = await api.senha.ver()
+  if (!r.ok) return msgSenha(r.msg, 'err')
+  $('minhaSenha').textContent = r.senha; $('verSenha').textContent = 'Ocultar'; senhaVisivel = true
+  setTimeout(() => { if (senhaVisivel) $('verSenha').click() }, 15000) // esconde sozinha
+})
+$('abrirAlterar').addEventListener('click', () => { $('formAlterar').hidden = false; $('abrirAlterar').hidden = true; $('novaSenha1').focus() })
+$('cancelarAlterar').addEventListener('click', () => { $('formAlterar').hidden = true; $('abrirAlterar').hidden = false; $('novaSenha1').value = ''; $('novaSenha2').value = '' })
+$('formAlterar').addEventListener('submit', async e => {
+  e.preventDefault()
+  const a = $('novaSenha1').value; const b = $('novaSenha2').value
+  if (a.length < 8) return msgSenha('A senha precisa ter ao menos 8 caracteres.', 'err')
+  if (a !== b) return msgSenha('As duas senhas não são iguais.', 'err')
+  $('salvarSenha').disabled = true; msgSenha('Confirme na janela de permissão do Windows…')
+  const r = await api.senha.alterar(a)
+  $('salvarSenha').disabled = false
+  if (r.ok) { $('cancelarAlterar').click(); msgSenha('Senha alterada ✓ Quem tinha a senha antiga salva precisa da nova.', 'ok') } else msgSenha(r.msg, 'err')
+})
+$('revogar').addEventListener('click', async () => {
+  const r = await api.senha.revogar()
+  msgSenha(r.n ? r.n + (r.n === 1 ? ' computador perdeu' : ' computadores perderam') + ' o "Permitir sempre". Para cortar também quem salvou a senha, altere a senha.' : 'Nenhum computador com "Permitir sempre". Para cortar quem salvou a senha, altere a senha.', 'ok')
+})
 $('veu').addEventListener('click', fecharAjustes)
 addEventListener('keydown', e => { if (e.key === 'Escape') fecharAjustes() })
 // Salva na hora, a cada mudança

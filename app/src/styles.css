@@ -283,6 +283,25 @@ html.oculto .ambient i, html.oculto .status.ok .dot::after { animation-play-stat
 .diag small { font-size: 12px; color: var(--text-2); }
 .diag:active { transform: scale(.98); }
 
+/* Ajustes: senha de acesso */
+.senha-bloco { border-radius: 14px; padding: 6px 14px 12px; display: flex; flex-direction: column; gap: 4px; }
+.senha-linha { display: flex; align-items: center; justify-content: space-between; height: 44px; border-bottom: .5px solid var(--hairline); }
+.senha-valor { font-size: 16px; font-weight: 600; letter-spacing: .08em; font-variant-numeric: tabular-nums; user-select: text; }
+.link { color: var(--accent); font-weight: 600; font-size: 14px; padding: 6px 4px; }
+.acao-aj { text-align: left; height: 40px; font-size: 14px; color: var(--accent); font-weight: 500; border-bottom: .5px solid var(--hairline); }
+.acao-aj.perigo { color: #ff453a; border-bottom: 0; }
+.alterar { display: flex; flex-direction: column; gap: 8px; padding: 8px 0 10px; border-bottom: .5px solid var(--hairline); }
+.alterar[hidden] { display: none; }
+.campo-aj { height: 40px; border-radius: 12px; border: 0; padding: 0 14px; background: var(--field); font-size: 14px; outline: none; user-select: text; }
+.campo-aj:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent); }
+.alterar-botoes { display: flex; gap: 8px; justify-content: flex-end; }
+.pilula-aj { height: 34px; padding: 0 16px; border-radius: 999px; font-size: 13.5px; font-weight: 600; }
+.pilula-aj.azul { background: var(--accent); color: #fff; }
+.pilula-aj.cinza { background: var(--field); }
+.pilula-aj:disabled { opacity: .5; }
+.senha-msg { font-size: 12px; color: var(--text-2); padding-top: 4px; }
+.senha-msg.ok { color: var(--green); } .senha-msg.err { color: #ff453a; }
+
 /* SSAdesk: foco sem moldura quadrada */
 *:focus { outline: none; }
 :is(button, a, li, [tabindex]):focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(10, 132, 255, .55); }

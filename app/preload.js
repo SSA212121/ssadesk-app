@@ -25,6 +25,11 @@ contextBridge.exposeInMainWorld('ssadesk', {
     onAtualizar: cb => ipcRenderer.on('barra-sessao', (_e, s) => cb(s)),
     onEstado: cb => ipcRenderer.on('barra-estado', (_e, t) => cb(t))
   },
+  senha: {
+    ver: () => ipcRenderer.invoke('senha-ver'),
+    alterar: nova => ipcRenderer.invoke('senha-alterar', nova),
+    revogar: () => ipcRenderer.invoke('senha-revogar')
+  },
   mais: {
     comando: (acao, valor) => ipcRenderer.send('mais-comando', acao, valor),
     estado: () => ipcRenderer.invoke('mais-estado'),
