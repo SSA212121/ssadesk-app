@@ -7,7 +7,7 @@ function permissoes () {
   document.querySelectorAll('[data-perm]').forEach(c => { p[c.dataset.perm] = c.checked })
   return p
 }
-$('permitir').addEventListener('click', () => pedido.responder({ permitir: true, permissoes: permissoes() }))
+$('permitir').addEventListener('click', () => pedido.responder({ permitir: true, permissoes: permissoes(), sempre: $('sempre').checked }))
 $('negar').addEventListener('click', () => pedido.responder({ permitir: false }))
 
 // Toque de chamada (gerado na hora, sem arquivo de áudio)
@@ -34,6 +34,8 @@ pedido.dados().then(d => {
   // Permissões já vêm como definidas nos Ajustes
   document.querySelectorAll('[data-perm]').forEach(c => { if (d.permissoes && c.dataset.perm in d.permissoes) c.checked = !!d.permissoes[c.dataset.perm] })
   // Sem resposta, permite sozinho (computador sem ninguém na frente); a senha continua sendo exigida
+  if (!d.codigo) $('sempre').closest('.sempre').hidden = true // sem código não dá para reconhecer depois
+  $('sempre').addEventListener('change', () => pedido.adiar())
   if (!d.segundos) { $('contagem').textContent = ''; $('permitir').focus(); return }
   let s = d.segundos
   let mexeu = false
