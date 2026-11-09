@@ -19,7 +19,7 @@ function preencher (lado, s) {
   $('rede' + L).textContent = s.rede || '—'
 }
 
-api.info.onDados(d => {
+api.painelInfo.onDados(d => {
   $('nome').textContent = d.conectado ? d.nome : 'Sem conexão ativa'
   $('outroTitulo').textContent = d.conectado ? (d.nome.length > 12 ? d.nome.slice(0, 11) + '…' : d.nome) : 'Outro'
   $('caminho').textContent = d.conectado ? d.caminho.tipo : '—'
@@ -34,6 +34,6 @@ api.info.onDados(d => {
   if (document.activeElement !== $('fps')) $('fps').checked = !!d.fps
 })
 
-$('fps').addEventListener('change', async e => { const r = await api.info.fps(e.target.checked); if (r && r.ok) e.target.checked = r.fps })
-$('fechar').addEventListener('click', () => api.info.fechar())
-addEventListener('keydown', e => { if (e.key === 'Escape') api.info.fechar() })
+$('fps').addEventListener('change', async e => { const r = await api.painelInfo.fps(e.target.checked); if (r && r.ok) e.target.checked = r.fps })
+$('fechar').addEventListener('click', () => api.painelInfo.fechar())
+addEventListener('keydown', e => { if (e.key === 'Escape') api.painelInfo.fechar() })

@@ -55,10 +55,12 @@ function createWindow () {
   nativeTheme.themeSource = prefs.tema || 'system'
 
   win = new BrowserWindow({
-    width: 400,
-    height: 720,
-    resizable: false,
-    maximizable: false,
+    // Painel: redimensionável à vontade (lembra o último tamanho); instalação: tamanho fixo
+    width: MODO === 'app' && prefs.janela ? prefs.janela.w : 400,
+    height: MODO === 'app' && prefs.janela ? prefs.janela.h : 720,
+    minWidth: 340, minHeight: 480,
+    resizable: MODO === 'app',
+    maximizable: MODO === 'app',
     fullscreenable: false,
     show: false,
     title: 'SSAdesk',
@@ -73,6 +75,10 @@ function createWindow () {
   const query = { platform: process.platform }
   if (process.env.SSADESK_PAGE) query.pagina = process.env.SSADESK_PAGE
   win.loadFile(path.join(__dirname, 'src', pagina), { query })
+  if (MODO === 'app') {
+    let salvar
+    win.on('resize', () => { clearTimeout(salvar); salvar = setTimeout(() => { if (!win || win.isDestroyed() || win.isMaximized()) return; const [w, h] = win.getSize(); savePrefs({ ...loadPrefs(), janela: { w, h } }) }, 500) })
+  }
   win.on('close', e => {
     if (MODO !== 'app' || !bandeja || app.saindo) return
     e.preventDefault(); win.hide()

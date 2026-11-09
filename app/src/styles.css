@@ -1,4 +1,4 @@
-/* SSAdesk — visual inspirado nos apps da Apple (ver DESIGN_GUIDELINES.md) */
+﻿/* SSAdesk â€” visual inspirado nos apps da Apple (ver DESIGN_GUIDELINES.md) */
 @font-face {
   font-family: "Inter";
   src: url("fonts/inter.woff2") format("woff2");
@@ -70,14 +70,14 @@ body {
 button, input { font: inherit; color: inherit; }
 button { border: 0; background: none; cursor: default; }
 
-/* Luz ambiente suave atrás do vidro */
+/* Luz ambiente suave atrÃ¡s do vidro */
 .ambient { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
 .ambient i { position: absolute; width: 340px; height: 340px; border-radius: 50%; filter: blur(70px); transition: background .6s var(--ease); }
 .ambient i:first-child { background: var(--blob-a); top: -120px; right: -110px; animation: drift 18s ease-in-out infinite alternate; }
 .ambient i:last-child { background: var(--blob-b); bottom: -150px; left: -130px; animation: drift 22s ease-in-out infinite alternate-reverse; }
 @keyframes drift { to { transform: translate(-30px, 40px) scale(1.08); } }
 
-/* Barra de título */
+/* Barra de tÃ­tulo */
 .titlebar { -webkit-app-region: drag; app-region: drag; height: 56px; display: flex; align-items: center; justify-content: center; position: relative; flex: none; }
 .brand { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13.5px; letter-spacing: -.01em; }
 .brand img { width: 20px; height: 20px; border-radius: 5px; }
@@ -90,7 +90,8 @@ button { border: 0; background: none; cursor: default; }
 .wbtn:active { transform: scale(.88); }
 .platform-darwin .winctl { display: none; }
 
-main { flex: 1; padding: 4px 20px 0; display: flex; flex-direction: column; gap: 12px; }
+main { flex: 1; padding: 4px 20px 0; display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 560px; margin: 0 auto; overflow-y: auto; min-height: 0; scrollbar-width: none; }
+main::-webkit-scrollbar { display: none; }
 
 /* Vidro */
 .glass {
@@ -105,7 +106,7 @@ main { flex: 1; padding: 4px 20px 0; display: flex; flex-direction: column; gap:
 .eyebrow { font-size: 12px; font-weight: 600; color: var(--text-2); letter-spacing: .01em; }
 .label { font-size: 12.5px; color: var(--text-2); }
 
-/* Código */
+/* CÃ³digo */
 .hero { padding: 22px 22px 18px; text-align: center; }
 .code {
   display: block; width: 100%; margin: 10px 0 12px;
@@ -151,15 +152,15 @@ main { flex: 1; padding: 4px 20px 0; display: flex; flex-direction: column; gap:
 .hint.ok { color: var(--green); }
 .hint.err { color: #ff453a; }
 
-/* Aparência */
-footer { padding: 18px 20px 20px; flex: none; }
+/* AparÃªncia */
+footer { padding: 18px 20px 20px; flex: none; width: 100%; max-width: 560px; margin: 0 auto; }
 .segmented { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); padding: 2px; border-radius: 10px; background: var(--seg); }
 .segmented button { position: relative; z-index: 1; height: 30px; font-size: 13px; font-weight: 500; color: var(--text-2); transition: color .25s; }
 .segmented button[aria-checked="true"] { color: var(--text); }
 .thumb { position: absolute; top: 2px; bottom: 2px; left: 2px; width: calc((100% - 4px) / 3); border-radius: 8px; background: var(--seg-thumb);
   box-shadow: 0 3px 8px rgba(0, 0, 0, .12), 0 0 0 .5px rgba(0, 0, 0, .04); transition: transform .45s var(--spring), background .5s var(--ease); }
 
-/* Foco visível (acessibilidade) */
+/* Foco visÃ­vel (acessibilidade) */
 button:focus-visible { outline: 0; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent); }
 
 /* Toast */
@@ -173,7 +174,7 @@ button:focus-visible { outline: 0; box-shadow: 0 0 0 3px color-mix(in srgb, var(
 @keyframes reveal { to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } .reveal { opacity: 1; transform: none; } }
 
-/* Linha "Chamada de vídeo" */
+/* Linha "Chamada de vÃ­deo" */
 .call-row { width: 100%; text-align: left; transition: transform .35s var(--spring), background .25s var(--ease); }
 .call-row:hover { background: var(--glass-hi); }
 .call-row:active { transform: scale(.98); }
@@ -184,14 +185,14 @@ button:focus-visible { outline: 0; box-shadow: 0 0 0 3px color-mix(in srgb, var(
 .call-title { font-size: 14.5px; font-weight: 600; letter-spacing: -.01em; }
 .chev { width: 16px; height: 16px; fill: none; stroke: var(--text-3); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 
-/* Nome opcional abaixo do código */
+/* Nome opcional abaixo do cÃ³digo */
 .nome-input { display: block; width: 100%; margin-top: 12px; height: 34px; border: 0; outline: 0; border-radius: 10px; text-align: center;
   font-size: 14px; color: var(--text); background: transparent; user-select: text; transition: background .25s var(--ease), box-shadow .25s var(--ease); }
 .nome-input::placeholder { color: var(--text-3); }
 .nome-input:hover { background: var(--field); }
 .nome-input:focus { background: var(--field); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent); }
 
-/* Biblioteca de conexões */
+/* Biblioteca de conexÃµes */
 .recentes { padding: 14px 8px 8px 18px; }
 .lista { list-style: none; margin-top: 6px; max-height: 162px; overflow-y: auto; padding-right: 8px; }
 .lista::-webkit-scrollbar { width: 5px; } .lista::-webkit-scrollbar-thumb { background: var(--hairline); border-radius: 3px; }
@@ -214,7 +215,7 @@ button:focus-visible { outline: 0; box-shadow: 0 0 0 3px color-mix(in srgb, var(
 .item .x:hover { background: var(--hairline); color: var(--text); }
 .item .x svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
 
-/* Botão "Ligar" (só aparece quando o computador está offline) */
+/* BotÃ£o "Ligar" (sÃ³ aparece quando o computador estÃ¡ offline) */
 .item .ligar { display: none; width: 30px; height: 30px; border-radius: 50%; place-items: center; color: var(--accent); background: var(--field);
   transition: background .2s, transform .3s var(--spring); }
 .item.off .ligar { display: grid; }
@@ -223,7 +224,7 @@ button:focus-visible { outline: 0; box-shadow: 0 0 0 3px color-mix(in srgb, var(
 .item .ligar:disabled { opacity: .5; }
 .item .ligar svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
 
-/* Ajustes: botão de engrenagem e folha que sobe */
+/* Ajustes: botÃ£o de engrenagem e folha que sobe */
 .engrenagem { position: absolute; left: 14px; -webkit-app-region: no-drag; app-region: no-drag; }
 .engrenagem svg { width: 15px; height: 15px; stroke-width: 1.5; }
 .veu { position: fixed; inset: 0; background: rgba(0, 0, 0, .25); opacity: 0; pointer-events: none; transition: opacity .35s var(--ease); z-index: 20; }
@@ -256,7 +257,7 @@ body.ajustes-aberto .folha { transform: none; }
 .switch input:focus-visible + i, .opcao input:focus-visible { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent); }
 .nota { margin: 12px 4px 0; font-size: 12px; color: var(--text-2); }
 
-/* Desempenho: animações de fundo param com a janela escondida */
+/* Desempenho: animaÃ§Ãµes de fundo param com a janela escondida */
 html.oculto .ambient i, html.oculto .status.ok .dot::after { animation-play-state: paused; }
 
 .perms-aj li:has(.sub-aj) { height: auto; padding: 9px 0; }
