@@ -137,9 +137,10 @@ function pastaFinal (escolhida) {
   return path.basename(p).toLowerCase() === 'ssadesk' ? p : path.join(p, 'SSAdesk')
 }
 
-async function instalar ({ payload, destino: escolhido, senha, versao }, avisar) {
+async function instalar ({ payload, destino: escolhido, senha, versao, manterSenha }, avisar) {
   const destino = pastaFinal(escolhido)
-  if (!senha || senha.length < 8) throw new Error('A senha precisa ter ao menos 8 caracteres.')
+  if (manterSenha) senha = '' // atualização: mantém a senha atual (o configure.ps1 confere que ela existe)
+  else if (!senha || senha.length < 8) throw new Error('A senha precisa ter ao menos 8 caracteres.')
   const passo = i => avisar({ passo: i })
   passo(0)
   const anterior = instalacaoAnterior()
@@ -172,7 +173,7 @@ async function instalar ({ payload, destino: escolhido, senha, versao }, avisar)
       })
   } finally { fs.rmSync(pw, { force: true }) }
   // Cópia protegida pelo Windows: o SSAdesk entrega a senha só quando alguém clica Permitir
-  try { await require('./senha-local').guardar(senha) } catch {}
+  if (senha) try { await require('./senha-local').guardar(senha) } catch {}
 
   passo(5)
   await registrar(destino, versao)

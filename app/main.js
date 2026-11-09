@@ -1067,7 +1067,8 @@ ipcMain.handle('setup-info', () => ({
   modo: MODO,
   versao: app.getVersion(),
   destino: (motor && motor.instalacaoAnterior()) || 'C:\\SSAdesk',
-  passos: motor ? motor.PASSOS : []
+  passos: motor ? motor.PASSOS : [],
+  existente: !!(motor && motor.instalacaoAnterior())
 }))
 
 ipcMain.handle('setup-pasta', async (_e, atual) => {
@@ -1079,11 +1080,11 @@ ipcMain.handle('setup-pasta', async (_e, atual) => {
 })
 
 let instalado = null
-ipcMain.handle('setup-instalar', async (_e, { destino, senha }) => {
+ipcMain.handle('setup-instalar', async (_e, { destino, senha, manterSenha }) => {
   if (!motor || !PAYLOAD) return { ok: false, msg: 'Pacote de instalação não encontrado.' }
   try {
     await esperarPacote()
-    instalado = await motor.instalar({ payload: PAYLOAD, destino, senha, versao: app.getVersion() },
+    instalado = await motor.instalar({ payload: PAYLOAD, destino, senha, manterSenha: !!manterSenha, versao: app.getVersion() },
       ev => win.webContents.send('setup-passo', ev.passo))
     return { ok: true, codigo: instalado.codigo }
   } catch (e) {

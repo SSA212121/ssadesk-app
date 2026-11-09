@@ -48,17 +48,19 @@ function marcar (i) {
 }
 api.setup.onPasso(i => marcar(i))
 
-$('instalar').addEventListener('click', async () => {
-  if (!validar()) return
+async function instalarAgora (manterSenha) {
   ocupado = true; ir('progresso'); marcar(0)
-  const r = await api.setup.instalar({ destino, senha: $('senha1').value })
+  const r = await api.setup.instalar(manterSenha ? { destino, senha: '', manterSenha: true } : { destino, senha: $('senha1').value })
   ocupado = false
   $('senha1').value = ''; $('senha2').value = ''; validar()
   if (r.ok) {
     marcar(99); $('codigoFinal').textContent = r.codigo || '—'
     setTimeout(() => ir('pronto'), 500)
   } else { $('erroMsg').textContent = r.msg; ir('erro') }
-})
+}
+$('instalar').addEventListener('click', () => { if (validar()) instalarAgora(false) })
+// Atualização: dá para manter a senha atual (sem digitar de novo)
+$('manterSenha').addEventListener('click', () => instalarAgora(true))
 $('abrir').addEventListener('click', () => api.setup.abrirApp())
 
 // Desinstalar
@@ -72,6 +74,7 @@ $('remover').addEventListener('click', async () => {
   const info = await api.setup.info()
   destino = info.destino; $('pasta').textContent = info.destino
   $('versao').textContent = 'Versão ' + info.versao
+  if (info.existente) $('manterSenha').hidden = false
   montarPassos(info.passos)
   ir(params.get('pagina') || (info.modo === 'desinstalar' ? 'remover' : 'boas'))
   if (params.get('pagina') === 'progresso') marcar(2)

@@ -1,7 +1,7 @@
 {
   "name": "ssadesk",
   "productName": "SSAdesk",
-  "version": "4.1.0",
+  "version": "4.5.0",
   "description": "SSAdesk - acesso remoto e chamada de vídeo da SSA Comércio",
   "main": "main.js",
   "private": true,

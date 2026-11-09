@@ -78,3 +78,8 @@ h2 { font-size: 24px; font-weight: 700; letter-spacing: -.02em; }
 .err-mark { width: 76px; height: 76px; border-radius: 50%; display: grid; place-items: center; font-size: 38px; font-weight: 700; color: #ff453a;
   background: rgba(255, 69, 58, .14); margin-bottom: 18px; }
 .big-spinner { width: 40px; height: 40px; border-radius: 50%; border: 3px solid var(--field); border-top-color: var(--accent); animation: spin .8s linear infinite; margin-bottom: 20px; }
+
+/* Atualização: manter a senha atual */
+.manter { margin-top: 10px; width: 100%; height: 38px; border-radius: 999px; font-size: 13.5px; font-weight: 600; color: #0a84ff; background: rgba(10, 132, 255, .12); transition: background .2s; }
+.manter:hover { background: rgba(10, 132, 255, .2); }
+.manter[hidden] { display: none; }

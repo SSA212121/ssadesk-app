@@ -61,7 +61,16 @@ if ($Mode -eq "uninstall") {
 if (-not (Test-Path $PasswordFile)) { throw "Senha não informada." }
 $password = (Get-Content $PasswordFile -Raw).Trim()
 Remove-Item $PasswordFile -Force
-if ($password.Length -lt 8) { throw "Senha permanente precisa ter ao menos 8 caracteres." }
+# Atualização: senha vazia = manter a senha atual do motor. Só é aceito se ela realmente existir
+# (nunca deixa o computador sem senha).
+$manterSenha = ($password.Length -eq 0)
+if ($manterSenha) {
+    $cfgs = @("$env:WINDIR\ServiceProfiles\LocalService\AppData\Roaming\SSAdesk\config\SSAdesk.toml",
+              "$env:WINDIR\System32\config\systemprofile\AppData\Roaming\SSAdesk\config\SSAdesk.toml")
+    $temSenha = $false
+    foreach ($c in $cfgs) { if ((Test-Path $c) -and (Select-String -Path $c -Pattern "^password\s*=\s*'.+'" -Quiet)) { $temSenha = $true } }
+    if (-not $temSenha) { throw "Não existe senha atual para manter. Crie uma senha nova." }
+} elseif ($password.Length -lt 8) { throw "Senha permanente precisa ter ao menos 8 caracteres." }
 
 # 1. hbbs local (somente para uso interno da própria máquina)
 $data = Join-Path $InstallDir "dados"
@@ -114,7 +123,7 @@ Set-Motor "--option", "hide-tray", "Y"
 # Sem a janelinha de conexão do motor no computador acessado (o SSAdesk já mostra a sua barrinha).
 # O motor só permite isso com acesso exclusivo por senha fixa, que é o nosso caso.
 Set-Motor "--option", "allow-hide-cm", "Y"
-Set-Motor "--password", $password
+if (-not $manterSenha) { Set-Motor "--password", $password }
 $password = $null
 
 New-NetFirewallRule -DisplayName $fwName -Direction Inbound -Action Allow -Protocol TCP -LocalPort $Port -Program $exe | Out-Null

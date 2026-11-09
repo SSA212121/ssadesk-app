@@ -54,6 +54,8 @@ class JanelaSetup : Form
         ClientSize = new Size(400, 548);
         FormBorderStyle = FormBorderStyle.None;
         StartPosition = FormStartPosition.CenterScreen;
+        // Abre na frente de tudo (sem isso podia ficar atrás da janela do Explorador)
+        Shown += (s, e) => { TopMost = true; Activate(); BringToFront(); TopMost = false; };
         bool escuro = TemaEscuro();
         BackColor = escuro ? Color.FromArgb(28, 28, 30) : Color.FromArgb(242, 242, 247);
         try { Icon = new Icon(Path.Combine(ui, "ssadesk.ico")); } catch { }
@@ -130,7 +132,7 @@ class JanelaSetup : Form
                 if (Convert.ToString(dados) == "fechar" && !ocupado) Close();
                 break;
             case "info":
-                Responder(id, new Dictionary<string, object> { { "modo", "instalar" }, { "versao", versao }, { "destino", DestinoPadrao() }, { "passos", Passos } });
+                Responder(id, new Dictionary<string, object> { { "modo", "instalar" }, { "versao", versao }, { "destino", DestinoPadrao() }, { "passos", Passos }, { "existente", JaInstalado() } });
                 break;
             case "pasta":
                 using (var d = new FolderBrowserDialog { Description = "Onde instalar o SSAdesk", ShowNewFolderButton = true })
@@ -141,7 +143,7 @@ class JanelaSetup : Form
             case "instalar":
                 ocupado = true;
                 var dd = dados as Dictionary<string, object>;
-                var r = await Instalar(Convert.ToString(dd["destino"]), Convert.ToString(dd["senha"]));
+                var r = await Instalar(Convert.ToString(dd["destino"]), Convert.ToString(dd["senha"]), dd.ContainsKey("manterSenha") && Convert.ToBoolean(dd["manterSenha"]));
                 ocupado = false;
                 Responder(id, r);
                 break;
@@ -161,6 +163,12 @@ class JanelaSetup : Form
         return Path.GetFileName(p.TrimEnd('\\')).Equals("SSAdesk", StringComparison.OrdinalIgnoreCase) ? p : Path.Combine(p, "SSAdesk");
     }
 
+    static bool JaInstalado()
+    {
+        try { var v = Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\SSAdesk", "InstallLocation", null) as string; return !string.IsNullOrEmpty(v) && Directory.Exists(v); }
+        catch { return false; }
+    }
+
     static string DestinoPadrao()
     {
         try
@@ -173,7 +181,7 @@ class JanelaSetup : Form
     }
 
     // Roda o motor de instalação (instalador.js) no SSAdesk.exe em modo Node, lendo o progresso linha a linha
-    Task<object> Instalar(string destino, string senha)
+    Task<object> Instalar(string destino, string senha, bool manterSenha)
     {
         var tcs = new TaskCompletionSource<object>();
         Task.Run(() =>
@@ -193,7 +201,7 @@ class JanelaSetup : Form
                 object resultado = null;
                 using (var p = Process.Start(psi))
                 {
-                    var entrada = json.Serialize(new Dictionary<string, object> { { "payload", pkg }, { "destino", destino }, { "senha", senha }, { "versao", versao } });
+                    var entrada = json.Serialize(new Dictionary<string, object> { { "payload", pkg }, { "destino", destino }, { "senha", senha }, { "versao", versao }, { "manterSenha", manterSenha } });
                     var w = new StreamWriter(p.StandardInput.BaseStream, new UTF8Encoding(false));
                     w.Write(entrada); w.Close();
                     string linha;
