@@ -146,7 +146,7 @@ async function montarBiblioteca () {
     const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = c.nome || 'Computador'
     const cd = document.createElement('span'); cd.className = 'cd'; cd.textContent = fmt(c.codigo)
     tx.append(nm, cd)
-    const x = document.createElement('button'); x.className = 'x'; x.setAttribute('aria-label', 'Remover da lista')
+    const x = document.createElement('button'); x.className = 'x acao-item'; x.title = 'Remover da lista'; x.setAttribute('aria-label', 'Remover da lista')
     x.innerHTML = '<svg viewBox="0 0 16 16"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg>'
     x.addEventListener('click', async e => { e.stopPropagation(); await api.biblioteca.remover(c.codigo); montarBiblioteca() })
     // Desligado: botão para ligar pela rede (Wake-on-LAN, por um vizinho da mesma rede)
@@ -159,10 +159,14 @@ async function montarBiblioteca () {
       if (r.ok) setTimeout(montarBiblioteca, 45000)
     })
     // Ligar para ele (só chamada de vídeo)
-    const chamar = document.createElement('button'); chamar.className = 'chamar'; chamar.title = 'Ligar (chamada de vídeo)'; chamar.setAttribute('aria-label', 'Ligar para ' + (c.nome || fmt(c.codigo)))
-    chamar.innerHTML = '<svg viewBox="0 0 24 24"><rect x="3" y="6.5" width="13" height="11" rx="2.5"/><path d="M16 10.5l5-3v9l-5-3"/></svg>'
+    // Três ações em cada computador: Acesso remoto (azul), Ligação (verde) e Remover
+    const acessar = document.createElement('button'); acessar.className = 'acessar acao-item'; acessar.title = 'Acesso remoto'; acessar.setAttribute('aria-label', 'Acesso remoto a ' + (c.nome || fmt(c.codigo)))
+    acessar.innerHTML = '<svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="12" rx="2"/><path d="M8.5 20h7M12 16.5V20"/></svg>'
+    acessar.addEventListener('click', e => { e.stopPropagation(); $('destino').value = fmt(c.codigo); $('form').requestSubmit() })
+    const chamar = document.createElement('button'); chamar.className = 'chamar acao-item'; chamar.title = 'Ligação'; chamar.setAttribute('aria-label', 'Ligar para ' + (c.nome || fmt(c.codigo)))
+    chamar.innerHTML = '<svg viewBox="0 0 24 24"><path d="M5 4.5h3.2l1.6 4-2 1.3a10.5 10.5 0 0 0 6.4 6.4l1.3-2 4 1.6V19a1.5 1.5 0 0 1-1.6 1.5A15.5 15.5 0 0 1 3.5 6.1 1.5 1.5 0 0 1 5 4.5z"/></svg>'
     chamar.addEventListener('click', e => { e.stopPropagation(); $('destino').value = fmt(c.codigo); ligarPara(c.codigo) })
-    li.append(av, tx, chamar, ligar, x)
+    li.append(av, tx, acessar, chamar, ligar, x)
     li.addEventListener('click', () => { $('destino').value = fmt(c.codigo); $('form').requestSubmit() })
     ul.appendChild(li)
     // Bolinha verde (online) ou vermelha (offline), verificada na rede P2P

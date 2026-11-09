@@ -283,6 +283,22 @@ html.oculto .ambient i, html.oculto .status.ok .dot::after { animation-play-stat
 .diag small { font-size: 12px; color: var(--text-2); }
 .diag:active { transform: scale(.98); }
 
+/* Lista de computadores: Acesso remoto, Ligação e Remover sempre visíveis, redondos */
+.item .acao-item { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; flex: none; opacity: 1;
+  transition: background .2s, transform .25s var(--spring); }
+.item .acao-item:active { transform: scale(.88); }
+.item .acao-item svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.item .acessar { color: #fff; background: var(--accent); }
+.item .acessar:hover { filter: brightness(1.1); }
+.item .chamar { color: #fff; background: var(--green); }
+.item .chamar:hover { filter: brightness(1.08); }
+.item .chamar svg { fill: currentColor; stroke: none; }
+.item .x { color: var(--text-2); background: var(--field); }
+.item .x:hover { color: #ff453a; background: color-mix(in srgb, #ff453a 16%, transparent); }
+.item .x svg { width: 12px; height: 12px; }
+.item.off .acessar, .item.off .chamar { display: none; }
+.item .acessar + .chamar, .item .chamar + .ligar, .item .acessar { margin-left: 2px; }
+
 /* Painel: dois botões grandes — Acesso remoto (azul) e Ligação (verde) */
 .duas-acoes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
 .acao-grande { position: relative; height: 46px; border-radius: 14px; display: flex; align-items: center; justify-content: center; gap: 8px;

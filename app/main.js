@@ -1298,7 +1298,7 @@ if (process.env.SSADESK_FOTO_SELO) app.whenReady().then(() => setTimeout(() => {
 if (process.env.SSADESK_FOTO_LISTA) app.whenReady().then(() => setTimeout(async () => {
   const wc = win.webContents
   const r = await wc.executeJavaScript("(() => { const li = document.querySelector('#lista li'); if (!li) return null; li.scrollIntoView(); const b = li.getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 } })()")
-  if (r) { wc.sendInputEvent({ type: 'mouseMove', x: Math.round(r.x), y: Math.round(r.y) }); wc.sendInputEvent({ type: 'mouseDown', x: Math.round(r.x), y: Math.round(r.y), button: 'left', clickCount: 1 }); wc.sendInputEvent({ type: 'mouseUp', x: Math.round(r.x), y: Math.round(r.y), button: 'left', clickCount: 1 }) }
+  if (r) { wc.sendInputEvent({ type: 'mouseMove', x: Math.round(r.x), y: Math.round(r.y) }); }
   setTimeout(async () => { try { fs.writeFileSync(process.env.SSADESK_FOTO_LISTA, (await wc.capturePage()).toPNG()) } catch {} app.exit(0) }, 1500)
 }, 4000))
 

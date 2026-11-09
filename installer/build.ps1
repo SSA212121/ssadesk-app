@@ -134,7 +134,7 @@ $csc = "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
     /r:"$ui\Microsoft.Web.WebView2.Core.dll" /r:"$ui\Microsoft.Web.WebView2.WinForms.dll" /r:System.Web.Extensions.dll /r:System.Windows.Forms.dll /r:System.Drawing.dll "$here\setup-ui\SetupUI.cs"
 if ($LASTEXITCODE -ne 0) { throw "csc falhou" }
 Copy-Item "$here\assets\ssadesk.ico" $ui
-Copy-Item "$appSrc\src\setup.html", "$appSrc\src\setup.css", "$appSrc\src\styles.css", "$appSrc\src\setup.js", "$appSrc\src\ponte-webview.js" "$ui\src\"
+Copy-Item "$appSrc\src\setup.html", "$appSrc\src\setup.css", "$appSrc\src\styles.css", "$appSrc\src\setup.js", "$appSrc\src\ponte-webview.js", "$appSrc\src\dica.js", "$appSrc\src\dica.css" "$ui\src\"
 Copy-Item "$appSrc\src\fonts\inter.woff2" "$ui\src\fonts\"; Copy-Item "$appSrc\assets\icon.png" "$ui\assets\"
 
 # 8. Envelope (Setup.exe)

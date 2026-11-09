@@ -1,0 +1,7 @@
+/* SSAdesk — dica (tooltip) arredondada de vidro */
+.ssa-dica { position: fixed; z-index: 99999; pointer-events: none; max-width: 240px; padding: 5px 10px; border-radius: 9px;
+    font: 500 12px/1.3 -apple-system, "SF Pro Text", "Inter", "Segoe UI Variable Text", system-ui, sans-serif; color: #fff;
+    background: rgba(40, 40, 44, .88); backdrop-filter: blur(20px) saturate(180%); border: .5px solid rgba(255, 255, 255, .14);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, .28); opacity: 0; transform: translateY(2px) scale(.98);
+    transition: opacity .14s ease, transform .18s cubic-bezier(.2, .8, .2, 1); white-space: nowrap; }
+  .ssa-dica.mostra { opacity: 1; transform: none; }
