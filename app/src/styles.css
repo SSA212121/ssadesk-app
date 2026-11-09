@@ -198,10 +198,11 @@ button:focus-visible { outline: 0; box-shadow: 0 0 0 3px color-mix(in srgb, var(
 .nome-input:focus { background: var(--field); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent); }
 
 /* Biblioteca de conexões */
-.recentes { padding: 14px 8px 8px 18px; }
-.lista { list-style: none; margin-top: 6px; max-height: 162px; overflow-y: auto; padding-right: 8px; }
+.recentes { padding: 14px 8px 8px 12px; }
+.recentes .eyebrow { padding-left: 6px; }
+.lista { list-style: none; margin-top: 6px; max-height: 162px; overflow-y: auto; padding: 0 4px 0 0; }
 .lista::-webkit-scrollbar { width: 5px; } .lista::-webkit-scrollbar-thumb { background: var(--hairline); border-radius: 3px; }
-.item { display: flex; align-items: center; gap: 11px; height: 54px; padding: 0 6px; margin: 0 -6px; border-radius: 12px;
+.item { display: flex; align-items: center; gap: 11px; height: 54px; padding: 0 6px; margin: 0; border-radius: 12px; /* sem margem negativa: o destaque não é cortado */
   transition: background .2s var(--ease), transform .3s var(--spring); }
 .item + .item { margin-top: 2px; }
 .item:hover { background: var(--field); }
