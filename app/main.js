@@ -504,7 +504,7 @@ function padroesDoMotor () {
   try {
     const f = arquivoPadraoMotor()
     let t = ''; try { t = fs.readFileSync(f, 'utf8') } catch {}
-    const quero = { show_remote_cursor: "'Y'", view_style: "'adaptive'" }
+    const quero = { show_remote_cursor: "'Y'", view_style: "'adaptive'", image_quality: "'best'" }
     let mudou = false
     for (const [k, v] of Object.entries(quero)) {
       if (new RegExp('^' + k + '\\s*=', 'm').test(t)) continue
@@ -512,6 +512,19 @@ function padroesDoMotor () {
       mudou = true
     }
     if (mudou) { fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, t) }
+    // Uma vez só: computadores já acessados também passam a abrir em HD, ajustados à janela e com os dois mouses
+    const pr = loadPrefs()
+    if (!pr.motorPadroes2) {
+      const pasta = path.join(path.dirname(f), 'peers')
+      try {
+        for (const n of fs.readdirSync(pasta).filter(n => n.endsWith('.toml'))) {
+          const p = path.join(pasta, n); const c = fs.readFileSync(p, 'utf8')
+          const novo = c.replace(/^image_quality\s*=.*$/m, "image_quality = 'best'").replace(/^view_style\s*=.*$/m, "view_style = 'adaptive'").replace(/^show_remote_cursor\s*=.*$/m, 'show_remote_cursor = true')
+          if (novo !== c) fs.writeFileSync(p, novo)
+        }
+      } catch {}
+      savePrefs({ ...pr, motorPadroes2: true })
+    }
   } catch {}
 }
 function definirFps (ligar) {
