@@ -322,13 +322,15 @@ function iniciarCanal () {
           t: 'aceito', nome: meuNome(), permissoes: sessao.permissoes, mac: minhaRede.mac || '', ipPublico: minhaRede.ip_publico || '',
           // Sem permissÃ£o de controle, nÃ£o entrega os caminhos de acesso
           chave: sessao.permissoes.controlar ? minhaChave() : '',
+          // Senha só quando uma pessoa permitiu (clique ou "Permitir sempre"): quem acessa entra sem a tela de senha
+          senha: sessao.permissoes.controlar && r.pessoa ? await require('./senha-local').ler() : '',
           ips: sessao.permissoes.controlar ? meusEnderecos(msg.ipPublico) : []
         })
         sessao.tipo = 'acesso'
         abrirBarra() // quem Ã© acessado tambÃ©m tem chamada, chat e informaÃ§Ãµes Ã  mÃ£o
         break
       }
-      case 'aceito': sessao.nome = String(msg.nome || '').slice(0, 40); sessao.remoto = { mac: String(msg.mac || '').slice(0, 17), ipPublico: String(msg.ipPublico || '').slice(0, 45) }; sessao.permissoes = { ...PERMISSOES_PADRAO, ...msg.permissoes }; if (pendente) { pendente.resolve(msg); pendente = null } break
+      case 'aceito': sessao.senha = typeof msg.senha === 'string' ? msg.senha.slice(0, 128) : ''; sessao.nome = String(msg.nome || '').slice(0, 40); sessao.remoto = { mac: String(msg.mac || '').slice(0, 17), ipPublico: String(msg.ipPublico || '').slice(0, 45) }; sessao.permissoes = { ...PERMISSOES_PADRAO, ...msg.permissoes }; if (pendente) { pendente.resolve(msg); pendente = null } break
       case 'negado': if (pendente) { pendente.reject(new Error(msg.texto === 'Chamada recusada.' ? 'A chamada foi recusada.' : 'O outro computador negou o acesso.')); pendente = null } break
       case 'chamada':
         if (!sessao.permissoes.chamada) { canal.controle({ t: 'aviso', texto: 'Chamada de vÃ­deo nÃ£o permitida.' }); break }
@@ -401,7 +403,7 @@ function mostrarPedido (dados) {
   const aj = ajustes()
   const chamada = dados.tipo === 'chamada'
   const confiavel = !chamada && confiaveis()[String(dados.codigo || '').replace(/\D/g, '')]
-  if (confiavel) return Promise.resolve({ permitir: true, permissoes: { ...aj.permissoes, ...(confiavel.permissoes || {}) } })
+  if (confiavel) return Promise.resolve({ permitir: true, pessoa: true, permissoes: { ...aj.permissoes, ...(confiavel.permissoes || {}) } })
   if (process.env.SSADESK_AUTOPERMITIR || (!chamada && aj.receber === 'direto')) return Promise.resolve({ permitir: true, permissoes: aj.permissoes })
   return new Promise(resolve => {
     let respondido = false
@@ -428,7 +430,7 @@ ipcMain.on('pedido-adiar', () => { if (pedidoAtual) pedidoAtual.adiar() }) // me
 ipcMain.on('pedido-resposta', (_e, r) => {
   if (!pedidoAtual) return
   if (r && r.permitir && r.sempre) confiar(pedidoAtual.dados.codigo, pedidoAtual.dados.nome)
-  pedidoAtual.responder({ permitir: !!(r && r.permitir), permissoes: (r && r.permissoes) || PERMISSOES_PADRAO })
+  pedidoAtual.responder({ permitir: !!(r && r.permitir), pessoa: true, permissoes: (r && r.permissoes) || PERMISSOES_PADRAO })
 })
 
 // ---------- Barrinha da sessÃ£o (quem acessa): soltar arquivos, chamada, chat, encerrar ----------
@@ -950,7 +952,9 @@ function abrirRustDesk (destino) {
   apelidoNoMotor(destino, sessao.nome)
   const exe = rustdeskPath()
   if (!exe || !fs.existsSync(exe)) throw new Error('SSAdesk nÃ£o estÃ¡ instalado corretamente.')
-  spawn(exe, ['--connect', destino], { detached: true, stdio: 'ignore' }).unref()
+  const args = ['--connect', destino]
+  if (sessao.senha) args.push('--password', sessao.senha) // entregue pelo outro lado após o Permitir
+  spawn(exe, args, { detached: true, stdio: 'ignore' }).unref()
 }
 
 ipcMain.handle('ligar', async (_e, bruto) => {

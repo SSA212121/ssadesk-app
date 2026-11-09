@@ -171,6 +171,8 @@ async function instalar ({ payload, destino: escolhido, senha, versao }, avisar)
         if (/ETAPA rede/.test(linha)) passo(4)
       })
   } finally { fs.rmSync(pw, { force: true }) }
+  // Cópia protegida pelo Windows: o SSAdesk entrega a senha só quando alguém clica Permitir
+  try { await require('./senha-local').guardar(senha) } catch {}
 
   passo(5)
   await registrar(destino, versao)
