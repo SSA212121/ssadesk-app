@@ -72,6 +72,7 @@ async function abrirAjustes () {
 }
 function fecharAjustes () { document.body.classList.remove('ajustes-aberto'); $('ajustes').setAttribute('aria-hidden', 'true') }
 $('abrirAjustes').addEventListener('click', abrirAjustes)
+$('diagnostico').addEventListener('click', async () => { $('diagMsg').textContent = 'Verificando… (até 20 s)'; await api.ajustes.diagnostico(); $('diagMsg').textContent = 'Relatório salvo na Área de Trabalho' })
 $('fecharAjustes').addEventListener('click', fecharAjustes)
 $('veu').addEventListener('click', fecharAjustes)
 addEventListener('keydown', e => { if (e.key === 'Escape') fecharAjustes() })

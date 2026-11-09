@@ -7,7 +7,7 @@ contextBridge.exposeInMainWorld('ssadesk', {
   tema: tema => ipcRenderer.invoke('tema', tema),
   conectar: destino => ipcRenderer.invoke('conectar', destino),
   nome: nome => ipcRenderer.invoke('nome', nome),
-  ajustes: { ler: () => ipcRenderer.invoke('ajustes'), salvar: a => ipcRenderer.invoke('ajustes-salvar', a) },
+  ajustes: { ler: () => ipcRenderer.invoke('ajustes'), salvar: a => ipcRenderer.invoke('ajustes-salvar', a), diagnostico: () => ipcRenderer.invoke('diagnostico') },
   biblioteca: {
     listar: () => ipcRenderer.invoke('biblioteca'),
     remover: codigo => ipcRenderer.invoke('biblioteca-remover', codigo),

@@ -75,6 +75,8 @@
 
 - [ ] **Agente leve em segundo plano** (depois do motor, decisão 2026-11-06): separar rede P2P (agente ~40–60 MB) das janelas (painel, chamada, lousa abertas só quando usadas); hoje ~250 MB em segundo plano
 
+- [x] **v4.1 — conexão profissional** (2026-11-09): causa do teste falho encontrada (o "Sair" do ícone do motor removia o serviço) e corrigida no motor; autorreparo do serviço a cada 15 min; descoberta na mesma rede sem internet (21 ms); NAT-PMP além de UPnP; diagnóstico de conexão nos Ajustes. Referências: artigo de NAT traversal da Tailscale, documentação Hyperswarm/Pear, bibliotecas de port mapping (PCP/NAT-PMP/UPnP)
+
 ## Fase 7 — Refinamentos finais (peso: 10%)
 - [ ] Wake-on-LAN (ligar a máquina de Lages totalmente desligada). **Implementado sem servidor**: botão "Ligar" nos computadores offline da lista; o sinal sai daqui (mesma rede) ou de outro computador da lista ligado na mesma rede; pacote validado. Falta: ativar Wake-on-LAN na BIOS/placa de rede de Lages e testar ligando de verdade
 - [ ] Teste de estresse de conexão (24h+ sem queda)

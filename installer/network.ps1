@@ -68,6 +68,44 @@ if ($c -and $v4) {
     } catch { $upnp = "recusado" }
 }
 
+# 2b. NAT-PMP / PCP (roteadores sem UPnP: Apple, vários de operadora). Pede ao roteador a abertura por 2 h.
+$natpmp = "sem resposta"
+function Abrir-NatPmp([int]$proto, [int]$porta) {
+    # proto: 1 = UDP, 2 = TCP. Pacote NAT-PMP v0 (RFC 6886); roteadores PCP também respondem a ele.
+    $u = New-Object Net.Sockets.UdpClient
+    try {
+        $u.Client.ReceiveTimeout = 1500
+        $pb = [BitConverter]::GetBytes([uint16]$porta); [Array]::Reverse($pb)
+        $vida = [BitConverter]::GetBytes([uint32]7200); [Array]::Reverse($vida)
+        $pkt = [byte[]](@(0, $proto, 0, 0) + $pb + $pb + $vida)
+        $null = $u.Send($pkt, $pkt.Length, $gateway, 5351)
+        $ep = New-Object Net.IPEndPoint([Net.IPAddress]::Any, 0)
+        $r = $u.Receive([ref]$ep)
+        return ($r.Length -ge 16 -and $r[3] -eq 0)   # código de resultado 0 = sucesso
+    } catch { return $false } finally { $u.Close() }
+}
+if ($gateway -and $upnp -ne "ok") {
+    $ok1 = Abrir-NatPmp 1 21130; $ok2 = Abrir-NatPmp 2 $Port
+    if ($ok1 -or $ok2) { $natpmp = "ok"; $upnp = "ok" }
+}
+
+# 2c. Autorreparo: o serviço do motor precisa existir e estar rodando (senão ninguém acessa este computador)
+$motor = Join-Path $InstallDir "SSADesk.exe"
+$reparo = ""
+if (Test-Path $motor) {
+    $svc = Get-Service SSADesk -ErrorAction SilentlyContinue
+    if (-not $svc) {
+        sc.exe create SSADesk binPath= "`"$motor`" --service" start= auto DisplayName= "SSADesk" | Out-Null
+        sc.exe failure SSADesk reset= 60 actions= restart/5000/restart/5000/restart/10000 | Out-Null
+        sc.exe start SSADesk | Out-Null
+        $reparo = "serviço do motor recriado"
+    } elseif ($svc.Status -ne 'Running') {
+        sc.exe config SSADesk start= auto | Out-Null
+        sc.exe start SSADesk | Out-Null
+        $reparo = "serviço do motor reiniciado"
+    }
+}
+
 # 3. IP público (consulta simples, só para diagnóstico) e CGNAT
 $public = $null
 try { $public = (Invoke-RestMethod "https://api.ipify.org" -TimeoutSec 6).ToString().Trim() } catch {}
@@ -127,5 +165,5 @@ $L | Set-Content -Path (Join-Path $InstallDir "SSADESK-ESTE-COMPUTADOR.txt") -En
 
 [ordered]@{
     data = (Get-Date).ToString("s"); codigo = $id; ipv4_local = $v4; ipv6 = $v6; ip_publico = $public; mac = $mac
-    upnp = $upnp; wan_upnp = $wan; cgnat = $cgnat; internet_ipv4 = [bool]$internetV4; internet_ipv6 = $internetV6
+    upnp = $upnp; natpmp = $natpmp; reparo = $reparo; wan_upnp = $wan; cgnat = $cgnat; internet_ipv4 = [bool]$internetV4; internet_ipv6 = $internetV6
 } | ConvertTo-Json | Set-Content -Path (Join-Path $InstallDir "rede.json") -Encoding UTF8

@@ -141,6 +141,53 @@ function aplicarInicioAutomatico () {
   app.setLoginItemSettings({ openAtLogin: ajustes().iniciar, path: process.execPath, args: ['--segundo-plano'] })
 }
 ipcMain.handle('ajustes', () => ajustes())
+
+// ---------- Diagnóstico de conexão (relatório na Área de Trabalho, para enviar ao suporte) ----------
+async function diagnosticoConexao () {
+  const { execFile } = require('child_process')
+  const cmd = (exe, args) => new Promise(r => execFile(exe, args, { windowsHide: true, timeout: 8000 }, (e, so, se) => r(String(so || se || (e && e.message) || '').trim())))
+  const ok = v => (v ? 'OK' : 'FALHA')
+  const linhas = []
+  const L = s => linhas.push(s)
+  L('SSADesk — diagnóstico de conexão — ' + new Date().toLocaleString('pt-BR'))
+  L('Versão: ' + app.getVersion() + ' | Computador: ' + require('os').hostname() + ' | Código: ' + (meuCodigo() || '(sem código)'))
+  L('')
+  L('== Motor de acesso remoto ==')
+  L('SSADesk.exe instalado: ' + ok(fs.existsSync(path.join(DIR, 'SSADesk.exe'))))
+  const sc = await cmd('sc.exe', ['query', 'SSADesk'])
+  L('Serviço SSADesk: ' + (/RUNNING/.test(sc) ? 'rodando' : /STOPPED/.test(sc) ? 'PARADO' : 'NÃO EXISTE'))
+  const porta = await new Promise(r => { const s = net.connect(21118, '127.0.0.1'); s.once('connect', () => { s.destroy(); r(true) }); s.once('error', () => r(false)); setTimeout(() => { s.destroy(); r(false) }, 2000) })
+  L('Porta 21118 (acesso direto) aberta: ' + ok(porta))
+  L('')
+  L('== Rede P2P (encontrar pelo código) ==')
+  const tr = canal && canal.tipoDeRede()
+  if (!tr) L('Rede P2P: NÃO INICIOU')
+  else {
+    L('Rede P2P conectada: ' + ok(!!tr.host) + (tr.host ? ' (visto como ' + tr.host + ':' + tr.port + ')' : ''))
+    L('Tipo de NAT: ' + (!tr.firewalled ? 'aberto (ótimo)' : tr.randomized ? 'aleatório/restrito (precisa de retransmissão)' : 'consistente (bom para furo direto)'))
+    L('Retransmissores conhecidos: ' + tr.retransmissores + ' | Este computador retransmite: ' + (tr.souRetransmissor ? 'sim' : 'não'))
+  }
+  L('Anunciando o código na rede P2P: ' + ok(canal && canal.escutas && canal.escutas.size > 0))
+  L('Descoberta na rede local ativa: ' + ok(!!(lan && lan.sock)))
+  if (canal && meuCodigo()) L('Este código é encontrado na rede P2P: ' + ok(await canal.online(meuCodigo(), 10000)))
+  L('')
+  L('== Rede deste computador ==')
+  const rede = readJson(path.join(DIR, 'rede.json')) || {}
+  L('IPv4 local: ' + (rede.ipv4_local || '?') + ' | IP público: ' + (rede.ip_publico || '?') + ' | IPv6 público: ' + ((rede.ipv6 || []).length ? 'sim' : 'não'))
+  L('Roteador abre porta sozinho (UPnP/NAT-PMP): ' + (rede.upnp === 'ok' ? 'sim' : 'não') + ' | IP compartilhado (CGNAT): ' + (rede.cgnat ? 'SIM' : 'não'))
+  if (rede.reparo) L('Autorreparo: ' + rede.reparo)
+  L('')
+  L('== Windows ==')
+  const fw = await cmd('powershell.exe', ['-NoProfile', '-Command', "(Get-NetFirewallRule -DisplayName 'SSADesk*' -ErrorAction SilentlyContinue | Where-Object Enabled -eq True).DisplayName -join ', '"])
+  L('Regras de firewall do SSADesk: ' + (fw || 'NENHUMA'))
+  const sac = await cmd('reg.exe', ['query', 'HKLM\\SYSTEM\\CurrentControlSet\\Control\\CI\\Policy', '/v', 'VerifiedAndReputablePolicyState'])
+  L('Controle Inteligente de Aplicativos: ' + (/0x1\b/.test(sac) ? 'LIGADO (bloqueia programas sem assinatura)' : /0x2\b/.test(sac) ? 'em avaliação' : 'desligado'))
+  const arq = process.env.SSADESK_DIAG_TESTE || path.join(app.getPath('desktop'), 'SSADesk-diagnostico.txt')
+  fs.writeFileSync(arq, '\ufeff' + linhas.join('\r\n'), 'utf8')
+  if (!process.env.SSADESK_DIAG_TESTE) shell.openPath(arq)
+  return { ok: true, arquivo: arq }
+}
+ipcMain.handle('diagnostico', () => diagnosticoConexao())
 ipcMain.handle('ajustes-salvar', (_e, novo) => {
   const atual = ajustes()
   const a = {
@@ -156,6 +203,7 @@ let sessao = { ativa: false, papel: null, nome: '', permissoes: { ...PERMISSOES_
 let estadoChamada = { fase: 'aguardando', nome: '' }
 let pendente = null // conexão pelo código esperando a resposta do outro lado
 let arquivos = null
+let lan = null
 let ultimoDestino = ''
 let modoAcordar = null
 let encerradoPeloUsuario = false
@@ -286,6 +334,12 @@ function iniciarCanal () {
     aoRecebido: r => avisarRecebido(r)
   })
   canal._swarm() // liga o nó P2P já na abertura: as próximas conexões saem rápidas
+  // Descoberta na mesma rede (sem internet): responde quando alguém procura o meu código
+  try {
+    const { DescobertaLan } = require('./descoberta-lan')
+    lan = new DescobertaLan({ meuCodigo, meuNome })
+    lan.iniciar()
+  } catch {}
   // Fica disponível para ser encontrado pelo código (e pela chave de internet)
   canal.escutar({ codigo: meuCodigo(), chave: minhaChave() }).catch(() => {})
 }
@@ -572,13 +626,29 @@ async function conectarPorCodigo (codigo) {
   if (soDigitos(codigo) === soDigitos(meuCodigo())) throw new Error('Este é o código deste computador.')
   if (canal.conectado()) { canal.encerrar(); await new Promise(r => setTimeout(r, 400)) }
   avisarPainel('conectar-status', 'Procurando o computador…')
-  const resposta = await new Promise((resolve, reject) => {
+  // Em paralelo: procura na rede local (responde em milissegundos e não depende da internet)
+  let naRede = null
+  const buscaLocal = lan ? lan.procurar(codigo, 3000).then(r => { naRede = r; if (r) avisarPainel('conectar-status', 'Encontrado na sua rede. Conectando…'); return r }) : Promise.resolve(null)
+  let resposta
+  try {
+    resposta = await new Promise((resolve, reject) => {
+    // Achou na rede local: espera a sessão completa só mais um pouco; senão abre a tela direto pela rede local
+    buscaLocal.then(r => { if (r) setTimeout(() => { if (pendente) { pendente = null; canal.pararProcura(); reject(Object.assign(new Error('só rede local'), { local: true })) } }, 8000) })
     const t = setTimeout(() => { if (pendente) { pendente = null; canal.pararProcura(); reject(new Error('Computador não encontrado. Ele está ligado, com internet e com o SSADesk aberto?')) } }, 45000)
     pendente = { resolve: v => { clearTimeout(t); resolve(v) }, reject: e => { clearTimeout(t); reject(e) } }
     canal.procurar({ codigo })
     canal.once('conectado', () => avisarPainel('conectar-status', 'Aguardando permissão…'))
   })
+  } catch (e) {
+    if (!(e.local && naRede)) throw e
+    // Sem sessão pela internet, mas o computador está na mesma rede: acesso à tela direto (a senha é exigida)
+    ultimoDestino = naRede.ip
+    if (!process.env.SSADESK_CODIGO_TESTE) abrirRustDesk(naRede.ip)
+    salvarNaBiblioteca(soDigitos(codigo), naRede.nome || '', null)
+    return naRede.nome || soDigitos(codigo)
+  }
   avisarPainel('conectar-status', 'Escolhendo o caminho mais rápido…')
+  if (naRede) resposta = { ...resposta, ips: [naRede.ip, ...(resposta.ips || [])] } // rede local primeiro
   const destino = await melhorCaminho(resposta)
   ultimoDestino = destino
   sessao.codigo = soDigitos(codigo)
@@ -828,6 +898,7 @@ app.whenReady().then(() => {
     require('electron').desktopCapturer.getSources({ types: ['screen'] }).then(s => cb(s.length ? { video: s[0] } : {})).catch(() => cb({}))
   })
   if (process.env.SSADESK_CALL) { abrirChamada({ nome: 'Lages' }); return }
+  if (process.env.SSADESK_DIAG_TESTE) { iniciarCanal(); setTimeout(() => diagnosticoConexao().then(() => app.exit(0)), 12000); return }
   if (process.env.SSADESK_ACORDAR_TESTE) { iniciarCanal(); acordarComputador(process.env.SSADESK_ACORDAR_TESTE).then(r => fs.writeFileSync(process.env.SSADESK_LOG, JSON.stringify(r))); return }
   if (process.env.SSADESK_CODIGO_TESTE) {
     iniciarCanal()
