@@ -1,4 +1,4 @@
-/* SSADesk — janela de mensagens (flutuante, vidro escuro como a chamada) */
+/* SSAdesk — janela de mensagens (flutuante, vidro escuro como a chamada) */
 @font-face { font-family: "Inter"; src: url("fonts/inter.woff2") format("woff2"); font-weight: 100 900; font-display: block; }
 :root {
   --font: -apple-system, "SF Pro Text", "Inter", "Segoe UI Variable Text", system-ui, sans-serif;

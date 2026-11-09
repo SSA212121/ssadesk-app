@@ -1,10 +1,10 @@
-# SSADesk
+# SSAdesk
 
 Solução própria de acesso remoto para a SSA Comércio, substituindo o AnyDesk (que passou a cobrar e está derrubando a conexão do financeiro a cada 5 minutos).
 
 ## Por que essa arquitetura
 
-Construir um AnyDesk do zero (captura de tela, transporte de rede, NAT traversal, criptografia) levaria meses mesmo para equipes grandes. Em vez disso, o SSADesk usa como base o **RustDesk** (`github.com/rustdesk/rustdesk` + `github.com/rustdesk/rustdesk-server`), projeto open source (AGPL-3.0) feito para isso, com clientes prontos para Windows e macOS.
+Construir um AnyDesk do zero (captura de tela, transporte de rede, NAT traversal, criptografia) levaria meses mesmo para equipes grandes. Em vez disso, o SSAdesk usa como base o **RustDesk** (`github.com/rustdesk/rustdesk` + `github.com/rustdesk/rustdesk-server`), projeto open source (AGPL-3.0) feito para isso, com clientes prontos para Windows e macOS.
 
 **Sem servidor central (decisão de 2026-11-06):** o mesmo instalador vai em qualquer computador, e cada instalação acessa outros e pode ser acessada, por **conexão direta IPv4/IPv6** na porta TCP 21118. Então:
 
@@ -17,10 +17,10 @@ Não usamos nem reproduzimos nenhum código do AnyDesk — o RustDesk é um proj
 
 ## Componentes do projeto
 
-1. **`installer/`** — gera `dist/SSADesk-Setup.exe`, instalador único para Windows (ver `installer/README.md`).
+1. **`installer/`** — gera `dist/SSAdesk-Setup.exe`, instalador único para Windows (ver `installer/README.md`).
 2. **Mac** — RustDesk oficial para macOS, configurado para conexão direta (Fase 3).
-3. **`app/`** — app SSADesk (Electron): painel, instalador/desinstalador e **chamada de vídeo** bidirecional estilo FaceTime (janela própria, independente da sessão de controle de tela). Decisão de 2026-11-06: a chamada fica dentro do app, não num app separado.
-4. **`DESIGN_GUIDELINES.md`** — identidade visual do SSADesk, inspirada nos apps da Apple (FaceTime, System Settings): minimalista, moderna, tema claro/escuro/sistema.
+3. **`app/`** — app SSAdesk (Electron): painel, instalador/desinstalador e **chamada de vídeo** bidirecional estilo FaceTime (janela própria, independente da sessão de controle de tela). Decisão de 2026-11-06: a chamada fica dentro do app, não num app separado.
+4. **`DESIGN_GUIDELINES.md`** — identidade visual do SSAdesk, inspirada nos apps da Apple (FaceTime, System Settings): minimalista, moderna, tema claro/escuro/sistema.
 5. **`PROGRESS.md`** — controle de progresso por fases, em percentual. 90% = funcional e pronto para uso no dia a dia; os 10% finais são refinamentos (Wake-on-LAN, polimento visual, testes de estresse de conexão).
 
 ## Observação sobre "ligar o computador remotamente"

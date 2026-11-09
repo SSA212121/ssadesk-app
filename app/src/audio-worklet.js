@@ -1,4 +1,4 @@
-// SSADesk — processadores de áudio da chamada (rodam na thread de áudio).
+// SSAdesk — processadores de áudio da chamada (rodam na thread de áudio).
 //  'ssadesk-captura': junta o microfone em blocos de 20 ms (960 amostras a 48 kHz) e envia à página.
 //  'ssadesk-saida'  : toca o áudio recebido com uma pequena reserva (jitter buffer) para não picotar.
 

@@ -1,12 +1,12 @@
 ﻿<#
-Gera dist\SSADesk-Setup.exe.
+Gera dist\SSAdesk-Setup.exe.
   powershell -ExecutionPolicy Bypass -File installer\build.ps1
 Requer Inno Setup 6 (winget install JRSoftware.InnoSetup) e Node.js.
 
 O Setup.exe é só um envelope: extrai a pasta "stage" e abre a tela de instalação do próprio app
-(app\SSADeskApp.exe --instalar). Layout da stage = layout final da instalação:
-  motor\ -> raiz da instalação: SSADesk.exe (motor próprio, compilado do código do RustDesk com a marca SSADesk)
-  app\  (SSADeskApp.exe = Electron oficial + resources\app; também é o Node do túnel)
+(app\SSAdeskApp.exe --instalar). Layout da stage = layout final da instalação:
+  motor\ -> raiz da instalação: SSAdesk.exe (motor próprio, compilado do código do RustDesk com a marca SSAdesk)
+  app\  (SSAdeskApp.exe = Electron oficial + resources\app; também é o Node do túnel)
   bin\hbbs.exe   tools\*.ps1   ssadesk.ico/png   licenças
 Todos os binários de terceiros são oficiais e têm o SHA-256 conferido.
 #>
@@ -55,13 +55,13 @@ foreach ($f in "configure.ps1", "network.ps1", "tunel.ps1", "chave.js") {
     [IO.File]::WriteAllText("$stage\tools\$f", [IO.File]::ReadAllText("$here\$f"), $bom)
 }
 
-# 3. Túnel P2P: roda no motor do próprio app (SSADesk.exe modo Node); hypertele vem nas dependências do app
+# 3. Túnel P2P: roda no motor do próprio app (SSAdesk.exe modo Node); hypertele vem nas dependências do app
 
-# 3b. Motor SSADesk (compilado de C:\dev\ssadesk-motor, ramo "ssadesk"): vai para a raiz da instalação como SSADesk.exe
+# 3b. Motor SSAdesk (compilado de C:\dev\ssadesk-motor, ramo "ssadesk"): vai para a raiz da instalação como SSAdesk.exe
 $motorSrc = "C:\dev\ssadesk-motor\flutter\build\windows\x64\runner\Release"
 if (-not (Test-Path "$motorSrc\rustdesk.exe")) { throw "Motor não compilado. Compile em C:\dev\ssadesk-motor (cargo build + flutter build windows)." }
 Copy-Item $motorSrc "$stage\motor" -Recurse
-Rename-Item "$stage\motor\rustdesk.exe" "SSADesk.exe"
+Rename-Item "$stage\motor\rustdesk.exe" "SSAdesk.exe"
 $vd = "C:\dev\ssadesk-motor\target\release\deps\dylib_virtual_display.dll"; if (Test-Path $vd) { Copy-Item $vd "$stage\motor\" }
 
 # 4. Identidade visual
@@ -70,7 +70,7 @@ Copy-Item "$here\assets\ssadesk.ico" "$stage\ssadesk.ico"
 Copy-Item "$here\assets\ssadesk-256.png" "$stage\ssadesk.png"
 Copy-Item "$here\assets\ssadesk.ico" "$payload\ssadesk.ico"
 
-# 5. App SSADesk (Electron oficial + código do app)
+# 5. App SSAdesk (Electron oficial + código do app)
 Push-Location $appSrc
 try { npm ci --no-audit --no-fund | Out-Null; if ($LASTEXITCODE -ne 0) { throw "npm ci (app) falhou" }; node node_modules\electron\install.js } finally { Pop-Location }
 New-Item -ItemType Directory -Force "$appSrc\assets", "$appSrc\src\fonts" | Out-Null
@@ -80,7 +80,7 @@ Copy-Item "$appSrc\node_modules\@fontsource-variable\inter\files\inter-latin-wgh
 $appOut = Join-Path $stage "app"
 Copy-Item "$appSrc\node_modules\electron\dist" $appOut -Recurse
 Remove-Item "$appOut\resources\default_app.asar" -ErrorAction SilentlyContinue
-Rename-Item "$appOut\electron.exe" "SSADeskApp.exe"
+Rename-Item "$appOut\electron.exe" "SSAdeskApp.exe"
 New-Item -ItemType Directory -Force "$appOut\resources\app" | Out-Null
 Copy-Item "$appSrc\main.js", "$appSrc\preload.js", "$appSrc\instalador.js", "$appSrc\instalar-cli.js", "$appSrc\package.json" "$appOut\resources\app\"
 Copy-Item "$appSrc\src", "$appSrc\assets" "$appOut\resources\app\" -Recurse
@@ -88,8 +88,8 @@ Copy-Item "$appSrc\canal.js" "$appOut\resources\app\"
 # Dependências de produção (rede P2P da chamada); electron e rcedit são só de build
 robocopy "$appSrc\node_modules" "$appOut\resources\app\node_modules" /E /NFL /NDL /NJH /NJS /NP /XD electron rcedit @types | Out-Null
 if ($LASTEXITCODE -ge 8) { throw "robocopy falhou ($LASTEXITCODE)" }
-& "$appSrc\node_modules\rcedit\bin\rcedit-x64.exe" "$appOut\SSADeskApp.exe" --set-icon "$here\assets\ssadesk.ico" `
-    --set-version-string "ProductName" "SSADesk" --set-version-string "FileDescription" "SSADesk" `
+& "$appSrc\node_modules\rcedit\bin\rcedit-x64.exe" "$appOut\SSAdeskApp.exe" --set-icon "$here\assets\ssadesk.ico" `
+    --set-version-string "ProductName" "SSAdesk" --set-version-string "FileDescription" "SSAdesk" `
     --set-version-string "CompanyName" "SSA Comercio" --set-file-version $version --set-product-version $version
 if ($LASTEXITCODE -ne 0) { throw "rcedit falhou" }
 
@@ -124,13 +124,13 @@ Copy-Item "$appSrc\src\setup.html", "$appSrc\src\setup.css", "$appSrc\src\styles
 Copy-Item "$appSrc\src\fonts\inter.woff2" "$ui\src\fonts\"; Copy-Item "$appSrc\assets\icon.png" "$ui\assets\"
 
 # 8. Envelope (Setup.exe)
-$iss = [IO.File]::ReadAllText("$here\SSADesk.iss") -replace '#define AppVersion ".*"', "#define AppVersion `"$version`""
-[IO.File]::WriteAllText("$payload\SSADesk.iss", $iss, $bom)
-& $iscc /Qp "$payload\SSADesk.iss"
+$iss = [IO.File]::ReadAllText("$here\SSAdesk.iss") -replace '#define AppVersion ".*"', "#define AppVersion `"$version`""
+[IO.File]::WriteAllText("$payload\SSAdesk.iss", $iss, $bom)
+& $iscc /Qp "$payload\SSAdesk.iss"
 if ($LASTEXITCODE -ne 0) { throw "ISCC falhou ($LASTEXITCODE)." }
 # Pasta pronta para o pendrive: instalador + atalho de um clique para liberar o bloqueio do Windows
-$pen = Join-Path $here "..\dist\Pendrive-SSADesk"
+$pen = Join-Path $here "..\dist\Pendrive-SSAdesk"
 if (Test-Path $pen) { Remove-Item -Recurse -Force $pen }
 New-Item -ItemType Directory -Force $pen | Out-Null
-Copy-Item (Join-Path $here "..\dist\SSADesk-Setup.exe"), "$here\pendrive\*" $pen
-Write-Host "OK: $(Resolve-Path (Join-Path $here '..\dist\SSADesk-Setup.exe'))"
+Copy-Item (Join-Path $here "..\dist\SSAdesk-Setup.exe"), "$here\pendrive\*" $pen
+Write-Host "OK: $(Resolve-Path (Join-Path $here '..\dist\SSAdesk-Setup.exe'))"

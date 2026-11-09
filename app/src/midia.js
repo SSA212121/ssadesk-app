@@ -1,4 +1,4 @@
-// SSADesk — envio e recebimento de áudio/vídeo pelo canal P2P (sem servidor).
+// SSAdesk — envio e recebimento de áudio/vídeo pelo canal P2P (sem servidor).
 // Vídeo: VP8 (WebCodecs) a partir do <video> local.  Áudio: Opus em blocos de 20 ms.
 // Formato de cada pacote de mídia: [1 byte flags (bit0 = quadro-chave)][8 bytes timestamp µs][dados]
 ;(function () {

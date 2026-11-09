@@ -1,4 +1,4 @@
-// SSADesk — processo principal (Electron).
+// SSAdesk — processo principal (Electron).
 // Janela com material de vidro nativo (Acrylic no Windows 11, vibrancy no macOS),
 // tema Automático/Claro/Escuro e ações: copiar, conectar por IP ou por chave de internet (túnel P2P).
 const { app, BrowserWindow, ipcMain, nativeTheme, clipboard, shell, dialog } = require('electron')
@@ -34,12 +34,12 @@ if (process.env.SSADESK_PERFIL) app.setPath('userData', process.env.SSADESK_PERF
 // Uma única instância do app: abrir de novo só mostra o painel
 if (MODO === 'app' && !process.env.SSADESK_SNAPSHOT && !app.requestSingleInstanceLock()) app.exit(0)
 
-// Pasta de instalação do SSADesk (onde ficam código, chave, RustDesk e túnel)
+// Pasta de instalação do SSAdesk (onde ficam código, chave, RustDesk e túnel)
 function installDir () {
   if (process.env.SSADESK_DIR) return process.env.SSADESK_DIR
   if (app.isPackaged && isWin) return path.resolve(path.dirname(process.execPath), '..')
-  if (isMac) return path.join(app.getPath('home'), 'Library', 'Application Support', 'SSADesk')
-  return 'C:\\SSADesk'
+  if (isMac) return path.join(app.getPath('home'), 'Library', 'Application Support', 'SSAdesk')
+  return 'C:\\SSAdesk'
 }
 const DIR = installDir()
 const prefsFile = () => path.join(app.getPath('userData'), 'preferencias.json')
@@ -61,7 +61,7 @@ function createWindow () {
     maximizable: false,
     fullscreenable: false,
     show: false,
-    title: 'SSADesk',
+    title: 'SSAdesk',
     icon: path.join(__dirname, 'assets', 'icon.png'),
     backgroundColor: '#00000000',
     // Vidro nativo
@@ -97,7 +97,7 @@ function abrirChamada (dados = {}) {
     width: W, height: H, minWidth: 200, minHeight: 150,
     x: area.x + area.width - W - 24, y: area.y + area.height - H - 24,
     alwaysOnTop: true, skipTaskbar: false,
-    show: false, title: 'SSADesk — Chamada', backgroundColor: '#000000',
+    show: false, title: 'SSAdesk — Chamada', backgroundColor: '#000000',
     icon: path.join(__dirname, 'assets', 'icon.png'),
     ...(isWin ? { titleBarStyle: 'hidden', roundedCorners: true } : {}),
     ...(isMac ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 16, y: 16 } } : {}),
@@ -149,13 +149,13 @@ async function diagnosticoConexao () {
   const ok = v => (v ? 'OK' : 'FALHA')
   const linhas = []
   const L = s => linhas.push(s)
-  L('SSADesk — diagnóstico de conexão — ' + new Date().toLocaleString('pt-BR'))
+  L('SSAdesk — diagnóstico de conexão — ' + new Date().toLocaleString('pt-BR'))
   L('Versão: ' + app.getVersion() + ' | Computador: ' + require('os').hostname() + ' | Código: ' + (meuCodigo() || '(sem código)'))
   L('')
   L('== Motor de acesso remoto ==')
-  L('SSADesk.exe instalado: ' + ok(fs.existsSync(path.join(DIR, 'SSADesk.exe'))))
-  const sc = await cmd('sc.exe', ['query', 'SSADesk'])
-  L('Serviço SSADesk: ' + (/RUNNING/.test(sc) ? 'rodando' : /STOPPED/.test(sc) ? 'PARADO' : 'NÃO EXISTE'))
+  L('SSAdesk.exe instalado: ' + ok(fs.existsSync(path.join(DIR, 'SSAdesk.exe'))))
+  const sc = await cmd('sc.exe', ['query', 'SSAdesk'])
+  L('Serviço SSAdesk: ' + (/RUNNING/.test(sc) ? 'rodando' : /STOPPED/.test(sc) ? 'PARADO' : 'NÃO EXISTE'))
   const porta = await new Promise(r => { const s = net.connect(21118, '127.0.0.1'); s.once('connect', () => { s.destroy(); r(true) }); s.once('error', () => r(false)); setTimeout(() => { s.destroy(); r(false) }, 2000) })
   L('Porta 21118 (acesso direto) aberta: ' + ok(porta))
   L('')
@@ -178,11 +178,11 @@ async function diagnosticoConexao () {
   if (rede.reparo) L('Autorreparo: ' + rede.reparo)
   L('')
   L('== Windows ==')
-  const fw = await cmd('powershell.exe', ['-NoProfile', '-Command', "(Get-NetFirewallRule -DisplayName 'SSADesk*' -ErrorAction SilentlyContinue | Where-Object Enabled -eq True).DisplayName -join ', '"])
-  L('Regras de firewall do SSADesk: ' + (fw || 'NENHUMA'))
+  const fw = await cmd('powershell.exe', ['-NoProfile', '-Command', "(Get-NetFirewallRule -DisplayName 'SSAdesk*' -ErrorAction SilentlyContinue | Where-Object Enabled -eq True).DisplayName -join ', '"])
+  L('Regras de firewall do SSAdesk: ' + (fw || 'NENHUMA'))
   const sac = await cmd('reg.exe', ['query', 'HKLM\\SYSTEM\\CurrentControlSet\\Control\\CI\\Policy', '/v', 'VerifiedAndReputablePolicyState'])
   L('Controle Inteligente de Aplicativos: ' + (/0x1\b/.test(sac) ? 'LIGADO (bloqueia programas sem assinatura)' : /0x2\b/.test(sac) ? 'em avaliação' : 'desligado'))
-  const arq = process.env.SSADESK_DIAG_TESTE || path.join(app.getPath('desktop'), 'SSADesk-diagnostico.txt')
+  const arq = process.env.SSADESK_DIAG_TESTE || path.join(app.getPath('desktop'), 'SSAdesk-diagnostico.txt')
   fs.writeFileSync(arq, '\ufeff' + linhas.join('\r\n'), 'utf8')
   if (!process.env.SSADESK_DIAG_TESTE) shell.openPath(arq)
   return { ok: true, arquivo: arq }
@@ -317,6 +317,11 @@ function iniciarCanal () {
         if (sessao.permissoes.controlar === false) { if (process.env.SSADESK_LOG) fs.appendFileSync(process.env.SSADESK_LOG, 'lousa bloqueada pela permissão\n'); break }
         abrirLousa(); if (lousaWin && !lousaWin.isDestroyed()) { if (lousaPronta) lousaWin.webContents.send('lousa-remoto', msg.d); else lousaFila.push(msg.d) }
         break
+      // Painel ⓘ: latência (ida e volta pelo canal) e informações do outro computador
+      case 'ping': canal.controle({ t: 'pong', em: msg.em }); break
+      case 'pong': if (typeof msg.em === 'number') infoSessao.latencia = Math.max(0, Date.now() - msg.em); break
+      case 'info-pedir': canal.controle({ t: 'info', d: require('./info-sistema').coletar() }); break
+      case 'info': if (msg.d && typeof msg.d === 'object') infoSessao.remoto = msg.d; break
     }
     if (arquivos && /^arq-/.test(msg.t)) arquivos.controle(msg)
   })
@@ -366,7 +371,7 @@ function mostrarPedido (dados) {
     pedidoAtual = { dados: { ...dados, segundos: aj.receber === 'auto' ? 15 : 0, permissoes: aj.permissoes }, responder, adiar: () => clearTimeout(tempo) }
     pedidoWin = new BrowserWindow({
       width: 380, height: 420, resizable: false, maximizable: false, minimizable: false, alwaysOnTop: true, show: false,
-      title: 'SSADesk', backgroundColor: '#00000000', icon: path.join(__dirname, 'assets', 'icon.png'),
+      title: 'SSAdesk', backgroundColor: '#00000000', icon: path.join(__dirname, 'assets', 'icon.png'),
       ...(isWin ? { titleBarStyle: 'hidden', backgroundMaterial: 'acrylic' } : {}),
       ...(isMac ? { titleBarStyle: 'hiddenInset', vibrancy: 'hud', visualEffectState: 'active' } : {}),
       webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, spellcheck: false }
@@ -387,11 +392,11 @@ function abrirBarra () {
   if (process.env.SSADESK_CODIGO_TESTE) return
   if (barraWin && !barraWin.isDestroyed()) { barraWin.showInactive(); barraWin.webContents.send('barra-sessao', { nome: sessao.nome }); return }
   const area = require('electron').screen.getPrimaryDisplay().workArea
-  const W = 500; const H = 64
+  const W = 544; const H = 64
   barraWin = new BrowserWindow({
     width: W, height: H, x: Math.round(area.x + (area.width - W) / 2), y: area.y + 12,
     frame: false, transparent: true, resizable: false, maximizable: false, minimizable: false, skipTaskbar: true,
-    alwaysOnTop: true, show: false, title: 'SSADesk', hasShadow: false,
+    alwaysOnTop: true, show: false, title: 'SSAdesk', hasShadow: false,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, spellcheck: false }
   })
   barraWin.setAlwaysOnTop(true, 'floating')
@@ -399,14 +404,14 @@ function abrirBarra () {
   barraWin.once('ready-to-show', () => barraWin.showInactive())
   barraWin.on('closed', () => { barraWin = null })
 }
-function fecharBarra () { if (barraWin && !barraWin.isDestroyed()) barraWin.destroy(); barraWin = null }
+function fecharBarra () { if (barraWin && !barraWin.isDestroyed()) barraWin.destroy(); barraWin = null; if (infoWin && !infoWin.isDestroyed()) infoWin.close(); infoSessao.latencia = null; infoSessao.remoto = null }
 
 async function enviarArquivos (caminhos) {
   const { Notification } = require('electron')
   const lista = (caminhos || []).filter(c => c && fs.existsSync(c))
   if (!lista.length) return { ok: false, msg: 'Nenhum arquivo.' }
   if (!(canal && canal.conectado() && sessao.ativa && sessao.papel === 'acessando')) {
-    new Notification({ title: 'SSADesk', body: 'Conecte-se a um computador para enviar arquivos.' }).show()
+    new Notification({ title: 'SSAdesk', body: 'Conecte-se a um computador para enviar arquivos.' }).show()
     mostrarPainel(); return { ok: false, msg: 'Sem conexão.' }
   }
   if (sessao.permissoes.arquivos === false) return { ok: false, msg: (sessao.nome || 'O outro computador') + ' não permite receber arquivos.' }
@@ -423,8 +428,72 @@ ipcMain.on('sessao-acao', (_e, acao) => {
   if (acao === 'tela') ipcMain.emit('abrir-chamada', null, { tela: true }) // transmitir minha tela
   if (acao === 'lousa') abrirLousa()
   if (acao === 'chat') abrirChatJanela()
+  if (acao === 'info') abrirInfo()
   if (acao === 'encerrar') { encerradoPeloUsuario = true; if (canal) canal.encerrar(); fecharBarra() }
 })
+// ---------- Painel ⓘ de informações da conexão (canto superior direito) ----------
+let infoWin = null
+let infoTimer = null
+const infoSessao = { latencia: null, remoto: null }
+function caminhoDaConexao () {
+  const d = String(ultimoDestino || '')
+  if (!d) return { tipo: 'Sessão SSAdesk (P2P)', detalhe: '' }
+  if (d.startsWith('127.0.0.1:')) {
+    return precisaRetransmissao.size ? { tipo: 'Internet · retransmissão cega', detalhe: 'Criptografado de ponta a ponta' } : { tipo: 'Internet · P2P direto', detalhe: 'Criptografado de ponta a ponta' }
+  }
+  const ip = d.replace(/^\[|\]$/g, '')
+  if (/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.|fe80:)/i.test(ip)) return { tipo: 'Rede local', detalhe: ip }
+  return { tipo: ip.includes(':') ? 'Internet · IPv6 direto' : 'Internet · IPv4 direto', detalhe: ip }
+}
+function arquivoPadraoMotor () { return path.join(app.getPath('appData'), 'SSAdesk', 'config', 'SSAdesk_default.toml') }
+function fpsLigado () { try { return /show_quality_monitor\s*=\s*'Y'/.test(fs.readFileSync(arquivoPadraoMotor(), 'utf8')) } catch { return false } }
+// Liga/desliga o medidor de FPS, atraso e velocidade do próprio motor (aparece na janela da tela remota)
+function definirFps (ligar) {
+  const f = arquivoPadraoMotor()
+  let t = ''; try { t = fs.readFileSync(f, 'utf8') } catch {}
+  t = t.replace(/^show_quality_monitor\s*=.*\r?\n?/m, '')
+  if (ligar) t = /^\[options\]/m.test(t) ? t.replace(/^\[options\]\r?\n/m, m => m + "show_quality_monitor = 'Y'\n") : t + (t && !t.endsWith('\n') ? '\n' : '') + "[options]\nshow_quality_monitor = 'Y'\n"
+  fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, t)
+  // computadores já acessados guardam a escolha própria: aplica neles também
+  const pasta = path.join(app.getPath('appData'), 'SSAdesk', 'config', 'peers')
+  try {
+    for (const n of fs.readdirSync(pasta).filter(n => n.endsWith('.toml'))) {
+      const p = path.join(pasta, n); const c = fs.readFileSync(p, 'utf8')
+      const novo = /^show_quality_monitor\s*=/m.test(c) ? c.replace(/^show_quality_monitor\s*=.*$/m, 'show_quality_monitor = ' + (ligar ? 'true' : 'false')) : c
+      if (novo !== c) fs.writeFileSync(p, novo)
+    }
+  } catch {}
+}
+function dadosInfo () {
+  const ligado = !!(canal && canal.conectado() && sessao.ativa)
+  return {
+    conectado: ligado, nome: sessao.nome || 'Computador conectado', caminho: caminhoDaConexao(),
+    latencia: ligado ? infoSessao.latencia : null, local: require('./info-sistema').coletar(), remoto: ligado ? infoSessao.remoto : null,
+    fps: fpsLigado()
+  }
+}
+function abrirInfo () {
+  if (infoWin && !infoWin.isDestroyed()) { infoWin.close(); return } // o botão alterna
+  const area = require('electron').screen.getPrimaryDisplay().workArea
+  const W = 320; const H = 452
+  infoWin = new BrowserWindow({
+    width: W, height: H, x: area.x + area.width - W - 14, y: area.y + 14,
+    frame: false, transparent: true, resizable: false, maximizable: false, minimizable: false, skipTaskbar: true,
+    alwaysOnTop: true, show: false, title: 'Informações da conexão', hasShadow: false,
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, spellcheck: false }
+  })
+  infoWin.setAlwaysOnTop(true, 'floating')
+  infoWin.loadFile(path.join(__dirname, 'src', 'info.html'))
+  infoWin.once('ready-to-show', () => infoWin.show())
+  const tique = () => {
+    if (canal && canal.conectado() && sessao.ativa) { canal.controle({ t: 'ping', em: Date.now() }); canal.controle({ t: 'info-pedir' }) }
+    setTimeout(() => { if (infoWin && !infoWin.isDestroyed()) infoWin.webContents.send('info-dados', dadosInfo()) }, 400)
+  }
+  tique(); infoTimer = setInterval(tique, 2000)
+  infoWin.on('closed', () => { infoWin = null; clearInterval(infoTimer); infoTimer = null })
+}
+ipcMain.on('info-fechar', () => { if (infoWin && !infoWin.isDestroyed()) infoWin.close() })
+ipcMain.handle('info-fps', (_e, ligar) => { try { definirFps(!!ligar); return { ok: true, fps: fpsLigado() } } catch (e) { return { ok: false, msg: e.message } } })
 ipcMain.handle('sessao-info', () => ({ nome: sessao.nome, ativa: sessao.ativa }))
 
 // Quem foi acessado: aviso discreto ao receber (um por item enviado, não um por arquivo de uma pasta)
@@ -438,12 +507,12 @@ function avisarRecebido ({ nome, caminho, raiz }) {
   n.on('click', () => shell.showItemInFolder(caminho)); n.show()
 }
 
-// "Enviar para → SSADesk" no botão direito do Windows
+// "Enviar para → SSAdesk" no botão direito do Windows
 function registrarEnviarPara () {
   if (!isWin || !app.isPackaged) return
   try {
-    const lnk = path.join(app.getPath('appData'), 'Microsoft', 'Windows', 'SendTo', 'SSADesk.lnk')
-    shell.writeShortcutLink(lnk, { target: process.execPath, args: '--enviar', icon: path.join(DIR, 'ssadesk.ico'), iconIndex: 0, description: 'Enviar para o computador conectado no SSADesk' })
+    const lnk = path.join(app.getPath('appData'), 'Microsoft', 'Windows', 'SendTo', 'SSAdesk.lnk')
+    shell.writeShortcutLink(lnk, { target: process.execPath, args: '--enviar', icon: path.join(DIR, 'ssadesk.ico'), iconIndex: 0, description: 'Enviar para o computador conectado no SSAdesk' })
   } catch {}
 }
 function arquivosDaLinha (argv) {
@@ -460,7 +529,7 @@ function abrirLousa () {
   if (process.env.SSADESK_LOG) fs.appendFileSync(process.env.SSADESK_LOG, 'abrindo lousa\n')
   lousaWin = new BrowserWindow({
     x: d.x, y: d.y, width: d.width, height: d.height, frame: false, transparent: true, resizable: false, movable: false,
-    skipTaskbar: true, alwaysOnTop: true, hasShadow: false, show: false, title: 'SSADesk — Lousa', fullscreenable: false,
+    skipTaskbar: true, alwaysOnTop: true, hasShadow: false, show: false, title: 'SSAdesk — Lousa', fullscreenable: false,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, spellcheck: false }
   })
   lousaWin.setAlwaysOnTop(true, 'screen-saver')
@@ -622,7 +691,7 @@ async function acordarComputador (codigo) {
 async function conectarPorCodigo (codigo) {
   const { soDigitos } = require('./canal')
   encerradoPeloUsuario = false
-  if (!canal) throw new Error('A rede P2P não iniciou. Reabra o SSADesk.')
+  if (!canal) throw new Error('A rede P2P não iniciou. Reabra o SSAdesk.')
   if (soDigitos(codigo) === soDigitos(meuCodigo())) throw new Error('Este é o código deste computador.')
   if (canal.conectado()) { canal.encerrar(); await new Promise(r => setTimeout(r, 400)) }
   avisarPainel('conectar-status', 'Procurando o computador…')
@@ -634,7 +703,7 @@ async function conectarPorCodigo (codigo) {
     resposta = await new Promise((resolve, reject) => {
     // Achou na rede local: espera a sessão completa só mais um pouco; senão abre a tela direto pela rede local
     buscaLocal.then(r => { if (r) setTimeout(() => { if (pendente) { pendente = null; canal.pararProcura(); reject(Object.assign(new Error('só rede local'), { local: true })) } }, 8000) })
-    const t = setTimeout(() => { if (pendente) { pendente = null; canal.pararProcura(); reject(new Error('Computador não encontrado. Ele está ligado, com internet e com o SSADesk aberto?')) } }, 45000)
+    const t = setTimeout(() => { if (pendente) { pendente = null; canal.pararProcura(); reject(new Error('Computador não encontrado. Ele está ligado, com internet e com o SSAdesk aberto?')) } }, 45000)
     pendente = { resolve: v => { clearTimeout(t); resolve(v) }, reject: e => { clearTimeout(t); reject(e) } }
     canal.procurar({ codigo })
     canal.once('conectado', () => avisarPainel('conectar-status', 'Aguardando permissão…'))
@@ -678,7 +747,7 @@ function abrirChatJanela () {
   const y = ref ? Math.max(area.y, ref.y + ref.height - H) : area.y + area.height - H - 24
   chatWin = new BrowserWindow({
     width: W, height: H, minWidth: 240, minHeight: 260, x, y,
-    alwaysOnTop: true, show: false, title: 'SSADesk — Mensagens', backgroundColor: '#00000000',
+    alwaysOnTop: true, show: false, title: 'SSAdesk — Mensagens', backgroundColor: '#00000000',
     icon: path.join(__dirname, 'assets', 'icon.png'),
     ...(isWin ? { titleBarStyle: 'hidden', backgroundMaterial: 'acrylic' } : {}),
     ...(isMac ? { titleBarStyle: 'hiddenInset', vibrancy: 'hud', visualEffectState: 'active' } : {}),
@@ -774,7 +843,7 @@ ipcMain.on('janela', (_e, acao) => {
 function rustdeskPath () {
   if (isMac) return '/Applications/RustDesk.app/Contents/MacOS/RustDesk'
   // Motor próprio na raiz da instalação; versões antigas tinham o RustDesk numa subpasta
-  for (const p of [path.join(DIR, 'SSADesk.exe'), path.join(DIR, 'RustDesk', 'rustdesk.exe')]) if (fs.existsSync(p)) return p
+  for (const p of [path.join(DIR, 'SSAdesk.exe'), path.join(DIR, 'RustDesk', 'rustdesk.exe')]) if (fs.existsSync(p)) return p
   return null
 }
 function freePort () {
@@ -793,7 +862,7 @@ function waitPort (port, ms) {
 }
 function abrirRustDesk (destino) {
   const exe = rustdeskPath()
-  if (!exe || !fs.existsSync(exe)) throw new Error('SSADesk não está instalado corretamente.')
+  if (!exe || !fs.existsSync(exe)) throw new Error('SSAdesk não está instalado corretamente.')
   spawn(exe, ['--connect', destino], { detached: true, stdio: 'ignore' }).unref()
 }
 
@@ -843,13 +912,13 @@ ipcMain.on('abrir-pasta', () => shell.openPath(DIR))
 ipcMain.handle('setup-info', () => ({
   modo: MODO,
   versao: app.getVersion(),
-  destino: (motor && motor.instalacaoAnterior()) || 'C:\\SSADesk',
+  destino: (motor && motor.instalacaoAnterior()) || 'C:\\SSAdesk',
   passos: motor ? motor.PASSOS : []
 }))
 
 ipcMain.handle('setup-pasta', async (_e, atual) => {
   const r = await dialog.showOpenDialog(win, {
-    title: 'Onde instalar o SSADesk', defaultPath: path.dirname(atual || 'C:\\SSADesk'),
+    title: 'Onde instalar o SSAdesk', defaultPath: path.dirname(atual || 'C:\\SSAdesk'),
     properties: ['openDirectory', 'createDirectory'], buttonLabel: 'Escolher'
   })
   return r.canceled ? null : motor.pastaFinal(r.filePaths[0])
@@ -937,7 +1006,7 @@ app.whenReady().then(() => {
   if (!SEGUNDO_PLANO) createWindow()
 })
 
-// ---------- Ícone perto do relógio (o SSADesk continua disponível para chamadas) ----------
+// ---------- Ícone perto do relógio (o SSAdesk continua disponível para chamadas) ----------
 let bandeja = null
 function mostrarPainel () {
   if (win && !win.isDestroyed()) { clearTimeout(win._liberar); win.show(); win.focus(); win.webContents.send('painel-visivel') } else createWindow()
@@ -946,12 +1015,12 @@ function criarBandeja () {
   if (bandeja || process.env.SSADESK_SNAPSHOT) return
   const { Tray, Menu, nativeImage } = require('electron')
   bandeja = new Tray(nativeImage.createFromPath(path.join(__dirname, 'assets', isWin ? 'icon.ico' : 'icon.png')).resize({ width: 16, height: 16 }))
-  bandeja.setToolTip('SSADesk — disponível')
+  bandeja.setToolTip('SSAdesk — disponível')
   bandeja.setContextMenu(Menu.buildFromTemplate([
-    { label: 'Abrir SSADesk', click: mostrarPainel },
+    { label: 'Abrir SSAdesk', click: mostrarPainel },
     { label: 'Chamada de vídeo', click: () => ipcMain.emit('abrir-chamada') },
     { type: 'separator' },
-    { label: 'Sair do SSADesk', click: () => { app.saindo = true; app.exit(0) } }
+    { label: 'Sair do SSAdesk', click: () => { app.saindo = true; app.exit(0) } }
   ]))
   bandeja.on('click', mostrarPainel)
 }
@@ -963,3 +1032,9 @@ app.on('second-instance', (_e, argv) => {
 // Fechar o painel não encerra o app: ele segue no ícone perto do relógio para receber chamadas
 app.on('window-all-closed', () => { if (MODO !== 'app' || !bandeja) app.quit() })
 app.on('before-quit', () => { if (canal) canal.destruir() })
+
+// Teste: abre o painel ⓘ e salva uma foto dele (SSADESK_FOTO_INFO=caminho.png)
+if (process.env.SSADESK_FOTO_INFO) app.whenReady().then(() => setTimeout(() => {
+  abrirInfo()
+  setTimeout(async () => { try { fs.writeFileSync(process.env.SSADESK_FOTO_INFO, (await infoWin.webContents.capturePage()).toPNG()) } catch {} app.exit(0) }, 6000)
+}, 1500))

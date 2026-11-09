@@ -1,4 +1,4 @@
-// SSADesk — "Fulano deseja conectar": Permitir / Negar, com as permissões (tudo liberado por padrão)
+// SSAdesk — "Fulano deseja conectar": Permitir / Negar, com as permissões (tudo liberado por padrão)
 const $ = id => document.getElementById(id)
 const pedido = window.ssadesk.pedido
 

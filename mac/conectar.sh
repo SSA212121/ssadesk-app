@@ -1,13 +1,13 @@
 #!/bin/bash
-# SSADesk (macOS) - abre o túnel P2P até o outro computador e conecta o RustDesk por ele.
-APP="$HOME/Library/Application Support/SSADesk"
+# SSAdesk (macOS) - abre o túnel P2P até o outro computador e conecta o RustDesk por ele.
+APP="$HOME/Library/Application Support/SSAdesk"
 KEY="$(echo "$1" | tr -d '[:space:]' | tr 'A-F' 'a-f')"
 RD="/Applications/RustDesk.app/Contents/MacOS/RustDesk"
 LOG="$APP/conectar.log"
-avisar() { osascript -e "display notification \"$1\" with title \"SSADesk\"" >/dev/null 2>&1; }
+avisar() { osascript -e "display notification \"$1\" with title \"SSAdesk\"" >/dev/null 2>&1; }
 
 if ! [[ "$KEY" =~ ^[0-9a-f]{64}$ ]]; then
-  osascript -e 'display alert "SSADesk" message "Chave inválida. Ela tem 64 letras e números (0-9, a-f)."' >/dev/null
+  osascript -e 'display alert "SSAdesk" message "Chave inválida. Ela tem 64 letras e números (0-9, a-f)."' >/dev/null
   exit 1
 fi
 echo "$KEY" > "$APP/ultima-chave.txt"

@@ -1,4 +1,4 @@
-// SSADesk — lousa digital (parte do Modo My). Os dois computadores veem e podem anotar.
+// SSAdesk — lousa digital (parte do Modo My). Os dois computadores veem e podem anotar.
 // Coordenadas normalizadas (0..1) em relação à tela inteira: no Modo My a tela remota ocupa a tela toda,
 // então o mesmo ponto cai no mesmo lugar dos dois lados.
 const $ = id => document.getElementById(id)

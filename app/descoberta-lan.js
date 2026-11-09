@@ -1,4 +1,4 @@
-// SSADesk — descoberta na rede local (sem internet, sem servidor), como o mDNS/Bonjour faz.
+// SSAdesk — descoberta na rede local (sem internet, sem servidor), como o mDNS/Bonjour faz.
 // Quem procura manda "quem é o código X?" em broadcast UDP; o computador com esse código responde
 // direto com o endereço dele. Só o endereço e a porta: o acesso continua exigindo a senha.
 const dgram = require('dgram')

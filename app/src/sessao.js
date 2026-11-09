@@ -1,4 +1,4 @@
-// SSADesk — barrinha da sessão: soltar arquivos para enviar, chat, chamada, encerrar
+// SSAdesk — barrinha da sessão: soltar arquivos para enviar, chat, chamada, encerrar
 const $ = id => document.getElementById(id)
 const api = window.ssadesk
 const params = new URLSearchParams(location.search)

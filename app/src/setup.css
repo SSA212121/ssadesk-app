@@ -1,4 +1,4 @@
-/* SSADesk — telas de instalação (mesma linguagem visual do app) */
+/* SSAdesk — telas de instalação (mesma linguagem visual do app) */
 .setup .titlebar { height: 48px; }
 .pages { position: relative; flex: 1; }
 .page {

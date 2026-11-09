@@ -1,4 +1,4 @@
-# installer/: SSADesk-Setup.exe
+# installer/: SSAdesk-Setup.exe
 
 Um único instalador, **igual para todos os computadores Windows**. Toda instalação:
 
@@ -14,7 +14,7 @@ A tela final mostra o código e os endereços; tudo fica salvo em `<pasta>\SSADE
 
 ## Conectar a outro computador
 
-Abra o SSADesk (RustDesk) e, no campo de ID, digite o endereço do outro computador:
+Abra o SSAdesk (RustDesk) e, no campo de ID, digite o endereço do outro computador:
 
 | Situação | O que digitar | Precisa configurar roteador? |
 |---|---|---|
@@ -26,7 +26,7 @@ Depois, digite a senha permanente do computador acessado.
 
 ## Diagnóstico automático de rede
 
-Na instalação, e depois a cada inicialização e a cada hora (tarefa `SSADesk-rede`), o `network.ps1`:
+Na instalação, e depois a cada inicialização e a cada hora (tarefa `SSAdesk-rede`), o `network.ps1`:
 - descobre IPv4 local e IPv6 público;
 - tenta abrir a porta 21118 no roteador sozinho via **UPnP** (ninguém precisa entrar no roteador);
 - detecta **CGNAT** (IP compartilhado pelo provedor, onde nada local resolve);
@@ -38,16 +38,16 @@ O IP público é consultado em `api.ipify.org` só para o diagnóstico.
 
 Cada instalação publica a porta 21118 na rede P2P **Hyperswarm/HyperDHT** (descentralizada, sem servidor nosso nem de empresa), com uma **chave de internet** fixa do computador (`chave-internet.txt`). Isso atravessa CGNAT sem mexer no roteador.
 
-Para acessar: atalho **"SSADesk - Conectar pela internet"** → colar a chave do outro computador → senha permanente dele.
-Componentes: `p2p\node.exe` (Node.js oficial) + `hypertele` (MIT). Tarefa `SSADesk-p2p` (SYSTEM, na inicialização). A semente da chave fica em `dados\p2p.json` (só administradores).
+Para acessar: atalho **"SSAdesk - Conectar pela internet"** → colar a chave do outro computador → senha permanente dele.
+Componentes: `p2p\node.exe` (Node.js oficial) + `hypertele` (MIT). Tarefa `SSAdesk-p2p` (SYSTEM, na inicialização). A semente da chave fica em `dados\p2p.json` (só administradores).
 
 ## Detalhes técnicos
 
 - `configure.ps1` instala o MSI oficial do RustDesk 1.5.1 e ativa `direct-server` na porta 21118 (o RustDesk escuta em `::`, que atende IPv4 e IPv6).
 - Um `hbbs` local (rustdesk-server 1.1.16, portas 21125-21128, bloqueado no firewall para acesso de fora) existe só para o RustDesk ficar "pronto" sem tentar os servidores públicos.
 - Firewall: libera só TCP 21118 para o `rustdesk.exe`.
-- Desinstalar: Painel de Controle → SSADesk. Remove o RustDesk, a tarefa e as regras de firewall.
+- Desinstalar: Painel de Controle → SSAdesk. Remove o RustDesk, a tarefa e as regras de firewall.
 
 ## Gerar o instalador
 
-`powershell -ExecutionPolicy Bypass -File installer\build.ps1` → `dist\SSADesk-Setup.exe`. Requer Inno Setup 6.
+`powershell -ExecutionPolicy Bypass -File installer\build.ps1` → `dist\SSAdesk-Setup.exe`. Requer Inno Setup 6.

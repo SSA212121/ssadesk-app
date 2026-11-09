@@ -1,4 +1,4 @@
-/* SSADesk — chamada de vídeo (estilo FaceTime, ver DESIGN_GUIDELINES.md) */
+/* SSAdesk — chamada de vídeo (estilo FaceTime, ver DESIGN_GUIDELINES.md) */
 @font-face { font-family: "Inter"; src: url("fonts/inter.woff2") format("woff2"); font-weight: 100 900; font-display: block; }
 :root {
   --font: -apple-system, "SF Pro Display", "Inter", "Segoe UI Variable Display", system-ui, sans-serif;

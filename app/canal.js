@@ -1,4 +1,4 @@
-// SSADesk — sessão P2P entre dois computadores (Hyperswarm), sem servidor.
+// SSAdesk — sessão P2P entre dois computadores (Hyperswarm), sem servidor.
 // Cada computador "escuta" num tópico derivado do PRÓPRIO CÓDIGO (9 dígitos, como no AnyDesk) e,
 // por compatibilidade, também no da chave de internet. Quem digita o código encontra o computador.
 // A sessão carrega: pedido de permissão, endereços para conectar, chamada (áudio/vídeo), chat e arquivos.
@@ -14,7 +14,7 @@ const soDigitos = c => String(c || '').replace(/\D/g, '')
 const topicoChave = chave => crypto.createHash('sha256').update('ssadesk-chamada:' + String(chave).toLowerCase()).digest()
 const topicoCodigo = codigo => crypto.createHash('sha256').update('ssadesk-codigo:' + soDigitos(codigo)).digest()
 
-// Retransmissores SSADesk se anunciam neste tópico (rede de retransmissão sem servidor central)
+// Retransmissores SSAdesk se anunciam neste tópico (rede de retransmissão sem servidor central)
 const TOPICO_RETRANSMISSORES = crypto.createHash('sha256').update('ssadesk-retransmissores-v1').digest()
 const PORTA_P2P = 21130 // porta UDP fixa: permite abrir no roteador (UPnP) e ficar alcançável direto
 

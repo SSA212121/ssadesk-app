@@ -24,6 +24,11 @@ contextBridge.exposeInMainWorld('ssadesk', {
     onAtualizar: cb => ipcRenderer.on('barra-sessao', (_e, s) => cb(s)),
     onEstado: cb => ipcRenderer.on('barra-estado', (_e, t) => cb(t))
   },
+  info: {
+    onDados: cb => ipcRenderer.on('info-dados', (_e, d) => cb(d)),
+    fps: ligar => ipcRenderer.invoke('info-fps', ligar),
+    fechar: () => ipcRenderer.send('info-fechar')
+  },
   arquivos: {
     // Caminho real de um arquivo arrastado (o Electron não expõe mais File.path)
     caminhoDe: arquivo => webUtils.getPathForFile(arquivo),

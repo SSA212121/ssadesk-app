@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:">
+  <title>Informações da conexão</title>
+  <link rel="stylesheet" href="info.css">
+</head>
+<body>
+  <div class="cartao">
+    <header>
+      <div>
+        <h1>Conexão</h1>
+        <p id="nome">—</p>
+      </div>
+      <button class="fechar" id="fechar" title="Fechar" aria-label="Fechar">
+        <svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17"/></svg>
+      </button>
+    </header>
+
+    <section class="grupo">
+      <div class="linha"><span>Caminho</span><b id="caminho">—</b></div>
+      <div class="linha sub"><span></span><i id="detalhe"></i></div>
+      <div class="linha"><span>Latência</span><b id="latencia">—</b></div>
+      <div class="linha"><span>Qualidade</span><b id="qualidade">—</b></div>
+    </section>
+
+    <div class="colunas-titulo"><span></span><span>Este</span><span id="outroTitulo">Outro</span></div>
+    <section class="grupo tabela">
+      <div class="linha"><span>CPU</span><b id="cpuL">—</b><b id="cpuR">—</b></div>
+      <div class="medidores"><i><u id="cpuLm"></u></i><i><u id="cpuRm"></u></i></div>
+      <div class="linha"><span>RAM</span><b id="ramL">—</b><b id="ramR">—</b></div>
+      <div class="medidores"><i><u id="ramLm"></u></i><i><u id="ramRm"></u></i></div>
+      <div class="linha"><span>Disco</span><b id="hdL">—</b><b id="hdR">—</b></div>
+      <div class="medidores"><i><u id="hdLm"></u></i><i><u id="hdRm"></u></i></div>
+      <div class="linha"><span>GPU</span><b id="gpuL">—</b><b id="gpuR">—</b></div>
+      <div class="linha"><span>Rede</span><b id="redeL">—</b><b id="redeR">—</b></div>
+    </section>
+    <p class="gpu-nome" id="gpuNome"></p>
+
+    <section class="grupo">
+      <label class="linha chave">
+        <span>FPS e velocidade na tela remota</span>
+        <input type="checkbox" id="fps" role="switch">
+      </label>
+      <p class="dica">Mostra FPS, atraso e velocidade da imagem no canto da janela do computador acessado. Vale a partir da próxima conexão.</p>
+    </section>
+  </div>
+  <script src="info.js"></script>
+</body>
+</html>

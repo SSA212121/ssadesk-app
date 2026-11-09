@@ -1,14 +1,14 @@
-﻿SSADesk 4.0 - instalação e teste
+﻿SSAdesk 4.0 - instalação e teste
 
 INSTALAR (nos dois computadores)
-1. Dê dois cliques em SSADesk-Setup.exe e siga as telas (pasta, senha, Instalar).
+1. Dê dois cliques em SSAdesk-Setup.exe e siga as telas (pasta, senha, Instalar).
    Se o Windows mostrar "O controle inteligente de aplicativos bloqueou...":
    clique em OK, dê dois cliques em "Se o Windows bloquear - clique aqui",
    escolha "Desativado" e rode o instalador de novo.
    (Atenção: depois de desativada, essa proteção só volta reinstalando o Windows.)
 
 CONECTAR
-2. No computador que vai acessar, abra o SSADesk e digite o CÓDIGO do outro
+2. No computador que vai acessar, abra o SSAdesk e digite o CÓDIGO do outro
    computador (aparece grande no painel dele). Clique na seta.
 3. No outro computador aparece "Fulano deseja conectar" (permite sozinho em 15 s).
 4. Digite a senha do computador acessado.

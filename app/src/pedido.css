@@ -1,4 +1,4 @@
-/* SSADesk — pedido de conexão (mesma linguagem visual do app) */
+/* SSAdesk — pedido de conexão (mesma linguagem visual do app) */
 .pedido .titlebar { height: 28px; }
 .center-col { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 0 24px 22px; text-align: center; }
 .avatar-pedido { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; font-size: 28px; font-weight: 600; color: #fff;

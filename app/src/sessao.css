@@ -1,4 +1,4 @@
-/* SSADesk — barrinha flutuante da sessão (vidro, estilo Apple) */
+/* SSAdesk — barrinha flutuante da sessão (vidro, estilo Apple) */
 @font-face { font-family: "Inter"; src: url("fonts/inter.woff2") format("woff2"); font-weight: 100 900; font-display: block; }
 :root { --ease: cubic-bezier(.2, .8, .2, 1); --spring: cubic-bezier(.34, 1.56, .64, 1); }
 * { box-sizing: border-box; margin: 0; padding: 0; }

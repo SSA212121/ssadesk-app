@@ -1,5 +1,5 @@
-// SSADesk — envio de arquivos e pastas pela sessão P2P (sem servidor).
-// Quem acessa arrasta arquivos para a barrinha da sessão (ou usa "Enviar para → SSADesk");
+// SSAdesk — envio de arquivos e pastas pela sessão P2P (sem servidor).
+// Quem acessa arrasta arquivos para a barrinha da sessão (ou usa "Enviar para → SSAdesk");
 // eles chegam na Área de Trabalho do computador acessado.
 //
 // Protocolo: controle {t:'arq-inicio', id, nome (caminho relativo), tamanho} → pedaços binários (tipo 4)

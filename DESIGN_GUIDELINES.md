@@ -1,6 +1,6 @@
-# SSADesk — Diretrizes visuais (inspiração Apple)
+# SSAdesk — Diretrizes visuais (inspiração Apple)
 
-Aplicar em toda interface do SSADesk: janela de configuração do acesso remoto, janela de chamada de vídeo, instaladores (nas telas que o RustDesk permitir customizar) e no app `videocall-app`.
+Aplicar em toda interface do SSAdesk: janela de configuração do acesso remoto, janela de chamada de vídeo, instaladores (nas telas que o RustDesk permitir customizar) e no app `videocall-app`.
 
 ## Princípios
 

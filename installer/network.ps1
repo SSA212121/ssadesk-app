@@ -1,6 +1,6 @@
 <#
-SSADesk: diagnóstico e configuração automática de rede (sem servidor central).
-Executado na instalação e depois periodicamente (tarefa SSADesk-rede, como SYSTEM), porque IP local,
+SSAdesk: diagnóstico e configuração automática de rede (sem servidor central).
+Executado na instalação e depois periodicamente (tarefa SSAdesk-rede, como SYSTEM), porque IP local,
 IPv6 e mapeamentos UPnP podem mudar.
 
 O que faz, sem pedir nada ao usuário:
@@ -17,7 +17,7 @@ param(
 )
 $ErrorActionPreference = "Continue"
 $Port = 21118
-$Desc = "SSADesk"
+$Desc = "SSAdesk"
 
 function Get-UPnP {
     try {
@@ -62,9 +62,9 @@ if ($c -and $v4) {
         $null = $c.Add($Port, "TCP", $Port, $v4, $true, $Desc)
         $m = $c | Where-Object { $_.ExternalPort -eq $Port -and $_.Protocol -eq "TCP" } | Select-Object -First 1
         if ($m) { $upnp = "ok"; $wan = $m.ExternalIPAddress } else { $upnp = "recusado" }
-        # Porta UDP da rede P2P do SSADesk (21130): com ela aberta, este computador recebe conexões diretas
+        # Porta UDP da rede P2P do SSAdesk (21130): com ela aberta, este computador recebe conexões diretas
         try { $c.Remove(21130, "UDP") } catch {}
-        try { $null = $c.Add(21130, "UDP", 21130, $v4, $true, "SSADesk P2P") } catch {}
+        try { $null = $c.Add(21130, "UDP", 21130, $v4, $true, "SSAdesk P2P") } catch {}
     } catch { $upnp = "recusado" }
 }
 
@@ -90,18 +90,18 @@ if ($gateway -and $upnp -ne "ok") {
 }
 
 # 2c. Autorreparo: o serviço do motor precisa existir e estar rodando (senão ninguém acessa este computador)
-$motor = Join-Path $InstallDir "SSADesk.exe"
+$motor = Join-Path $InstallDir "SSAdesk.exe"
 $reparo = ""
 if (Test-Path $motor) {
-    $svc = Get-Service SSADesk -ErrorAction SilentlyContinue
+    $svc = Get-Service SSAdesk -ErrorAction SilentlyContinue
     if (-not $svc) {
-        sc.exe create SSADesk binPath= "`"$motor`" --service" start= auto DisplayName= "SSADesk" | Out-Null
-        sc.exe failure SSADesk reset= 60 actions= restart/5000/restart/5000/restart/10000 | Out-Null
-        sc.exe start SSADesk | Out-Null
+        sc.exe create SSAdesk binPath= "`"$motor`" --service" start= auto DisplayName= "SSAdesk" | Out-Null
+        sc.exe failure SSAdesk reset= 60 actions= restart/5000/restart/5000/restart/10000 | Out-Null
+        sc.exe start SSAdesk | Out-Null
         $reparo = "serviço do motor recriado"
     } elseif ($svc.Status -ne 'Running') {
-        sc.exe config SSADesk start= auto | Out-Null
-        sc.exe start SSADesk | Out-Null
+        sc.exe config SSAdesk start= auto | Out-Null
+        sc.exe start SSAdesk | Out-Null
         $reparo = "serviço do motor reiniciado"
     }
 }
@@ -123,7 +123,7 @@ $internetV4 = ($upnp -eq "ok") -and -not $cgnat -and $public
 $idFile = Join-Path $InstallDir "codigo.txt"
 $id = if (Test-Path $idFile) { (Get-Content $idFile -Raw).Trim() } else { "" }
 
-$L = @("SSADesk — este computador", "", "Código: $id", "", "COMO CONECTAR A ESTE COMPUTADOR (digite no SSADesk + a senha permanente):", "")
+$L = @("SSAdesk — este computador", "", "Código: $id", "", "COMO CONECTAR A ESTE COMPUTADOR (digite no SSAdesk + a senha permanente):", "")
 if ($v4) { $L += "  Na mesma rede ......... $v4" }
 if ($internetV6) { $L += "  Pela internet (IPv6) .. [$($v6[0])]" }
 if ($internetV4) { $L += "  Pela internet (IPv4) .. $public" }
@@ -137,7 +137,7 @@ if (-not (Test-Path $keyFile)) {
 $p2pKey = if (Test-Path $keyFile) { (Get-Content $keyFile -Raw).Trim() } else { "" }
 if ($p2pKey) {
     $L += ""
-    $L += "  Pela internet, QUALQUER rede (inclusive CGNAT), use o atalho 'SSADesk - Conectar pela internet' com a chave:"
+    $L += "  Pela internet, QUALQUER rede (inclusive CGNAT), use o atalho 'SSAdesk - Conectar pela internet' com a chave:"
     $L += "  Chave de internet: $p2pKey"
 }
 $L += ""

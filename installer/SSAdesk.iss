@@ -1,10 +1,10 @@
-; SSADesk-Setup.exe: apenas o "envelope" do instalador.
+; SSAdesk-Setup.exe: apenas o "envelope" do instalador.
 ; Não mostra nenhuma tela do Inno Setup: pede permissão de administrador, extrai o pacote para uma
-; pasta temporária e abre a tela de instalação do próprio SSADesk (app\SSADesk.exe --instalar),
+; pasta temporária e abre a tela de instalação do próprio SSAdesk (app\SSAdesk.exe --instalar),
 ; que segue o visual do app (DESIGN_GUIDELINES.md) e faz uma instalação sempre limpa.
 ; Gerado por build.ps1 (que monta a pasta "stage" com os binários oficiais conferidos).
 
-#define AppName "SSADesk"
+#define AppName "SSAdesk"
 #define AppVersion "3.0.0"
 
 [Setup]
@@ -12,8 +12,8 @@ AppId={{6B1F4C2E-8D3A-4E7B-9A51-5A1D35C0A002}
 AppName={#AppName}
 AppVersion={#AppVersion}
 AppPublisher=SSA Comércio
-VersionInfoDescription=Instalador do SSADesk
-VersionInfoProductName=SSADesk
+VersionInfoDescription=Instalador do SSAdesk
+VersionInfoProductName=SSAdesk
 DefaultDirName={tmp}\ssadesk-setup
 CreateAppDir=no
 Uninstallable=no
@@ -22,7 +22,7 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 SetupIconFile=ssadesk.ico
 OutputDir=..\..\dist
-OutputBaseFilename=SSADesk-Setup
+OutputBaseFilename=SSAdesk-Setup
 Compression=lzma2/fast
 SolidCompression=no
 DisableWelcomePage=yes
@@ -54,12 +54,12 @@ var
   R, Code: Integer;
 begin
   Result := False;
-  R := TaskDialogMsgBox('O Windows vai bloquear o SSADesk',
+  R := TaskDialogMsgBox('O Windows vai bloquear o SSAdesk',
     'Este computador está com o "Controle Inteligente de Aplicativos" ligado. Ele só permite programas com assinatura digital ' +
-    'de editores conhecidos, e esta versão do SSADesk ainda não tem essa assinatura.' + #13#10#13#10 +
+    'de editores conhecidos, e esta versão do SSAdesk ainda não tem essa assinatura.' + #13#10#13#10 +
     'Para instalar agora, desligue essa proteção na tela que vai abrir e execute o instalador de novo.' + #13#10#13#10 +
     'Atenção: depois de desligado, o Windows só permite religar reinstalando o sistema. ' +
-    'Se preferir não desligar, aguarde a versão assinada do SSADesk.',
+    'Se preferir não desligar, aguarde a versão assinada do SSAdesk.',
     mbConfirmation, MB_YESNO, ['Abrir a configuração'#13#10'Você mesmo desliga e depois executa o instalador de novo', 'Agora não'#13#10'Cancela a instalação, nada é alterado'], 0);
   if R = IDYES then
     if not ShellExec('open', 'windowsdefender://smartapp', '', '', SW_SHOWNORMAL, ewNoWait, Code) then
@@ -93,7 +93,7 @@ begin
   if FileExists(ExpandConstant('{tmp}\pkg\ui-falhou.flag')) then
   begin
     DeleteFile(ExpandConstant('{tmp}\pkg\vivo.flag'));
-    Exec(ExpandConstant('{tmp}\pkg\app\SSADeskApp.exe'), '--instalar --payload="' + ExpandConstant('{tmp}\pkg') + '"',
+    Exec(ExpandConstant('{tmp}\pkg\app\SSAdeskApp.exe'), '--instalar --payload="' + ExpandConstant('{tmp}\pkg') + '"',
          ExpandConstant('{tmp}\pkg'), SW_SHOW, ewNoWait, Code);
   end;  { 3. Mantém a pasta temporária enquanto a tela de instalação estiver aberta (sinal de vida a cada 2 s) }
   Vivo := ''; Parado := 0;

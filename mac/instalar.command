@@ -1,12 +1,12 @@
 #!/bin/bash
-# SSADesk para macOS - instalação limpa (remove a versão anterior antes de instalar).
+# SSAdesk para macOS - instalação limpa (remove a versão anterior antes de instalar).
 # Instala: RustDesk oficial (Intel ou Apple Silicon), túnel P2P (Node.js + Hyperswarm)
-# e o app "SSADesk - Conectar pela internet". Nada é baixado da internet: tudo vem do pendrive.
+# e o app "SSAdesk - Conectar pela internet". Nada é baixado da internet: tudo vem do pendrive.
 set -e
 DIR="$(cd "$(dirname "$0")" && pwd)"
 P="$DIR/payload"
-APP="$HOME/Library/Application Support/SSADesk"
-CONECTAR="/Applications/SSADesk - Conectar pela internet.app"
+APP="$HOME/Library/Application Support/SSAdesk"
+CONECTAR="/Applications/SSAdesk - Conectar pela internet.app"
 
 case "$(uname -m)" in
   arm64)  RD="rustdesk-arm64.dmg";  NODE="node-arm64.tar.gz" ;;
@@ -14,12 +14,12 @@ case "$(uname -m)" in
   *) echo "Processador não suportado: $(uname -m)"; exit 1 ;;
 esac
 
-echo "SSADesk - instalação ($(uname -m))"
+echo "SSAdesk - instalação ($(uname -m))"
 echo
 
 echo "1/5 Fechando e removendo versão anterior..."
 osascript -e 'quit app "RustDesk"' >/dev/null 2>&1 || true
-pkill -f "SSADesk/node" >/dev/null 2>&1 || true
+pkill -f "SSAdesk/node" >/dev/null 2>&1 || true
 sleep 2
 rm -rf "/Applications/RustDesk.app" "$CONECTAR" "$APP"
 
@@ -61,22 +61,22 @@ for (const [k, v] of Object.entries(want)) {
 fs.writeFileSync(f, lines.join("\n"));
 ' "$CFG/RustDesk2.toml"
 
-echo "5/5 Criando o app 'SSADesk - Conectar pela internet'..."
+echo "5/5 Criando o app 'SSAdesk - Conectar pela internet'..."
 osacompile -o "$CONECTAR" -e '
-set f to (POSIX path of (path to home folder)) & "Library/Application Support/SSADesk/ultima-chave.txt"
+set f to (POSIX path of (path to home folder)) & "Library/Application Support/SSAdesk/ultima-chave.txt"
 set prev to ""
 try
   set prev to do shell script "cat " & quoted form of f
 end try
-set r to display dialog "Cole a chave de internet do computador que você quer acessar." default answer prev with title "SSADesk - Conectar pela internet" buttons {"Cancelar", "Conectar"} default button "Conectar"
+set r to display dialog "Cole a chave de internet do computador que você quer acessar." default answer prev with title "SSAdesk - Conectar pela internet" buttons {"Cancelar", "Conectar"} default button "Conectar"
 set k to text returned of r
-do shell script "nohup " & quoted form of ((POSIX path of (path to home folder)) & "Library/Application Support/SSADesk/conectar.sh") & " " & quoted form of k & " >/dev/null 2>&1 &"
+do shell script "nohup " & quoted form of ((POSIX path of (path to home folder)) & "Library/Application Support/SSAdesk/conectar.sh") & " " & quoted form of k & " >/dev/null 2>&1 &"
 '
 xattr -dr com.apple.quarantine "$CONECTAR" 2>/dev/null || true
 
 echo
 echo "Pronto! Para acessar um computador pela internet, abra em Aplicativos:"
-echo "   SSADesk - Conectar pela internet"
+echo "   SSAdesk - Conectar pela internet"
 echo "Na mesma rede, abra o RustDesk e digite o IP do outro computador."
 echo
 read -n 1 -s -r -p "Pressione qualquer tecla para fechar."

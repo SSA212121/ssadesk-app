@@ -1,11 +1,11 @@
 <#
-SSADesk: configuração pós-instalação (chamado pelo instalador, já como Administrador).
+SSAdesk: configuração pós-instalação (chamado pelo instalador, já como Administrador).
 Cada instalação é completa e igual em todos os computadores:
   - acessa outros computadores e pode ser acessada;
   - conexão DIRETA por IP (IPv4 e IPv6), porta TCP 21118, sem servidor central, VPS ou terceiros;
   - acesso desassistido só com senha permanente.
-O motor de acesso remoto é o SSADesk.exe na raiz da instalação (compilado do código do RustDesk, com a
-marca SSADesk), registrado como serviço "SSADesk". Nenhum RustDesk de terceiros é instalado.
+O motor de acesso remoto é o SSAdesk.exe na raiz da instalação (compilado do código do RustDesk, com a
+marca SSAdesk), registrado como serviço "SSAdesk". Nenhum RustDesk de terceiros é instalado.
 Um hbbs local (só 127.0.0.1, portas 21125-21128, bloqueadas no firewall) serve apenas para o motor
 ficar "pronto" sem tentar servidores públicos.
 
@@ -25,10 +25,10 @@ Start-Transcript -Path (Join-Path $InstallDir "instalacao.log") -Append | Out-Nu
 
 $Port      = 21118
 $LocalPort = 21126   # hbbs local (usa 21125, 21126, 21128)
-$taskName  = "SSADesk-local"
-$fwName    = "SSADesk conexao direta TCP $Port"
-$oldTasks  = "SSADesk-hbbs", "SSADesk-hbbr", $taskName, "SSADesk-rede", "SSADesk-p2p"
-$oldFw     = "SSADesk TCP 21115-21119", "SSADesk UDP 21116", $fwName, "SSADesk bloqueio componente local", "SSADesk tunel P2P", "SSADesk chamada P2P"
+$taskName  = "SSAdesk-local"
+$fwName    = "SSAdesk conexao direta TCP $Port"
+$oldTasks  = "SSAdesk-hbbs", "SSAdesk-hbbr", $taskName, "SSAdesk-rede", "SSAdesk-p2p"
+$oldFw     = "SSAdesk TCP 21115-21119", "SSAdesk UDP 21116", $fwName, "SSAdesk bloqueio componente local", "SSAdesk tunel P2P", "SSAdesk chamada P2P"
 
 # Limpa estado anterior (inclusive da versão antiga com servidor de Lages)
 foreach ($t in $oldTasks) {
@@ -38,19 +38,19 @@ foreach ($t in $oldTasks) {
     }
 }
 Get-Process hbbs, hbbr -ErrorAction SilentlyContinue | Stop-Process -Force
-Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.Name -in 'node.exe', 'SSADeskApp.exe', 'SSADesk.exe' -and $_.ExecutablePath -like "$InstallDir*" -and $_.CommandLine -match 'hypertele' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.Name -in 'node.exe', 'SSAdeskApp.exe', 'SSAdesk.exe' -and $_.ExecutablePath -like "$InstallDir*" -and $_.CommandLine -match 'hypertele' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 foreach ($f in $oldFw) { Get-NetFirewallRule -DisplayName $f -ErrorAction SilentlyContinue | Remove-NetFirewallRule }
 
-$motor = Join-Path $InstallDir "SSADesk.exe"
+$motor = Join-Path $InstallDir "SSAdesk.exe"
 function Remover-Motor {
-    # Serviço do motor próprio + RustDesk de versões antigas do SSADesk (se houver)
-    foreach ($s in "SSADesk", "RustDesk") {
+    # Serviço do motor próprio + RustDesk de versões antigas do SSAdesk (se houver)
+    foreach ($s in "SSAdesk", "RustDesk") {
         if (Get-Service $s -ErrorAction SilentlyContinue) { sc.exe stop $s | Out-Null; Start-Sleep 2; sc.exe delete $s | Out-Null }
     }
-    Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.Name -eq 'SSADesk.exe' -and $_.ExecutablePath -eq $motor } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+    Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.Name -eq 'SSAdesk.exe' -and $_.ExecutablePath -eq $motor } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
     $velho = Get-ChildItem "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall" -ErrorAction SilentlyContinue | Get-ItemProperty | Where-Object { $_.DisplayName -eq "RustDesk" -and $_.PSChildName -like "{*}" } | Select-Object -First 1
     if ($velho) { Start-Process msiexec.exe -ArgumentList "/x $($velho.PSChildName) /qn /norestart" -Wait }
-    if (Test-Path "HKLM:\Software\SSADesk") { Remove-Item "HKLM:\Software\SSADesk" -Recurse -Force -ErrorAction SilentlyContinue }
+    if (Test-Path "HKLM:\Software\SSAdesk") { Remove-Item "HKLM:\Software\SSAdesk" -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
 if ($Mode -eq "uninstall") {
@@ -78,21 +78,21 @@ for ($i = 0; $i -lt 30 -and -not (Test-Path $pub); $i++) { Start-Sleep 1 }
 if (-not (Test-Path $pub)) { throw "Componente local não iniciou." }
 $key = (Get-Content $pub -Raw).Trim()
 # Bloqueia de fora o hbbs local (a regra do RustDesk.exe/MSI não cobre o hbbs.exe)
-New-NetFirewallRule -DisplayName "SSADesk bloqueio componente local" -Direction Inbound -Action Block -Program $hbbs | Out-Null
+New-NetFirewallRule -DisplayName "SSAdesk bloqueio componente local" -Direction Inbound -Action Block -Program $hbbs | Out-Null
 
 Write-Host "ETAPA acesso"
-# 2. Motor SSADesk como serviço do Windows (acesso mesmo sem ninguém logado, tela de login e UAC)
+# 2. Motor SSAdesk como serviço do Windows (acesso mesmo sem ninguém logado, tela de login e UAC)
 Remover-Motor
-if (-not (Test-Path $motor)) { throw "Motor SSADesk.exe não encontrado em $InstallDir." }
+if (-not (Test-Path $motor)) { throw "Motor SSAdesk.exe não encontrado em $InstallDir." }
 # Onde o motor está instalado (chave própria dele; sem isso ele não aceita configuração por linha de comando)
-New-Item "HKLM:\Software\SSADesk\InstallState\SSADesk" -Force | Out-Null
-Set-ItemProperty "HKLM:\Software\SSADesk\InstallState\SSADesk" -Name InstallLocation -Value $InstallDir
+New-Item "HKLM:\Software\SSAdesk\InstallState\SSAdesk" -Force | Out-Null
+Set-ItemProperty "HKLM:\Software\SSAdesk\InstallState\SSAdesk" -Name InstallLocation -Value $InstallDir
 $exe = $motor
-sc.exe create SSADesk binPath= "`"$motor`" --service" start= auto DisplayName= "SSADesk" | Out-Null
-sc.exe description SSADesk "Acesso remoto SSADesk (motor)" | Out-Null
-sc.exe failure SSADesk reset= 60 actions= restart/5000/restart/5000/restart/10000 | Out-Null
-sc.exe start SSADesk | Out-Null
-for ($i = 0; $i -lt 30 -and (Get-Service SSADesk -ErrorAction SilentlyContinue).Status -ne 'Running'; $i++) { Start-Sleep 1 }
+sc.exe create SSAdesk binPath= "`"$motor`" --service" start= auto DisplayName= "SSAdesk" | Out-Null
+sc.exe description SSAdesk "Acesso remoto SSAdesk (motor)" | Out-Null
+sc.exe failure SSAdesk reset= 60 actions= restart/5000/restart/5000/restart/10000 | Out-Null
+sc.exe start SSAdesk | Out-Null
+for ($i = 0; $i -lt 30 -and (Get-Service SSAdesk -ErrorAction SilentlyContinue).Status -ne 'Running'; $i++) { Start-Sleep 1 }
 Start-Sleep 3
 function Set-Motor([string[]]$a) { & $exe @a | Out-Null }
 
@@ -115,7 +115,7 @@ Set-Motor "--password", $password
 $password = $null
 
 New-NetFirewallRule -DisplayName $fwName -Direction Inbound -Action Allow -Protocol TCP -LocalPort $Port -Program $exe | Out-Null
-Restart-Service SSADesk -ErrorAction SilentlyContinue
+Restart-Service SSAdesk -ErrorAction SilentlyContinue
 
 # 6. Código único + endereços para conectar
 $id = ""
@@ -130,8 +130,8 @@ Write-Host "ETAPA tunel"
 # 6b. Túnel P2P (Hyperswarm/HyperDHT): acesso pela internet mesmo com CGNAT, sem servidor e sem roteador.
 #     A porta 21118 local é publicada na rede P2P com uma chave fixa deste computador.
 #     Quem tem a chave ainda precisa da senha permanente para entrar.
-# O túnel roda no motor do próprio app (SSADesk.exe no modo Node): nada de Node.js separado
-$node    = Join-Path $InstallDir "app\SSADeskApp.exe"
+# O túnel roda no motor do próprio app (SSAdesk.exe no modo Node): nada de Node.js separado
+$node    = Join-Path $InstallDir "app\SSAdeskApp.exe"
 $mods    = Join-Path $InstallDir "app\resources\app\node_modules"
 $htServer = Join-Path $mods "hypertele\server.js"
 $p2pCfg  = Join-Path $data "p2p.json"
@@ -142,10 +142,10 @@ if (-not (Test-Path $p2pCfg)) {
 $p2pLog = Join-Path $data "p2p.log"
 Remove-Item $p2pLog -ErrorAction SilentlyContinue
 $a = New-ScheduledTaskAction -Execute "$env:SystemRoot\System32\cmd.exe" -Argument "/c `"set ELECTRON_RUN_AS_NODE=1&& `"$node`" `"$htServer`" -l $Port --address 127.0.0.1 -c `"$p2pCfg`" > `"$p2pLog`" 2>&1`"" -WorkingDirectory $data
-Register-ScheduledTask -TaskName "SSADesk-p2p" -Action $a -Trigger (New-ScheduledTaskTrigger -AtStartup) -Settings $settings -Principal $principal -Force | Out-Null
-Start-ScheduledTask -TaskName "SSADesk-p2p"
-# Chamada de vídeo/chat: o app SSADesk usa a mesma rede P2P (sem pedir permissão ao usuário)
-New-NetFirewallRule -DisplayName "SSADesk chamada P2P" -Direction Inbound -Action Allow -Program (Join-Path $InstallDir "app\SSADeskApp.exe") | Out-Null
+Register-ScheduledTask -TaskName "SSAdesk-p2p" -Action $a -Trigger (New-ScheduledTaskTrigger -AtStartup) -Settings $settings -Principal $principal -Force | Out-Null
+Start-ScheduledTask -TaskName "SSAdesk-p2p"
+# Chamada de vídeo/chat: o app SSAdesk usa a mesma rede P2P (sem pedir permissão ao usuário)
+New-NetFirewallRule -DisplayName "SSAdesk chamada P2P" -Direction Inbound -Action Allow -Program (Join-Path $InstallDir "app\SSAdeskApp.exe") | Out-Null
 # Chave de internet = chave pública derivada da semente (mesma conta do hypertele-server):
 # calculada na hora, sem esperar o túnel responder pela rede.
 $seed = (Get-Content $p2pCfg -Raw | ConvertFrom-Json).seed
@@ -162,7 +162,7 @@ if ($p2pKey) {
     $p2pKey | Set-Content -Path (Join-Path $InstallDir "chave-internet.txt") -Encoding ASCII
 } else {
     # Não trava a instalação: o túnel continua tentando sozinho e a chave é gravada
-    # pelo diagnóstico de rede (tarefa SSADesk-rede) assim que ele responder.
+    # pelo diagnóstico de rede (tarefa SSAdesk-rede) assim que ele responder.
     Write-Warning "O túnel P2P ainda não respondeu; a chave de internet aparece sozinha quando ele subir."
 }
 
@@ -171,7 +171,7 @@ Write-Host "ETAPA rede"
 $net = Join-Path $InstallDir "tools\network.ps1"
 $a = New-ScheduledTaskAction -Execute "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$net`" -InstallDir `"$InstallDir`""
 $trig = @((New-ScheduledTaskTrigger -AtStartup), (New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 15)))
-Register-ScheduledTask -TaskName "SSADesk-rede" -Action $a -Trigger $trig -Settings (New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable) -Principal $principal -Force | Out-Null
+Register-ScheduledTask -TaskName "SSAdesk-rede" -Action $a -Trigger $trig -Settings (New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable) -Principal $principal -Force | Out-Null
 # O diagnóstico (consulta de IP, UPnP, rota) roda em segundo plano: a instalação não espera por ele
-Start-ScheduledTask -TaskName "SSADesk-rede"
+Start-ScheduledTask -TaskName "SSAdesk-rede"
 Stop-Transcript | Out-Null

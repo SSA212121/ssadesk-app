@@ -1,12 +1,12 @@
 <#
-Gera dist\Mac-SSADesk\ (pacote para macOS, para levar no pendrive).
+Gera dist\Mac-SSAdesk\ (pacote para macOS, para levar no pendrive).
   powershell -ExecutionPolicy Bypass -File installer\build-mac.ps1
 Binarios oficiais com SHA-256 conferido: RustDesk 1.5.1 (Intel e Apple Silicon) e Node.js para macOS.
 Os node_modules do tunel (p2p\) ja trazem os binarios nativos de macOS (prebuilds darwin-x64/arm64).
 #>
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
-$out  = Join-Path $root "dist\Mac-SSADesk"
+$out  = Join-Path $root "dist\Mac-SSAdesk"
 $pay  = Join-Path $out "payload"
 
 $RD   = "1.5.1"
@@ -39,7 +39,7 @@ function Copy-Lf($src, $dst) {
     $t = [IO.File]::ReadAllText($src) -replace "`r`n", "`n"
     [IO.File]::WriteAllText($dst, $t, (New-Object Text.UTF8Encoding($false)))
 }
-Copy-Lf "$root\mac\instalar.command" "$out\Instalar SSADesk.command"
+Copy-Lf "$root\mac\instalar.command" "$out\Instalar SSAdesk.command"
 Copy-Lf "$root\mac\conectar.sh" "$pay\conectar.sh"
 Copy-Item "$root\mac\LEIA-ME.txt" "$out\LEIA-ME.txt"
 $mb = [math]::Round(((Get-ChildItem $out -Recurse -File | Measure-Object Length -Sum).Sum / 1MB), 0)

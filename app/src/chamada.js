@@ -1,4 +1,4 @@
-// SSADesk — chamada de vídeo durante o acesso remoto.
+// SSAdesk — chamada de vídeo durante o acesso remoto.
 // Janela pequena e flutuante. Cada lado liga o PRÓPRIO microfone/câmera quando quiser (começam desligados).
 // A imagem do outro lado ocupa a janela; a sua aparece num quadradinho arrastável e redimensionável.
 // Áudio/vídeo/chat vão e vêm pelo canal P2P próprio (midia.js + canal.js no processo principal), sem servidor.

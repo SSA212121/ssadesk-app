@@ -1,4 +1,4 @@
-// SSADesk — comportamento da interface
+// SSAdesk — comportamento da interface
 const $ = id => document.getElementById(id)
 const api = window.ssadesk
 const plataforma = new URLSearchParams(location.search).get('platform') || ''

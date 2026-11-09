@@ -1,4 +1,4 @@
-// SSADesk — janela de mensagens. As mensagens ficam no processo principal,
+// SSAdesk — janela de mensagens. As mensagens ficam no processo principal,
 // então fechar ("guardar") esta janela não apaga a conversa.
 const $ = id => document.getElementById(id)
 const chat = window.ssadesk.chat

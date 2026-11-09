@@ -1,4 +1,4 @@
-// SSADesk — na janela da chamada: a aba que abre o chat (janela própria), o som de aviso
+// SSAdesk — na janela da chamada: a aba que abre o chat (janela própria), o som de aviso
 // a cada mensagem recebida e o contador de não lidas enquanto o chat está guardado.
 ;(function () {
   const $ = id => document.getElementById(id)

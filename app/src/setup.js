@@ -1,4 +1,4 @@
-// SSADesk — telas de instalação/desinstalação
+// SSAdesk — telas de instalação/desinstalação
 const $ = id => document.getElementById(id)
 const api = window.ssadesk
 const params = new URLSearchParams(location.search)
@@ -22,7 +22,7 @@ document.querySelectorAll('.wbtn').forEach(b => b.addEventListener('click', () =
 }))
 
 // Local
-let destino = 'C:\\SSADesk'
+let destino = 'C:\\SSAdesk'
 $('alterar').addEventListener('click', async () => {
   const p = await api.setup.escolherPasta(destino)
   if (p) { destino = p; $('pasta').textContent = p }

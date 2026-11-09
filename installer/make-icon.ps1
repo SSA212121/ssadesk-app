@@ -1,5 +1,5 @@
 ﻿<#
-Gera a identidade visual do SSADesk (ícone e imagens do instalador), sem arquivos de terceiros.
+Gera a identidade visual do SSAdesk (ícone e imagens do instalador), sem arquivos de terceiros.
 Estilo DESIGN_GUIDELINES.md: azul iOS (#007AFF), cantos contínuos grandes, glifo de linha fina branco.
   powershell -ExecutionPolicy Bypass -File installer\make-icon.ps1
 Saída: installer\assets\ssadesk.ico, ssadesk-256.png, wizard-small.bmp, wizard-large.bmp
@@ -16,7 +16,7 @@ function New-RoundRect([single]$x, [single]$y, [single]$w, [single]$h, [single]$
     $p.CloseFigure(); return $p
 }
 
-# Desenha o símbolo SSADesk num retângulo (x,y,s): tela + cursor, linha fina branca
+# Desenha o símbolo SSAdesk num retângulo (x,y,s): tela + cursor, linha fina branca
 function Draw-Mark($g, [single]$x, [single]$y, [single]$s, [bool]$tile) {
     $g.SmoothingMode = "AntiAlias"; $g.PixelOffsetMode = "HighQuality"
     if ($tile) {

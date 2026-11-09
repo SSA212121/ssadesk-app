@@ -1,6 +1,6 @@
-// SSADesk — janela das telas de instalação (host leve com WebView2, já presente no Windows 11).
+// SSAdesk — janela das telas de instalação (host leve com WebView2, já presente no Windows 11).
 // Abre em ~1-2 s com as MESMAS telas glass do app (setup.html), enquanto o pacote pesado é extraído
-// em segundo plano. A instalação em si roda no motor do app (SSADesk.exe em modo Node + instalar-cli.js).
+// em segundo plano. A instalação em si roda no motor do app (SSAdesk.exe em modo Node + instalar-cli.js).
 //
 // Uso: SetupUI.exe <pastaUI> <pastaPacote> <versao>
 // Sinais para o envelope (Setup.exe): vivo.flag (a cada 2 s), fim.flag (ao fechar), ui-falhou.flag (sem WebView2).
@@ -50,7 +50,7 @@ class JanelaSetup : Form
     public JanelaSetup(string ui, string pkg, string versao)
     {
         this.ui = ui; this.pkg = pkg; this.versao = versao;
-        Text = "SSADesk";
+        Text = "SSAdesk";
         ClientSize = new Size(400, 548);
         FormBorderStyle = FormBorderStyle.None;
         StartPosition = FormStartPosition.CenterScreen;
@@ -133,7 +133,7 @@ class JanelaSetup : Form
                 Responder(id, new Dictionary<string, object> { { "modo", "instalar" }, { "versao", versao }, { "destino", DestinoPadrao() }, { "passos", Passos } });
                 break;
             case "pasta":
-                using (var d = new FolderBrowserDialog { Description = "Onde instalar o SSADesk", ShowNewFolderButton = true })
+                using (var d = new FolderBrowserDialog { Description = "Onde instalar o SSAdesk", ShowNewFolderButton = true })
                 {
                     Responder(id, d.ShowDialog(this) == DialogResult.OK ? PastaFinal(d.SelectedPath) : null);
                 }
@@ -156,23 +156,23 @@ class JanelaSetup : Form
 
     static string PastaFinal(string escolhida)
     {
-        var p = Path.GetFullPath(string.IsNullOrEmpty(escolhida) ? @"C:\SSADesk" : escolhida).TrimEnd('\\');
+        var p = Path.GetFullPath(string.IsNullOrEmpty(escolhida) ? @"C:\SSAdesk" : escolhida).TrimEnd('\\');
         if (p.Length <= 3) p = p.TrimEnd('\\') + "\\";
-        return Path.GetFileName(p.TrimEnd('\\')).Equals("SSADesk", StringComparison.OrdinalIgnoreCase) ? p : Path.Combine(p, "SSADesk");
+        return Path.GetFileName(p.TrimEnd('\\')).Equals("SSAdesk", StringComparison.OrdinalIgnoreCase) ? p : Path.Combine(p, "SSAdesk");
     }
 
     static string DestinoPadrao()
     {
         try
         {
-            var v = Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\SSADesk", "InstallLocation", null) as string;
+            var v = Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\SSAdesk", "InstallLocation", null) as string;
             if (!string.IsNullOrEmpty(v) && Directory.Exists(v)) return v;
         }
         catch { }
-        return @"C:\SSADesk";
+        return @"C:\SSAdesk";
     }
 
-    // Roda o motor de instalação (instalador.js) no SSADesk.exe em modo Node, lendo o progresso linha a linha
+    // Roda o motor de instalação (instalador.js) no SSAdesk.exe em modo Node, lendo o progresso linha a linha
     Task<object> Instalar(string destino, string senha)
     {
         var tcs = new TaskCompletionSource<object>();
@@ -182,7 +182,7 @@ class JanelaSetup : Form
             {
                 // O resto do pacote ainda pode estar sendo extraído pelo envelope
                 for (int i = 0; i < 1200 && !File.Exists(Path.Combine(pkg, "pronto.flag")); i++) System.Threading.Thread.Sleep(200);
-                var psi = new ProcessStartInfo(Path.Combine(pkg, "app", "SSADeskApp.exe"),
+                var psi = new ProcessStartInfo(Path.Combine(pkg, "app", "SSAdeskApp.exe"),
                     "\"" + Path.Combine(pkg, "app", "resources", "app", "instalar-cli.js") + "\"")
                 {
                     UseShellExecute = false, CreateNoWindow = true,

@@ -1,4 +1,4 @@
-// SSADesk — ponte das telas de instalação quando abertas pela janela leve (WebView2 do Windows).
+// SSAdesk — ponte das telas de instalação quando abertas pela janela leve (WebView2 do Windows).
 // No app (Electron) esta ponte não faz nada: lá o window.ssadesk vem do preload.js.
 ;(function () {
   const wv = window.chrome && window.chrome.webview

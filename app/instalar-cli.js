@@ -1,4 +1,4 @@
-// SSADesk — motor de instalação em linha de comando (roda no SSADesk.exe em modo Node).
+// SSAdesk — motor de instalação em linha de comando (roda no SSAdesk.exe em modo Node).
 // Usado pela janela leve de instalação (SetupUI.exe): recebe os dados por stdin (JSON, inclusive a senha,
 // que nunca vai na linha de comando) e devolve o progresso em linhas JSON pelo stdout.
 const motor = require('./instalador')
