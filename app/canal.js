@@ -129,15 +129,34 @@ class Canal extends EventEmitter {
 
   _nova (sock, info) {
     sock.on('error', () => {})
+    // Sessão "fantasma": o outro lado sumiu sem se despedir (ficou sem sinal de vida). Libera para a nova.
+    if (this.conexao && (this.conexao.destroyed || Date.now() - (this.conexao._ultimoSinal || 0) > 30000)) {
+      const velha = this.conexao; this.conexao = null; try { velha.destroy() } catch {}
+      this.emit('desconectado')
+    }
+    // O mesmo computador voltando (reconexão): a conexão nova substitui a antiga
+    const chaveNova = sock.remotePublicKey && sock.remotePublicKey.toString('hex')
+    if (this.conexao && chaveNova && this.conexao.remotePublicKey && this.conexao.remotePublicKey.toString('hex') === chaveNova) {
+      const velha = this.conexao; this.conexao = null; try { velha.destroy() } catch {}
+      this.emit('desconectado')
+    }
     if (this.conexao) { // já em sessão: avisa quem tentou (em vez de só derrubar) e fecha
       try { const j = Buffer.from(JSON.stringify({ t: 'ocupado' }), 'utf8'); const h = Buffer.alloc(5); h[0] = TIPO.CONTROLE; h.writeUInt32BE(j.length, 1); sock.write(Buffer.concat([h, j])) } catch {}
       setTimeout(() => sock.destroy(), 400); return
     }
     this.conexao = sock
+    sock._ultimoSinal = Date.now()
+    // Sinal de vida a cada 10 s; sem nada do outro lado por 30 s, a sessão é encerrada (não fica "fantasma")
+    sock._vivo = setInterval(() => {
+      if (sock.destroyed) return clearInterval(sock._vivo)
+      if (Date.now() - sock._ultimoSinal > 30000) { clearInterval(sock._vivo); try { sock.destroy() } catch {} return }
+      try { const j = Buffer.from('{"t":"vivo"}', 'utf8'); const h = Buffer.alloc(5); h[0] = TIPO.CONTROLE; h.writeUInt32BE(j.length, 1); sock.write(Buffer.concat([h, j])) } catch {}
+    }, 10000)
     this.cheio = false
     sock.on('drain', () => { this.cheio = false })
     let buf = Buffer.alloc(0)
     sock.on('data', d => {
+      sock._ultimoSinal = Date.now()
       buf = buf.length ? Buffer.concat([buf, d]) : d
       while (buf.length >= 5) {
         const tipo = buf[0]; const n = buf.readUInt32BE(1)
@@ -154,6 +173,7 @@ class Canal extends EventEmitter {
       }
     })
     const fim = () => {
+      clearInterval(sock._vivo)
       if (this.conexao !== sock) return
       this.conexao = null
       this.emit('desconectado')
