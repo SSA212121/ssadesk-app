@@ -26,9 +26,11 @@ pedido.dados().then(d => {
   if (d.codigo) $('sub').textContent = 'ao seu computador · código ' + String(d.codigo).replace(/(\d{3})(?=\d)/g, '$1 ')
   if (d.tipo === 'chamada') { // só uma ligação: sem acesso à tela, sem permissões para escolher
     document.body.classList.add('ligacao')
-    $('titulo').textContent = nome + ' está ligando'
-    $('sub').textContent = 'Chamada de vídeo · câmera e microfone começam desligados'
-    $('negar').textContent = 'Recusar'; $('permitir').textContent = 'Atender'
+    $('titulo').textContent = nome
+    $('sub').textContent = 'Ligação SSAdesk…'
+    const DESLIGAR = '<svg viewBox="0 0 24 24"><path d="M3.2 14.6c-.4-.4-.4-1.1 0-1.5C5.6 10.8 8.7 9.6 12 9.6s6.4 1.2 8.8 3.5c.4.4.4 1.1 0 1.5l-1.7 1.7c-.4.4-1 .4-1.4.1l-2-1.5a1 1 0 0 1-.4-.8v-2.1a10 10 0 0 0-6.6 0v2.1c0 .3-.2.6-.4.8l-2 1.5c-.4.3-1 .3-1.4-.1z"/></svg>'
+    const ATENDER = '<svg viewBox="0 0 24 24"><path d="M5 4.5h3.2l1.6 4-2 1.3a10.5 10.5 0 0 0 6.4 6.4l1.3-2 4 1.6V19a1.5 1.5 0 0 1-1.6 1.5A15.5 15.5 0 0 1 3.5 6.1 1.5 1.5 0 0 1 5 4.5z"/></svg>'
+    $('negar').innerHTML = DESLIGAR + '<span>Recusar</span>'; $('permitir').innerHTML = ATENDER + '<span>Atender</span>'
     tocar(); $('permitir').focus(); return
   }
   // Permissões já vêm como definidas nos Ajustes

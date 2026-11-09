@@ -36,6 +36,12 @@ body.soltar .estado { color: #fff; }
 body.enviando .barra-prog { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }
 
+/* Chat: selo de mensagens não lidas */
+.chat-b { position: relative; }
+.selo { position: absolute; top: 2px; right: 1px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px; background: #ff3b30; color: #fff;
+  font-size: 10px; font-weight: 700; line-height: 16px; text-align: center; box-shadow: 0 0 0 2px rgba(28, 28, 30, .9); transform: scale(0); transition: transform .3s var(--spring); }
+body.tem-nao-lidas .selo { transform: scale(1); }
+
 /* SSAdesk: foco sem moldura quadrada */
 *:focus { outline: none; }
 :is(button, a, li, [tabindex]):focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(10, 132, 255, .55); }

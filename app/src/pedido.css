@@ -38,6 +38,21 @@ body.ligacao .avatar-pedido { animation: chamando 1.6s ease-in-out infinite; }
 .sempre small { display: block; font-size: 11.5px; color: var(--text-2); margin-top: 1px; }
 body.ligacao .sempre { display: none; }
 
+/* Ligação recebida no estilo FaceTime */
+body.ligacao { background: radial-gradient(120% 90% at 30% 0%, rgba(10, 132, 255, .35), transparent 60%), radial-gradient(100% 80% at 90% 100%, rgba(191, 90, 242, .28), transparent 60%), rgba(18, 18, 22, .92); color: #fff; }
+body.ligacao .center-col { justify-content: center; padding-top: 10px; }
+body.ligacao .avatar-pedido { width: 108px; height: 108px; font-size: 46px; margin-bottom: 20px; animation: chamando 1.6s ease-in-out infinite; }
+body.ligacao h2 { font-size: 28px; font-weight: 700; letter-spacing: -.03em; }
+body.ligacao .sub { font-size: 15px; color: rgba(235, 235, 245, .65); margin-top: 6px; }
+body.ligacao .actions { justify-content: center; gap: 72px; margin-top: auto; margin-bottom: 14px; }
+body.ligacao .actions .btn { flex: none; width: 66px; height: 66px; border-radius: 50%; padding: 0; position: relative; display: grid; place-items: center; box-shadow: 0 10px 24px rgba(0, 0, 0, .35); }
+body.ligacao .actions .btn svg { width: 30px; height: 30px; fill: #fff; }
+body.ligacao .actions .btn span { position: absolute; top: 74px; left: 50%; transform: translateX(-50%); font-size: 13px; font-weight: 500; color: rgba(255, 255, 255, .85); white-space: nowrap; }
+body.ligacao #negar { background: #ff3b30; }
+body.ligacao #permitir { background: #30d158; animation: atender 1.6s ease-in-out infinite; }
+@keyframes atender { 50% { box-shadow: 0 0 0 12px rgba(48, 209, 88, .18), 0 10px 24px rgba(0, 0, 0, .35); } }
+body.ligacao .fine { display: none; }
+
 /* SSAdesk: foco sem moldura quadrada */
 *:focus { outline: none; }
 :is(button, a, li, [tabindex]):focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(10, 132, 255, .55); }

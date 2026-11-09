@@ -448,7 +448,7 @@ function mostrarPedido (dados) {
       : aj.receber === 'auto' ? setTimeout(() => responder({ permitir: true, permissoes: aj.permissoes }), 15000) : null
     pedidoAtual = { dados: { ...dados, segundos: !chamada && aj.receber === 'auto' ? 15 : 0, permissoes: aj.permissoes }, responder, adiar: () => clearTimeout(tempo) }
     pedidoWin = foraDaCaptura(new BrowserWindow({
-      width: 380, height: 492, resizable: false, maximizable: false, minimizable: false, alwaysOnTop: true, show: false,
+      width: chamada ? 360 : 380, height: chamada ? 540 : 492, center: true, resizable: false, maximizable: false, minimizable: false, alwaysOnTop: true, show: false,
       title: 'SSAdesk', backgroundColor: '#00000000', icon: path.join(__dirname, 'assets', 'icon.png'),
       ...(isWin ? { titleBarStyle: 'hidden', backgroundMaterial: 'acrylic' } : {}),
       ...(isMac ? { titleBarStyle: 'hiddenInset', vibrancy: 'hud', visualEffectState: 'active' } : {}),
@@ -918,7 +918,10 @@ ipcMain.on('chamada-controle', (_e, obj) => { if (canal && obj && typeof obj ===
 const mensagens = []
 let chatWin = null
 const chatVisivel = () => !!(chatWin && !chatWin.isDestroyed() && chatWin.isVisible() && !chatWin.isMinimized())
-function avisarVisibilidade () { if (callWin && !callWin.isDestroyed()) callWin.webContents.send('chat-visivel', chatVisivel()) }
+function avisarVisibilidade () {
+  if (callWin && !callWin.isDestroyed()) callWin.webContents.send('chat-visivel', chatVisivel())
+  if (barraWin && !barraWin.isDestroyed()) barraWin.webContents.send('chat-visivel', chatVisivel())
+}
 
 function abrirChatJanela () {
   if (chatWin && !chatWin.isDestroyed()) { chatWin.show(); chatWin.focus(); avisarVisibilidade(); return }
@@ -953,7 +956,19 @@ function registrar (texto, quem) {
 function receberMensagem (texto) {
   if (!String(texto || '').trim()) return
   registrar(texto, 'outro')
-  if (callWin && !callWin.isDestroyed()) callWin.webContents.send('chat-recebida', { visivel: chatVisivel() })
+  const temChamada = !!(callWin && !callWin.isDestroyed())
+  const temBarra = !!(barraWin && !barraWin.isDestroyed())
+  if (temChamada) callWin.webContents.send('chat-recebida', { visivel: chatVisivel() })
+  // Acesso remoto sem chamada aberta: a barrinha da sessão toca o som e mostra o selo de não lidas
+  if (temBarra) barraWin.webContents.send('chat-recebida', { visivel: chatVisivel(), som: !temChamada })
+  // Nenhuma janela do SSAdesk à vista: notificação do Windows (clicar abre o chat)
+  if (!chatVisivel() && !temChamada && !temBarra) {
+    try {
+      const { Notification } = require('electron')
+      const n = new Notification({ title: (sessao.nome || 'Mensagem') + ' — SSAdesk', body: String(texto).slice(0, 140) })
+      n.on('click', () => abrirChatJanela()); n.show()
+    } catch {}
+  }
 }
 ipcMain.on('chat-abrir', () => abrirChatJanela())
 ipcMain.handle('chat-historico', () => mensagens)
@@ -1268,4 +1283,27 @@ if (process.env.SSADESK_FOTO_INFO) app.whenReady().then(() => setTimeout(() => {
 if (process.env.SSADESK_FOTO_MAIS) app.whenReady().then(() => setTimeout(() => {
   abrirMais()
   setTimeout(async () => { try { maisWin.removeAllListeners('blur'); fs.writeFileSync(process.env.SSADESK_FOTO_MAIS, (await maisWin.webContents.capturePage()).toPNG()) } catch {} app.exit(0) }, 3000)
+}, 1500))
+
+// Teste: barrinha com 3 mensagens não lidas (SSADESK_FOTO_SELO=caminho.png)
+if (process.env.SSADESK_FOTO_SELO) app.whenReady().then(() => setTimeout(() => {
+  sessao = { ...sessao, ativa: true, papel: 'acessando', nome: 'Samuel' }
+  const salva = process.env.SSADESK_CODIGO_TESTE; delete process.env.SSADESK_CODIGO_TESTE
+  abrirBarra(); if (salva) process.env.SSADESK_CODIGO_TESTE = salva
+  setTimeout(() => { receberMensagem('Oi'); receberMensagem('Tudo bem?'); receberMensagem('Pode ver a planilha?') }, 2500)
+  setTimeout(async () => { try { fs.writeFileSync(process.env.SSADESK_FOTO_SELO, (await barraWin.webContents.capturePage()).toPNG()) } catch {} app.exit(0) }, 4500)
+}, 1500))
+
+// Teste: painel com o mouse sobre o 1º computador da lista (SSADESK_FOTO_LISTA=caminho.png)
+if (process.env.SSADESK_FOTO_LISTA) app.whenReady().then(() => setTimeout(async () => {
+  const wc = win.webContents
+  const r = await wc.executeJavaScript("(() => { const li = document.querySelector('#lista li'); if (!li) return null; li.scrollIntoView(); const b = li.getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 } })()")
+  if (r) { wc.sendInputEvent({ type: 'mouseMove', x: Math.round(r.x), y: Math.round(r.y) }); wc.sendInputEvent({ type: 'mouseDown', x: Math.round(r.x), y: Math.round(r.y), button: 'left', clickCount: 1 }); wc.sendInputEvent({ type: 'mouseUp', x: Math.round(r.x), y: Math.round(r.y), button: 'left', clickCount: 1 }) }
+  setTimeout(async () => { try { fs.writeFileSync(process.env.SSADESK_FOTO_LISTA, (await wc.capturePage()).toPNG()) } catch {} app.exit(0) }, 1500)
+}, 4000))
+
+// Teste: tela de ligação recebida (SSADESK_FOTO_LIGACAO=caminho.png)
+if (process.env.SSADESK_FOTO_LIGACAO) app.whenReady().then(() => setTimeout(() => {
+  mostrarPedido({ nome: 'Samuel', codigo: '214941159', tipo: 'chamada' })
+  setTimeout(async () => { try { fs.writeFileSync(process.env.SSADESK_FOTO_LIGACAO, (await pedidoWin.webContents.capturePage()).toPNG()) } catch {} app.exit(0) }, 3500)
 }, 1500))

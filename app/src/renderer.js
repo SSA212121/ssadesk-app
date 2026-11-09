@@ -38,6 +38,7 @@ document.querySelectorAll('#tema button').forEach(b => {
 })
 document.querySelectorAll('.wbtn').forEach(b => b.addEventListener('click', () => api.janela(b.dataset.acao)))
 
+$('go').addEventListener('click', () => $('form').requestSubmit())
 $('form').addEventListener('submit', async e => {
   e.preventDefault()
   const go = $('go'); const msg = $('msg')
@@ -70,7 +71,7 @@ $('ligarBtn').addEventListener('click', () => {
 // O cartão "Chamada de vídeo" leva ao campo do código, pronto para ligar
 $('chamada').addEventListener('click', () => {
   $('destino').focus()
-  const m = $('msg'); m.className = 'hint'; m.innerHTML = 'Digite o código e toque na <b>câmera verde</b> para ligar.'
+  const m = $('msg'); m.className = 'hint'; m.innerHTML = 'Digite o código e toque em <b>Ligação</b>.'
   $('ligarBtn').classList.add('destaque'); setTimeout(() => $('ligarBtn').classList.remove('destaque'), 1600)
 })
 

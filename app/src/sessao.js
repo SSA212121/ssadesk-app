@@ -54,3 +54,31 @@ api.arquivos.onProgresso(p => {
   $('progFill').style.width = pct + '%'
   estado('Enviando ' + (p.arquivos > 1 ? p.arquivos + ' arquivos' : String(p.atual).split(/[\\/]/).pop()) + ' · ' + mb(p.enviado) + ' de ' + mb(p.total))
 })
+
+// ---------- Chat: som de mensagem nova e selo de não lidas (também sem chamada aberta) ----------
+let naoLidas = 0
+let audioCtx = null
+function tocarAviso () {
+  try {
+    audioCtx = audioCtx || new AudioContext()
+    const agora = audioCtx.currentTime
+    ;[[1046.5, 0], [1568, 0.11]].forEach(([freq, atraso]) => {
+      const osc = audioCtx.createOscillator(); const g = audioCtx.createGain()
+      osc.type = 'sine'; osc.frequency.value = freq
+      g.gain.setValueAtTime(0, agora + atraso)
+      g.gain.linearRampToValueAtTime(0.18, agora + atraso + 0.012)
+      g.gain.exponentialRampToValueAtTime(0.0001, agora + atraso + 0.45)
+      osc.connect(g).connect(audioCtx.destination)
+      osc.start(agora + atraso); osc.stop(agora + atraso + 0.5)
+    })
+  } catch {}
+}
+function atualizarSelo () {
+  $('selo').textContent = naoLidas > 9 ? '9+' : String(naoLidas)
+  document.body.classList.toggle('tem-nao-lidas', naoLidas > 0)
+}
+api.sessao.onChat(({ visivel, som }) => {
+  if (som) tocarAviso()
+  if (!visivel) { naoLidas++; atualizarSelo(); estado('Nova mensagem de ' + $('nome').textContent, true) }
+})
+api.sessao.onChatVisivel(v => { if (v) { naoLidas = 0; atualizarSelo() } })
