@@ -931,7 +931,23 @@ function waitPort (port, ms) {
     tryOnce()
   })
 }
+// Nome do computador na aba da tela remota (em vez do IP ou do túnel): apelido no cadastro do par no motor
+function apelidoNoMotor (destino, nome) {
+  if (!nome) return
+  try {
+    const id = String(destino)
+    const arq = /[<>:/\\|?*]/.test(id) ? 'base64_' + Buffer.from(id).toString('base64') : id
+    const f = path.join(app.getPath('appData'), 'SSAdesk', 'config', 'peers', arq + '.toml')
+    const linha = "alias = '" + String(nome).replace(/['\\\r\n]/g, '') + "'"
+    let t = ''; try { t = fs.readFileSync(f, 'utf8') } catch {}
+    if (/^alias\s*=.*$/m.test(t)) t = t.replace(/^alias\s*=.*$/m, linha)
+    else if (/^\[options\]\s*$/m.test(t)) t = t.replace(/^\[options\]\s*$/m, m => m + '\n' + linha)
+    else t += (t && !t.endsWith('\n') ? '\n' : '') + '[options]\n' + linha + '\n'
+    fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, t)
+  } catch {}
+}
 function abrirRustDesk (destino) {
+  apelidoNoMotor(destino, sessao.nome)
   const exe = rustdeskPath()
   if (!exe || !fs.existsSync(exe)) throw new Error('SSAdesk nÃ£o estÃ¡ instalado corretamente.')
   spawn(exe, ['--connect', destino], { detached: true, stdio: 'ignore' }).unref()
