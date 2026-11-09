@@ -13,6 +13,7 @@ Teste feito no notebook SSA-Atendimento ("Augusto", 120 358 953) acessando o not
 | 7 | Funcional | Dois mouses: o cursor do outro computador não aparece | Corrigido: "Mostrar cursor remoto" ligado por padrão |
 | 8 | Visual | Tela remota abre em "Escala original" (pode cortar a tela) | Corrigido: "Escala adaptada" por padrão |
 | 9 | Visual | Barra do motor tem Chat próprio, duplicando o chat do SSAdesk | Corrigido: removido da barra do motor |
+| 15 | Visual | Tela remota com aba no estilo do motor (aba, "+", X da aba) | Corrigido: barra de título "SSAdesk · nome", conferida na tela |
 | 10 | Visual | Barra do motor recolhe sozinha quando o mouse sai, dificultando os menus | Pendente (avaliar fixar por padrão) |
 | 11 | **Segurança** | Escudo vermelho na aba: conexão direta pela rede local (IP) não é criptografada pelo motor | Pendente: passar também a rede local pelo túnel criptografado |
 | 12 | Funcional | Fechar a janela da tela remota não encerra a sessão do SSAdesk (barrinha/chamada continuam) | Pendente: decidir se encerra junto ou pergunta |
