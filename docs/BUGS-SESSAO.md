@@ -20,3 +20,9 @@ Teste feito no notebook SSA-Atendimento ("Augusto", 120 358 953) acessando o not
 | 13 | Teste | As janelas do SSAdesk (barrinha, lousa, chamada, chat, ⓘ) ficam fora da captura de tela de propósito, então prints automáticos não as mostram | Testar com prints feitos pela pessoa no outro computador |
 | 14 | Funcional | Reconexão pediu permissão? A reconexão abriu em ~6 s sem passar visivelmente pelo pedido | Verificar no outro computador |
 | 16 | Funcional | Computador já em sessão derrubava a segunda conexão sem explicar ("O outro computador encerrou a conexão") | Corrigido: avisa "Esse computador já está em outra conexão agora" |
+| 17 | Visual | Janela de arquivos (e câmera) com aba e "+" no estilo do motor | Corrigido: barra de título simples, conferida na tela |
+| 18 | Usabilidade | Menu de ações com itens técnicos/duplicados: Terminal (beta), Tunelamento TCP, Visualizar câmera, Anotações | Corrigido: removidos, conferido na tela |
+| 19 | Usabilidade | Menus de exibição e teclado com opções técnicas: Codec, Tela virtual, Modo legado/mapa/traduzido, Fonte de entrada | Corrigido: Codec, Tela virtual, modos de teclado e fonte de entrada ocultos |
+| 20 | Usabilidade | REC grava sem avisar onde salvou; nome técnico (outgoing_192.168.3.22_…_vp9.webm em Vídeos\SSAdesk) | Pendente: nome amigável e aviso ao terminar (exige mudar o motor em Rust) |
+| 21 | Visual | Ainda aparecem no menu de exibição: Cor verdadeira (4:4:4) e Modo privado | Pendente: avaliar se ficam (Modo privado esconde a tela do acessado, pode ser útil) |
+| 22 | Usabilidade | Escala adaptada só vale para computadores novos; quem já tinha sido acessado continua em "Escala original" | Pendente |
