@@ -72,7 +72,12 @@ Copy-Item "$here\assets\ssadesk.ico" "$payload\ssadesk.ico"
 
 # 5. App SSAdesk (Electron oficial + código do app)
 Push-Location $appSrc
-try { npm ci --no-audit --no-fund | Out-Null; if ($LASTEXITCODE -ne 0) { throw "npm ci (app) falhou" }; node node_modules\electron\install.js } finally { Pop-Location }
+try {
+  # SSADESK_SEM_NPMCI=1 reaproveita as dependências já instaladas (útil quando uma cópia de teste do app está aberta)
+  if (-not ($env:SSADESK_SEM_NPMCI -and (Test-Path "node_modules\electron\dist\electron.exe"))) {
+    npm ci --no-audit --no-fund | Out-Null; if ($LASTEXITCODE -ne 0) { throw "npm ci (app) falhou" }; node node_modules\electron\install.js
+  }
+} finally { Pop-Location }
 New-Item -ItemType Directory -Force "$appSrc\assets", "$appSrc\src\fonts" | Out-Null
 Copy-Item "$here\assets\ssadesk-256.png" "$appSrc\assets\icon.png" -Force
 Copy-Item "$here\assets\ssadesk.ico" "$appSrc\assets\icon.ico" -Force
