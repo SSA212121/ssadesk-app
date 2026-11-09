@@ -26,8 +26,14 @@ Teste feito no notebook SSA-Atendimento ("Augusto", 120 358 953) acessando o not
 | 20 | Usabilidade | REC grava sem avisar onde salvou; nome técnico (outgoing_192.168.3.22_…_vp9.webm em Vídeos\SSAdesk) | Pendente: nome amigável e aviso ao terminar (exige mudar o motor em Rust) |
 | 21 | Visual | Ainda aparecem no menu de exibição: Cor verdadeira (4:4:4) e Modo privado | Pendente: avaliar se ficam (Modo privado esconde a tela do acessado, pode ser útil) |
 | 22 | Usabilidade | Escala adaptada só vale para computadores novos; quem já tinha sido acessado continua em "Escala original" | Pendente |
-| 23 | Usabilidade | Instalador abriu atrás da janela do Explorador (não vem para a frente) | Pendente |
-| 24 | Visual | Tela inicial do instalador mostra "Versão 4.1.0" (desatualizada) | Pendente |
+| 23 | Usabilidade | Instalador abriu atrás da janela do Explorador (não vem para a frente) | Corrigido e conferido (4.5.0 abre na frente) |
+| 24 | Visual | Tela inicial do instalador mostra "Versão 4.1.0" (desatualizada) | Corrigido e conferido (4.5.0) |
 | 25 | Usabilidade | Barra de ferramentas da tela remota cobre o conteúdo (tapou a barra de endereço do Explorador remoto) | Pendente |
 | 26 | Funcional | Texto colado pela área de transferência não chegou no computador remoto | Pendente: investigar |
 | 27 | Usabilidade | Computadores já acessados abriam em "Escala original" | Corrigido no app (ajuste único na primeira abertura) |
+| 28 | Funcional | Atualizar exigia digitar a senha de novo | Corrigido: botão "Manter a senha atual" (só aparece em atualização e confere que a senha existe); conferido na tela |
+| 29 | Visual | Diálogos do motor com ícones nos botões (Substituir, erro, senha) | Corrigido: botões só com texto |
+| 30 | Visual | Erros técnicos/inglês: "os error 10054", "Failed to connect to 192.168.3.22:21118" | Corrigido: frases simples em português |
+| 31 | Visual | Erro de conexão oferecia "Conectar via relay" (recurso do RustDesk) | Corrigido: botão removido |
+| 32 | Usabilidade | Janela de arquivos não lembra as pastas usadas da última vez | Pendente |
+| 33 | Funcional | Depois de atualizar pelo acesso remoto, o Samuel não voltou a aceitar conexão (porta 21118 fechada, túnel não responde) | Pendente: verificar no local se a instalação terminou |
