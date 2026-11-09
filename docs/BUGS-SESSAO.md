@@ -37,3 +37,8 @@ Teste feito no notebook SSA-Atendimento ("Augusto", 120 358 953) acessando o not
 | 31 | Visual | Erro de conexão oferecia "Conectar via relay" (recurso do RustDesk) | Corrigido: botão removido |
 | 32 | Usabilidade | Janela de arquivos não lembra as pastas usadas da última vez | Pendente |
 | 33 | Funcional | Depois de atualizar pelo acesso remoto, o Samuel não voltou a aceitar conexão (porta 21118 fechada, túnel não responde) | Pendente: verificar no local se a instalação terminou |
+
+| 34 | Funcional | Instalação 'Manter a senha atual' dava erro (arquivo de senha vazio quebrava o script) | Corrigido e testado no Samuel: reinstalou e aceitou a mesma senha |
+| 35 | Funcional | Faltava ver/alterar senha e revogar acessos | Feito: Ajustes > Senha de acesso; Mostrar e Revogar testados no Samuel (Alterar não testado: exige digitar senha nova) |
+| 36 | Visual | Erro de conexão ainda oferecia 'Conectar via relay' (segundo lugar no motor) | Corrigido |
+| 37 | Visual | Moldura quadrada de seleção em botões | Corrigido em todas as telas do app e no motor |
