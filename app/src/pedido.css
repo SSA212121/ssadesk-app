@@ -37,3 +37,8 @@ body.ligacao .avatar-pedido { animation: chamando 1.6s ease-in-out infinite; }
 .sempre b { display: block; font-size: 13.5px; font-weight: 600; }
 .sempre small { display: block; font-size: 11.5px; color: var(--text-2); margin-top: 1px; }
 body.ligacao .sempre { display: none; }
+
+/* SSAdesk: foco sem moldura quadrada */
+*:focus { outline: none; }
+:is(button, a, li, [tabindex]):focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(10, 132, 255, .55); }
+button, a, li { -webkit-tap-highlight-color: transparent; }

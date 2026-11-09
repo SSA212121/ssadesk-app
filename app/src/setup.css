@@ -83,3 +83,8 @@ h2 { font-size: 24px; font-weight: 700; letter-spacing: -.02em; }
 .manter { margin-top: 10px; width: 100%; height: 38px; border-radius: 999px; font-size: 13.5px; font-weight: 600; color: #0a84ff; background: rgba(10, 132, 255, .12); transition: background .2s; }
 .manter:hover { background: rgba(10, 132, 255, .2); }
 .manter[hidden] { display: none; }
+
+/* SSAdesk: foco sem moldura quadrada */
+*:focus { outline: none; }
+:is(button, a, li, [tabindex]):focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(10, 132, 255, .55); }
+button, a, li { -webkit-tap-highlight-color: transparent; }

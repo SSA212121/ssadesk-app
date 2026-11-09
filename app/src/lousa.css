@@ -34,3 +34,8 @@ body:not(.desenhar)::after { opacity: .35; }
 .aviso.show { opacity: 1; transform: translate(-50%, 0); }
 
 body.borracha canvas { cursor: cell; }
+
+/* SSAdesk: foco sem moldura quadrada */
+*:focus { outline: none; }
+:is(button, a, li, [tabindex]):focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(10, 132, 255, .55); }
+button, a, li { -webkit-tap-highlight-color: transparent; }

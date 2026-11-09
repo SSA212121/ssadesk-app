@@ -44,3 +44,8 @@ button, input { font: inherit; color: inherit; border: 0; background: none; curs
 .enviar svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
 .wbtn:focus-visible, .enviar:focus-visible { outline: 0; box-shadow: 0 0 0 3px rgba(10, 132, 255, .6); }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+/* SSAdesk: foco sem moldura quadrada */
+*:focus { outline: none; }
+:is(button, a, li, [tabindex]):focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(10, 132, 255, .55); }
+button, a, li { -webkit-tap-highlight-color: transparent; }

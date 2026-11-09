@@ -49,3 +49,8 @@ input[role="switch"]:checked::after { transform: translateX(15px); }
 input[role="switch"]:focus-visible { outline: 0; box-shadow: 0 0 0 3px rgba(10, 132, 255, .7); }
 .dica { font-size: 11px; line-height: 1.35; color: rgba(235, 235, 245, .45); padding: 0 0 7px; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+
+/* SSAdesk: foco sem moldura quadrada */
+*:focus { outline: none; }
+:is(button, a, li, [tabindex]):focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(10, 132, 255, .55); }
+button, a, li { -webkit-tap-highlight-color: transparent; }
