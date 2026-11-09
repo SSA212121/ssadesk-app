@@ -13,7 +13,7 @@ mostrarNome(params.get('nome'))
 $('estado').textContent = padrao
 if (params.get('papel') === 'acessado') {
   document.body.classList.add('acessado')
-  for (const a of ['arquivos', 'tela']) { const b = document.querySelector('[data-acao="' + a + '"]'); if (b) b.remove() }
+  for (const a of ['arquivos', 'tela', 'mais']) { const b = document.querySelector('[data-acao="' + a + '"]'); if (b) b.remove() }
 }
 api.sessao.onAtualizar(s => mostrarNome(s.nome))
 api.sessao.onEstado(t => estado(t, /✓/.test(t)))

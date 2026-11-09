@@ -25,6 +25,11 @@ contextBridge.exposeInMainWorld('ssadesk', {
     onAtualizar: cb => ipcRenderer.on('barra-sessao', (_e, s) => cb(s)),
     onEstado: cb => ipcRenderer.on('barra-estado', (_e, t) => cb(t))
   },
+  mais: {
+    comando: (acao, valor) => ipcRenderer.send('mais-comando', acao, valor),
+    estado: () => ipcRenderer.invoke('mais-estado'),
+    fechar: () => ipcRenderer.send('mais-fechar')
+  },
   painelInfo: {
     onDados: cb => ipcRenderer.on('info-dados', (_e, d) => cb(d)),
     fps: ligar => ipcRenderer.invoke('info-fps', ligar),

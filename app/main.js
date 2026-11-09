@@ -442,7 +442,7 @@ function abrirBarra () {
   if (process.env.SSADESK_CODIGO_TESTE) return
   if (barraWin && !barraWin.isDestroyed()) { barraWin.showInactive(); barraWin.webContents.send('barra-sessao', { nome: sessao.nome }); return }
   const area = require('electron').screen.getPrimaryDisplay().workArea
-  const W = 544; const H = 64
+  const W = 588; const H = 64
   barraWin = foraDaCaptura(new BrowserWindow({
     width: W, height: H, x: Math.round(area.x + (area.width - W) / 2), y: area.y + 12,
     frame: false, transparent: true, resizable: false, maximizable: false, minimizable: false, skipTaskbar: true,
@@ -479,6 +479,7 @@ ipcMain.on('sessao-acao', (_e, acao) => {
   if (acao === 'lousa') abrirLousa()
   if (acao === 'chat') abrirChatJanela()
   if (acao === 'info') abrirInfo()
+  if (acao === 'mais') abrirMais()
   if (acao === 'encerrar') { encerradoPeloUsuario = true; if (canal) canal.encerrar(); fecharBarra() }
 })
 // ---------- Painel ⓘ de informações da conexão (canto superior direito) ----------
@@ -571,6 +572,42 @@ function abrirInfo () {
   tique(); infoTimer = setInterval(tique, 2000)
   infoWin.on('closed', () => { infoWin = null; clearInterval(infoTimer); infoTimer = null })
 }
+// ---------- Menu "Mais opções": comandos para a tela remota (motor) ----------
+// O motor lê %APPDATA%\SSAdesk\comando-tela.json e executa (Ctrl+Alt+Del, qualidade, gravar, etc.)
+let maisWin = null
+const estadoMais = { escala: 'adaptive', qualidade: 'best' }
+function abrirMais () {
+  if (maisWin && !maisWin.isDestroyed()) { maisWin.close(); return }
+  const b = barraWin && !barraWin.isDestroyed() ? barraWin.getBounds() : null
+  const W = 280; const H = 520
+  const area = require('electron').screen.getPrimaryDisplay().workArea
+  const x = b ? Math.round(b.x + b.width - W - 70) : area.x + area.width - W - 20
+  const y = b ? b.y + b.height - 2 : area.y + 70
+  maisWin = foraDaCaptura(new BrowserWindow({
+    width: W, height: H, x, y, frame: false, transparent: true, resizable: false, maximizable: false, minimizable: false,
+    skipTaskbar: true, alwaysOnTop: true, show: false, title: 'Mais opções', hasShadow: false,
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, spellcheck: false }
+  }))
+  maisWin.setAlwaysOnTop(true, 'pop-up-menu')
+  maisWin.loadFile(path.join(__dirname, 'src', 'mais.html'))
+  maisWin.once('ready-to-show', () => maisWin.show())
+  maisWin.on('blur', () => { if (maisWin && !maisWin.isDestroyed()) maisWin.close() }) // clicou fora: fecha, como um menu
+  maisWin.on('closed', () => { maisWin = null })
+}
+function comandoTela (acao, valor) {
+  const f = path.join(app.getPath('appData'), 'SSAdesk', 'comando-tela.json')
+  fs.mkdirSync(path.dirname(f), { recursive: true })
+  fs.writeFileSync(f, JSON.stringify({ id: Date.now() + '-' + Math.random().toString(36).slice(2, 7), em: Date.now(), acao, valor }))
+}
+const ACOES_TELA = ['arquivos', 'print', 'gravar', 'tela-cheia', 'escala', 'qualidade', 'cursor', 'ctrl-alt-del', 'bloquear', 'bloquear-entrada', 'atualizar', 'reiniciar']
+ipcMain.on('mais-comando', (_e, acao, valor) => {
+  if (!ACOES_TELA.includes(acao)) return
+  if (acao === 'escala' || acao === 'qualidade') estadoMais[acao] = String(valor)
+  comandoTela(acao, String(valor || '').slice(0, 20))
+  if (acao !== 'escala' && acao !== 'qualidade' && maisWin && !maisWin.isDestroyed()) maisWin.close()
+})
+ipcMain.handle('mais-estado', () => estadoMais)
+ipcMain.on('mais-fechar', () => { if (maisWin && !maisWin.isDestroyed()) maisWin.close() })
 ipcMain.on('info-fechar', () => { if (infoWin && !infoWin.isDestroyed()) infoWin.close() })
 ipcMain.handle('info-fps', (_e, ligar) => { try { definirFps(!!ligar); return { ok: true, fps: fpsLigado() } } catch (e) { return { ok: false, msg: e.message } } })
 ipcMain.handle('sessao-info', () => ({ nome: sessao.nome, ativa: sessao.ativa }))
@@ -1193,4 +1230,10 @@ app.on('before-quit', () => { if (canal) canal.destruir() })
 if (process.env.SSADESK_FOTO_INFO) app.whenReady().then(() => setTimeout(() => {
   abrirInfo()
   setTimeout(async () => { try { fs.writeFileSync(process.env.SSADESK_FOTO_INFO, (await infoWin.webContents.capturePage()).toPNG()) } catch {} app.exit(0) }, 6000)
+}, 1500))
+
+// Teste: abre o menu "Mais opções" e salva uma foto dele (SSADESK_FOTO_MAIS=caminho.png)
+if (process.env.SSADESK_FOTO_MAIS) app.whenReady().then(() => setTimeout(() => {
+  abrirMais()
+  setTimeout(async () => { try { maisWin.removeAllListeners('blur'); fs.writeFileSync(process.env.SSADESK_FOTO_MAIS, (await maisWin.webContents.capturePage()).toPNG()) } catch {} app.exit(0) }, 3000)
 }, 1500))

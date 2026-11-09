@@ -1,0 +1,20 @@
+/* SSAdesk — menu "Mais opções" da barra da sessão (vidro escuro, estilo Apple) */
+@font-face { font-family: "Inter"; src: url("fonts/inter.woff2") format("woff2"); font-weight: 100 900; font-display: block; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: transparent; overflow: hidden; }
+body { font-family: -apple-system, "SF Pro Text", "Inter", "Segoe UI Variable Text", system-ui, sans-serif; color: #fff;
+  -webkit-font-smoothing: antialiased; user-select: none; padding: 6px; font-size: 13px; }
+button { font: inherit; color: inherit; border: 0; background: none; cursor: default; text-align: left; }
+.menu { border-radius: 16px; padding: 6px; background: rgba(28, 28, 30, .86); backdrop-filter: blur(30px) saturate(180%);
+  border: .5px solid rgba(255, 255, 255, .14); box-shadow: 0 12px 32px rgba(0, 0, 0, .35); animation: entrar .22s cubic-bezier(.2, .8, .2, 1); }
+@keyframes entrar { from { opacity: 0; transform: translateY(-6px) scale(.98); } }
+.grupo { font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: rgba(235, 235, 245, .45); padding: 8px 10px 4px; }
+.menu > button { display: flex; align-items: center; gap: 10px; width: 100%; height: 32px; padding: 0 10px; border-radius: 8px; transition: background .12s; }
+.menu > button:hover, .menu > button:focus-visible { background: #0a84ff; outline: 0; }
+.menu > button i { font-style: normal; width: 18px; text-align: center; opacity: .9; font-size: 13px; }
+.menu > button.perigo { color: #ff6961; }
+.menu > button.perigo:hover { background: #ff3b30; color: #fff; }
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 2px; padding: 2px; margin: 4px 6px 6px; border-radius: 9px; background: rgba(118, 118, 128, .24); }
+.seg button { height: 26px; border-radius: 7px; text-align: center; font-size: 12px; font-weight: 500; color: rgba(255, 255, 255, .85); transition: background .15s; }
+.seg button:hover { background: rgba(255, 255, 255, .1); }
+.seg button.ativo { background: #636366; color: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .3); }

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:">
+  <title>Mais opções</title>
+  <link rel="stylesheet" href="mais.css">
+</head>
+<body>
+  <div class="menu" role="menu">
+    <p class="grupo">Tela</p>
+    <button data-acao="arquivos" role="menuitem">Transferir arquivos</button>
+    <button data-acao="print" role="menuitem">Capturar tela</button>
+    <button data-acao="gravar" role="menuitem">Gravar a tela</button>
+    <button data-acao="tela-cheia" role="menuitem">Tela cheia</button>
+    <div class="seg" role="group" aria-label="Tamanho">
+      <button data-acao="escala" data-valor="adaptive">Ajustar à janela</button>
+      <button data-acao="escala" data-valor="original">Tamanho real</button>
+    </div>
+    <p class="grupo">Qualidade da imagem</p>
+    <div class="seg" role="group" aria-label="Qualidade">
+      <button data-acao="qualidade" data-valor="best">HD</button>
+      <button data-acao="qualidade" data-valor="balanced">Equilibrada</button>
+      <button data-acao="qualidade" data-valor="low">Rápida</button>
+    </div>
+    <p class="grupo">Computador remoto</p>
+    <button data-acao="cursor" role="menuitem">Mostrar/ocultar o mouse do outro</button>
+    <button data-acao="ctrl-alt-del" role="menuitem">Enviar Ctrl+Alt+Del</button>
+    <button data-acao="bloquear" role="menuitem">Bloquear o computador</button>
+    <button data-acao="bloquear-entrada" role="menuitem">Bloquear teclado e mouse de lá</button>
+    <button data-acao="atualizar" role="menuitem">Atualizar a imagem</button>
+    <button data-acao="reiniciar" role="menuitem" class="perigo">Reiniciar o computador</button>
+  </div>
+  <script src="mais.js"></script>
+</body>
+</html>
