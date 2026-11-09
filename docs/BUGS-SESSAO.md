@@ -26,3 +26,8 @@ Teste feito no notebook SSA-Atendimento ("Augusto", 120 358 953) acessando o not
 | 20 | Usabilidade | REC grava sem avisar onde salvou; nome técnico (outgoing_192.168.3.22_…_vp9.webm em Vídeos\SSAdesk) | Pendente: nome amigável e aviso ao terminar (exige mudar o motor em Rust) |
 | 21 | Visual | Ainda aparecem no menu de exibição: Cor verdadeira (4:4:4) e Modo privado | Pendente: avaliar se ficam (Modo privado esconde a tela do acessado, pode ser útil) |
 | 22 | Usabilidade | Escala adaptada só vale para computadores novos; quem já tinha sido acessado continua em "Escala original" | Pendente |
+| 23 | Usabilidade | Instalador abriu atrás da janela do Explorador (não vem para a frente) | Pendente |
+| 24 | Visual | Tela inicial do instalador mostra "Versão 4.1.0" (desatualizada) | Pendente |
+| 25 | Usabilidade | Barra de ferramentas da tela remota cobre o conteúdo (tapou a barra de endereço do Explorador remoto) | Pendente |
+| 26 | Funcional | Texto colado pela área de transferência não chegou no computador remoto | Pendente: investigar |
+| 27 | Usabilidade | Computadores já acessados abriam em "Escala original" | Corrigido no app (ajuste único na primeira abertura) |
