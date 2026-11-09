@@ -913,7 +913,7 @@ async function conectarPorCodigo (codigo, modo = 'acesso') {
   try {
     resposta = await new Promise((resolve, reject) => {
     // Achou na rede local: espera a sessão completa só mais um pouco; senão abre a tela direto pela rede local
-    if (modo === 'acesso') buscaLocal.then(r => { if (r) setTimeout(() => { if (pendente) { pendente = null; canal.pararProcura(); reject(Object.assign(new Error('só rede local'), { local: true })) } }, 8000) })
+    // (Sem atalho direto pela rede local: a porta do motor fica fechada; espera a resposta do pedido normalmente)
     const t = setTimeout(() => { if (pendente) { pendente = null; canal.pararProcura(); reject(new Error('Computador não encontrado. Ele está ligado, com internet e com o SSAdesk aberto?')) } }, 45000)
     pendente = { resolve: v => { clearTimeout(t); resolve(v) }, reject: e => { clearTimeout(t); reject(e) } }
     canal.procurar({ codigo })
@@ -1252,6 +1252,7 @@ app.whenReady().then(() => {
     conectarPorCodigo(process.env.SSADESK_CODIGO_TESTE, process.env.SSADESK_MODO_TESTE || 'acesso')
       .then(async n => {
         fs.writeFileSync(process.env.SSADESK_LOG, 'conectado: ' + n + ' via ' + ultimoDestino + '\n', { flag: 'a' })
+        if (process.env.SSADESK_ENCERRAR_TESTE) setTimeout(() => { encerradoPeloUsuario = true; if (canal) canal.encerrar(); setTimeout(() => app.exit(0), 1500) }, Number(process.env.SSADESK_ENCERRAR_TESTE) || 3000) // despede-se antes de sair
         if (process.env.SSADESK_TELA_TESTE) ipcMain.emit('abrir-chamada', null, { tela: true })
         if (process.env.SSADESK_LOUSA_TESTE) { // desenha um círculo e um traço, como se fosse a pessoa
           const pts = []; for (let a = 0; a <= 64; a++) pts.push([0.5 + 0.12 * Math.cos(a / 64 * 2 * Math.PI), 0.5 + 0.2 * Math.sin(a / 64 * 2 * Math.PI)])
