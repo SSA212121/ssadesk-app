@@ -117,3 +117,14 @@ Teste feito no notebook SSA-Atendimento ("Augusto", 120 358 953) acessando o not
 | # | Tipo | Bug | Situação |
 |---|------|-----|----------|
 | 83 | **Funcional** | Com o Samuel na 5G e este notebook no Wi-Fi (CGNAT), a sessão do SSAdesk conectava (via 181.77.x, IP da 5G), mas a conexão separada da tela falhava ("HOLEPUNCH_ABORTED": furar o NAT aleatório da 5G de novo é instável) e o acesso desistia | Corrigido: se a conexão separada falha em 20 s, a tela vai por dentro da sessão já aberta (pacote tipo 5, multiplexado). Do lado acessado só liga no motor com sessão aceita e "Controlar a tela" permitido |
+
+## Versão para Mac (10/11/2026)
+
+| Item | Situação |
+|---|---|
+| Motor para Mac Intel | Compilado no GitHub |
+| Motor para Mac com chip Apple | Compilado **numa máquina Intel**: as máquinas de chip Apple do GitHub cancelam o trabalho na fila (6 tentativas, todas canceladas em 15 min). Precisou pedir o ffmpeg para o alvo, e não para a máquina que compila |
+| Pacote SSAdesk.app (os dois) | Montado em máquina Intel; confere a arquitetura antes de gerar o arquivo |
+| Repositórios | ssadesk-motor e ssadesk-app públicos; o app deixou de ser privado, o que dispensou o remendo de anexar o motor à página de downloads |
+| Publicado | SSAdesk-mac-arm64.dmg e SSAdesk-mac-x64.dmg na página de downloads; botões do site ativos |
+| Pendente | Testar num Mac de verdade; assinatura da Apple (US$ 99/ano) para tirar o aviso da primeira abertura |
