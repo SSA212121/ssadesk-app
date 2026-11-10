@@ -152,7 +152,7 @@ function abrirChamada (dados = {}) {
     enviarEstadoChamada()
   })
   if (process.env.SSADESK_LOG) callWin.webContents.on('console-message', (_e, _l, msg) => fs.appendFileSync(process.env.SSADESK_LOG, msg + '\n'))
-  callWin.setAlwaysOnTop(true, 'floating')
+  callWin.setAlwaysOnTop(true, 'screen-saver', 1) // acima da tela remota em tela cheia
   callWin.on('closed', () => {
     callWin = null
     if (canal && canal.conectado()) canal.controle({ t: 'chamada-fim' })
@@ -523,7 +523,7 @@ function abrirBarra () {
     alwaysOnTop: true, show: false, title: 'SSAdesk', hasShadow: false,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, spellcheck: false }
   }))
-  barraWin.setAlwaysOnTop(true, 'floating')
+  barraWin.setAlwaysOnTop(true, 'screen-saver', 2) // acima da tela remota em tela cheia e da lousa
   barraWin.loadFile(path.join(__dirname, 'src', 'sessao.html'), { query: { nome: sessao.nome || '', papel: sessao.papel || '' } })
   barraWin.once('ready-to-show', () => barraWin.showInactive())
   barraWin.on('closed', () => { barraWin = null })
@@ -642,7 +642,7 @@ function abrirInfo () {
     alwaysOnTop: true, show: false, title: 'Informações da conexão', hasShadow: false,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, spellcheck: false }
   }))
-  infoWin.setAlwaysOnTop(true, 'floating')
+  infoWin.setAlwaysOnTop(true, 'screen-saver', 2)
   infoWin.loadFile(path.join(__dirname, 'src', 'info.html'))
   infoWin.once('ready-to-show', () => infoWin.show())
   const tique = () => {
@@ -668,7 +668,7 @@ function abrirMais () {
     skipTaskbar: true, alwaysOnTop: true, show: false, title: 'Mais opções', hasShadow: false,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, spellcheck: false }
   }))
-  maisWin.setAlwaysOnTop(true, 'pop-up-menu')
+  maisWin.setAlwaysOnTop(true, 'screen-saver', 3)
   maisWin.loadFile(path.join(__dirname, 'src', 'mais.html'))
   maisWin.once('ready-to-show', () => maisWin.show())
   maisWin.on('blur', () => { if (maisWin && !maisWin.isDestroyed()) maisWin.close() }) // clicou fora: fecha, como um menu
@@ -992,7 +992,7 @@ function abrirChatJanela (semFoco = false) {
     ...(isMac ? { titleBarStyle: 'hiddenInset', vibrancy: 'hud', visualEffectState: 'active' } : {}),
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, spellcheck: false }
   }))
-  chatWin.setAlwaysOnTop(true, 'floating')
+  chatWin.setAlwaysOnTop(true, 'screen-saver', 1)
   chatWin.loadFile(path.join(__dirname, 'src', 'chat.html'))
   chatWin.once('ready-to-show', () => { if (semFoco) chatWin.showInactive(); else chatWin.show(); avisarVisibilidade() })
   // Fechar = guardar (esconde, mantém a conversa)

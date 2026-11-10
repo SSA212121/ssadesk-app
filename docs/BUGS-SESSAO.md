@@ -79,3 +79,11 @@ Teste feito no notebook SSA-Atendimento ("Augusto", 120 358 953) acessando o not
 | 58 | Funcional | O nome do computador ("Augusto") sumiu das preferências | Pendente: investigar quem gravou sem o nome |
 | 59 | Usabilidade | "Aguardando permissão…" sem limite: mais de 1 min girando sem dizer que o outro lado precisa clicar Permitir | Pendente |
 | 60 | OK | Instalador aberto pela tela remota mostrou todas as telas (bug 41 não se repetiu) e "Manter a senha atual" funcionou | Testado |
+| 61 | **Funcional** | Em tela cheia, a tela remota ficava por cima da barrinha: quem acessa não via a própria barra (nem chat, ⓘ, ⋯) | Corrigido: barrinha e janelas dela no nível mais alto, acima da tela remota e da lousa; testado no Samuel |
+| 62 | **Funcional** | X da barrinha fechava a sessão, mas a tela remota ficava aberta (o motor perguntava "Tem certeza?" escondido) | Corrigido no motor: fecha direto |
+| 63 | Visual | Ao sair da tela cheia, a janela remota fica parcialmente fora da tela | Pendente |
+| 64 | Visual | ⓘ mostra "Internet - P2P direto" com os dois na mesma rede | Pendente |
+| 65 | Visual | Barrinha cobre o meio da barra de título da janela de arquivos | Pendente |
+| 66 | Funcional | Pedido antigo preso em "Aguardando permissão…" depois de reinstalar o outro lado; só reabrindo o app | Pendente |
+| — | OK | Comandos do ⋯ (Tela cheia, Transferir arquivos) funcionam; a falha anterior era da cópia rodando como administrador | Testado |
+| — | OK | Chat, lousa, ⓘ e ⋯ abrem por cima da tela remota | Testado |
