@@ -92,7 +92,7 @@ jobs:
       - name: Gera o .dmg
         run: |
           V=$(node -p "require('./app/package.json').version")
-          hdiutil create -volname "SSAdesk" -srcfolder build/SSAdesk.app -ov -format UDZO "SSAdesk-$V-mac-${{ matrix.arch }}.dmg"
+          hdiutil create -volname "SSAdesk" -srcfolder build/SSAdesk.app -ov -format UDZO "SSAdesk-mac-${{ matrix.arch }}.dmg"
           ls -la *.dmg
 
       - uses: actions/upload-artifact@v4
