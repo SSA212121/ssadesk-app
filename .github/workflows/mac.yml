@@ -38,7 +38,7 @@ jobs:
       - uses: actions/setup-node@v4
         if: steps.filtro.outputs.pular == 'nao'
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Baixa o motor do SSAdesk
         if: steps.filtro.outputs.pular == 'nao'
@@ -53,7 +53,14 @@ jobs:
       - name: Dependências do app
         if: steps.filtro.outputs.pular == 'nao'
         working-directory: app
-        run: npm ci --no-audit --no-fund
+        run: |
+          npm ci --no-audit --no-fund
+          # Garante o Electron desta plataforma (npm ci nem sempre roda o download)
+          if [ ! -d node_modules/electron/dist/Electron.app ]; then
+            node node_modules/electron/install.js
+          fi
+          ls -la node_modules/electron/dist | head
+          test -d node_modules/electron/dist/Electron.app
 
       - name: Monta o SSAdesk.app
         if: steps.filtro.outputs.pular == 'nao'
