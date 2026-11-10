@@ -40,14 +40,22 @@ jobs:
         with:
           node-version: 22
 
-      - name: Baixa o motor do SSAdesk
+      - name: Baixa o motor do SSAdesk (última compilação que deu certo)
         if: steps.filtro.outputs.pular == 'nao'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          # Este repositório é privado e não consegue ler os artefatos do repositório do motor.
-          # Por isso o motor fica anexado à página de downloads, que é pública e baixa por URL.
-          mkdir -p motor-dmg
-          curl -fL --retry 3 -o motor-dmg/motor.dmg \
-            "https://github.com/SSA212121/ssadesk/releases/download/v4.5.0/peca-interna-motor-mac-${{ matrix.arch }}.dmg"
+          # Agora os dois repositórios são públicos: dá para pegar o motor direto da compilação.
+          # Chip Apple sai da receita compilada em Intel; Intel sai da receita comum.
+          if [ "${{ matrix.arch }}" = "arm64" ]; then
+            RECEITA=ssadesk-mac-arm-via-intel.yml
+          else
+            RECEITA=ssadesk-mac.yml
+          fi
+          RUN=$(gh run list -R SSA212121/ssadesk-motor --workflow "$RECEITA" --status success -L 1 --json databaseId -q '.[0].databaseId')
+          echo "compilação do motor: $RUN"
+          test -n "$RUN"
+          gh run download "$RUN" -R SSA212121/ssadesk-motor -n "rustdesk-unsigned-macos-${{ matrix.motor }}" -D motor-dmg
           ls -la motor-dmg
 
       - name: Dependências do app
