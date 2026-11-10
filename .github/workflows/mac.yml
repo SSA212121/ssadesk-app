@@ -4,6 +4,12 @@ name: SSAdesk para Mac
 # O motor vem da última compilação que deu certo no repositório público SSA212121/ssadesk-motor.
 on:
   workflow_dispatch:
+    inputs:
+      arch:
+        description: "Qual processador montar"
+        type: choice
+        default: todos
+        options: [todos, arm64, x64]
 
 jobs:
   mac:
@@ -16,13 +22,26 @@ jobs:
           - { arch: arm64, motor: aarch64, os: macos-15 }
           - { arch: x64, motor: x86_64, os: macos-15-intel }
     steps:
+      - name: Pular quando só um processador foi pedido
+        id: filtro
+        run: |
+          P="${{ inputs.arch }}"
+          if [ -n "$P" ] && [ "$P" != "todos" ] && [ "$P" != "${{ matrix.arch }}" ]; then
+            echo "pular=sim" >> "$GITHUB_OUTPUT"
+          else
+            echo "pular=nao" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/checkout@v4
+        if: steps.filtro.outputs.pular == 'nao'
 
       - uses: actions/setup-node@v4
+        if: steps.filtro.outputs.pular == 'nao'
         with:
           node-version: 20
 
       - name: Baixa o motor do SSAdesk (última compilação Mac que deu certo)
+        if: steps.filtro.outputs.pular == 'nao'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -33,10 +52,12 @@ jobs:
           ls -la motor-dmg
 
       - name: Dependências do app
+        if: steps.filtro.outputs.pular == 'nao'
         working-directory: app
         run: npm ci --no-audit --no-fund
 
       - name: Monta o SSAdesk.app
+        if: steps.filtro.outputs.pular == 'nao'
         run: |
           set -e
           APP="build/SSAdesk.app"
@@ -85,17 +106,20 @@ jobs:
           codesign --verify --deep "$APP"
 
       - name: Testa se o app carrega (sem janela)
+        if: steps.filtro.outputs.pular == 'nao'
         run: |
           ELECTRON_RUN_AS_NODE=1 build/SSAdesk.app/Contents/MacOS/SSAdesk -e "require('./build/SSAdesk.app/Contents/Resources/app/node_modules/hyperswarm'); console.log('módulos ok')"
           test -x build/SSAdesk.app/Contents/Resources/motor/RustDesk.app/Contents/MacOS/RustDesk
 
       - name: Gera o .dmg
+        if: steps.filtro.outputs.pular == 'nao'
         run: |
           V=$(node -p "require('./app/package.json').version")
           hdiutil create -volname "SSAdesk" -srcfolder build/SSAdesk.app -ov -format UDZO "SSAdesk-mac-${{ matrix.arch }}.dmg"
           ls -la *.dmg
 
       - uses: actions/upload-artifact@v4
+        if: steps.filtro.outputs.pular == 'nao'
         with:
           name: SSAdesk-mac-${{ matrix.arch }}
           path: SSAdesk-*.dmg
