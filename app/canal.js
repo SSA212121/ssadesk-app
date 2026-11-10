@@ -9,7 +9,7 @@ const crypto = require('crypto')
 const os = require('os')
 const { EventEmitter } = require('events')
 
-const TIPO = { CONTROLE: 1, AUDIO: 2, VIDEO: 3, ARQUIVO: 4 }
+const TIPO = { CONTROLE: 1, AUDIO: 2, VIDEO: 3, ARQUIVO: 4, TUNEL: 5 } // 5 = tela pela própria sessão: [id u32][op u8][bytes]
 const soDigitos = c => String(c || '').replace(/\D/g, '')
 const topicoChave = chave => crypto.createHash('sha256').update('ssadesk-chamada:' + String(chave).toLowerCase()).digest()
 const topicoCodigo = codigo => crypto.createHash('sha256').update('ssadesk-codigo:' + soDigitos(codigo)).digest()
@@ -153,7 +153,7 @@ class Canal extends EventEmitter {
       try { const j = Buffer.from('{"t":"vivo"}', 'utf8'); const h = Buffer.alloc(5); h[0] = TIPO.CONTROLE; h.writeUInt32BE(j.length, 1); sock.write(Buffer.concat([h, j])) } catch {}
     }, 10000)
     this.cheio = false
-    sock.on('drain', () => { this.cheio = false })
+    sock.on('drain', () => { this.cheio = false; this.emit('escoou') })
     let buf = Buffer.alloc(0)
     sock.on('data', d => {
       if (!sock._temVivo && d.includes('"t":"vivo"')) sock._temVivo = true // o outro lado manda sinal de vida (versão nova)
@@ -170,6 +170,8 @@ class Canal extends EventEmitter {
           this.emit('midia', tipo === TIPO.AUDIO ? 'audio' : 'video', Buffer.from(dados))
         } else if (tipo === TIPO.ARQUIVO) {
           this.emit('arquivo', Buffer.from(dados))
+        } else if (tipo === TIPO.TUNEL && dados.length >= 5) {
+          this.emit('tunel', dados.readUInt32BE(0), dados[4], Buffer.from(dados.subarray(5)))
         }
       }
     })
@@ -213,6 +215,11 @@ class Canal extends EventEmitter {
   controle (obj) { return this._enviar(TIPO.CONTROLE, Buffer.from(JSON.stringify(obj), 'utf8')) }
   midia (tipo, dados) { return this._enviar(tipo === 'audio' ? TIPO.AUDIO : TIPO.VIDEO, Buffer.from(dados)) }
   arquivo (dados) { return this._enviar(TIPO.ARQUIVO, Buffer.from(dados)) }
+  // Túnel da tela pela sessão (op: 0 abrir, 1 dados, 2 fechar). Nunca descarta: quem envia pausa até escoar.
+  tunel (id, op, dados) {
+    const cab = Buffer.alloc(5); cab.writeUInt32BE(id >>> 0, 0); cab[4] = op
+    return this._enviar(TIPO.TUNEL, dados && dados.length ? Buffer.concat([cab, dados]) : cab)
+  }
   // Espera a rede escoar (usado no envio de arquivos grandes, para não lotar a memória)
   esperarVazao () { return new Promise(r => { if (!this.cheio || !this.conexao) return r(); this.conexao.once('drain', r) }) }
 

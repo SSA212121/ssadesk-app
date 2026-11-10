@@ -359,7 +359,10 @@ function iniciarCanal () {
       canal.controle({ t: 'ola', nome: meuNome(), codigo: meuCodigo(), quer: modoPedido, ipPublico: rede.ip_publico || '' })
     }
   })
+  canal.on('tunel', (id, op, dados) => tunelSessaoChegou(id, op, dados))
+  canal.on('escoou', () => { for (const c of tunelSessao.locais.values()) c.resume() })
   canal.on('desconectado', () => {
+    fecharTunelSessao()
     const caiu = sessao.ativa && sessao.papel === 'acessando' && !encerradoPeloUsuario && !encerradoPeloOutro && sessao.codigo
     if (encerradoPeloOutro && sessao.papel === 'acessando') comandoTela('fechar', '') // fecha a tela remota junto
     sessao.ativa = false
@@ -622,6 +625,7 @@ function caminhoDaConexao () {
   const d = String(ultimoDestino || '')
   if (!d) return { tipo: 'Sessão SSAdesk (P2P)', detalhe: '' }
   if (d.startsWith('127.0.0.1:')) {
+    if (tunelSessao.ativo && d === '127.0.0.1:' + tunelSessao.porta) return { tipo: 'Internet · pela sessão P2P', detalhe: 'Criptografado de ponta a ponta' }
     if (!precisaRetransmissao.size && ehRedeLocal(tunelHost)) return { tipo: 'Rede local · P2P direto', detalhe: 'Criptografado de ponta a ponta' }
     return precisaRetransmissao.size ? { tipo: 'Internet · retransmissão cega', detalhe: 'Criptografado de ponta a ponta' } : { tipo: 'Internet · P2P direto', detalhe: 'Criptografado de ponta a ponta' }
   }
@@ -898,14 +902,55 @@ function testarTcp (host, porta, ms) {
 // Segurança: a tela remota passa SEMPRE pelo túnel P2P (criptografado de ponta a ponta e autenticado pela
 // chave do outro computador), inclusive na mesma rede. O motor sozinho não criptografa conexão direta por IP,
 // então o IP direto fica só como reserva, se o túnel não abrir (e o motor mostra o escudo vermelho).
+// ---------- Tela pela própria sessão P2P (quando a conexão separada da tela não fura o NAT, ex.: 4G/5G) ----------
+// A sessão do SSAdesk já atravessou o NAT; a imagem vai por dentro dela, em vez de abrir uma segunda conexão.
+const tunelSessao = { servidor: null, porta: 0, proximo: 1, locais: new Map(), ativo: false }
+function tunelSessaoChegou (id, op, dados) {
+  let c = tunelSessao.locais.get(id)
+  if (op === 0) { // o outro lado abriu: só quem é acessado, com a sessão aceita e "Controlar a tela" permitido, liga no motor
+    if (sessao.papel !== 'acessado' || !sessao.aceita || !(sessao.permissoes && sessao.permissoes.controlar)) { canal.tunel(id, 2); return }
+    c = net.connect(21118, '127.0.0.1')
+    ligarLocal(id, c)
+    return
+  }
+  if (!c) return
+  if (op === 1) c.write(dados)
+  else if (op === 2) { tunelSessao.locais.delete(id); c.destroy() }
+}
+function ligarLocal (id, c) {
+  tunelSessao.locais.set(id, c)
+  c.setNoDelay(true)
+  c.on('data', d => { canal.tunel(id, 1, d); if (canal.cheio) c.pause() }) // rede cheia: pausa até escoar
+  const fim = () => { if (tunelSessao.locais.get(id) === c) { tunelSessao.locais.delete(id); if (canal && canal.conectado()) canal.tunel(id, 2) } }
+  c.on('close', fim); c.on('error', () => {})
+}
+// Quem acessa: porta local (127.0.0.1) que leva até o motor do outro lado pela sessão
+function abrirTunelSessao () {
+  if (tunelSessao.servidor) return Promise.resolve(tunelSessao.porta)
+  return new Promise((resolve, reject) => {
+    const srv = net.createServer(c => { const id = tunelSessao.proximo++; ligarLocal(id, c); canal.tunel(id, 0) })
+    srv.on('error', reject)
+    srv.listen(0, '127.0.0.1', () => { tunelSessao.servidor = srv; tunelSessao.porta = srv.address().port; tunelSessao.ativo = true; resolve(tunelSessao.porta) })
+  })
+}
+function fecharTunelSessao () {
+  for (const c of tunelSessao.locais.values()) try { c.destroy() } catch {}
+  tunelSessao.locais.clear()
+  if (tunelSessao.servidor) try { tunelSessao.servidor.close() } catch {}
+  tunelSessao.servidor = null; tunelSessao.porta = 0; tunelSessao.ativo = false
+}
 async function melhorCaminho ({ chave, ips = [] }) {
   const direto = () => Promise.any(ips.map(ip => testarTcp(ip, 21118, 3500).then(() => ip.includes(':') ? '[' + ip + ']' : ip)))
   if (chave) {
     try {
       const porta = await tunelInterno(chave); if (!porta) throw new Error('túnel')
-      await abrirCaminhoP2P(chave, 45000)
+      await abrirCaminhoP2P(chave, 20000)
       return '127.0.0.1:' + porta
-    } catch (e) { if (process.env.SSADESK_LOG) fs.appendFileSync(process.env.SSADESK_LOG, 'túnel falhou, tentando IP direto: ' + e.message + '\n') }
+    } catch (e) { if (process.env.SSADESK_LOG) fs.appendFileSync(process.env.SSADESK_LOG, 'túnel falhou, indo pela sessão: ' + e.message + '\n') }
+  }
+  // Pela sessão já aberta (atravessa CGNAT, 4G/5G e NAT aleatório, porque a sessão já atravessou)
+  if (canal && canal.conectado() && sessao.permissoes && sessao.permissoes.controlar !== false) {
+    try { const p = await abrirTunelSessao(); if (process.env.SSADESK_LOG) fs.appendFileSync(process.env.SSADESK_LOG, 'tela pela sessão, porta ' + p + '\n'); return '127.0.0.1:' + p } catch {}
   }
   if (!ips.length) throw new Error(chave ? 'Não foi possível abrir o caminho seguro até o outro computador.' : 'O outro computador não liberou o controle da tela.')
   try { return await direto() } catch { throw new Error('Não foi possível alcançar o outro computador por nenhum caminho.') }

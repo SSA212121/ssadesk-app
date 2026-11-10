@@ -111,3 +111,9 @@ Teste feito no notebook SSA-Atendimento ("Augusto", 120 358 953) acessando o not
 | 81 | Texto | Rodapé dos Ajustes dizia que a senha é sempre exigida (não é: Permitir entrega a senha) | Corrigido |
 | 82 | **Decisão** | Padrão "Perguntar" libera sozinho em 15 s se ninguém responder | Para decidir: manter (bom para computador sem ninguém) ou trocar o padrão para "Sempre perguntar" |
 | — | OK | Pedido (Negar/Permitir/permissões), Permitir sempre (entra sem perguntar), Ligação estilo FaceTime, Atender, acessar a tela pela ligação (pede permissão), transmitir tela, ⓘ, recolher dos dois lados, X dos dois lados, revogar | Testado |
+
+## Redes diferentes (Wi-Fi com CGNAT x 5G do celular) — 10/11/2026
+
+| # | Tipo | Bug | Situação |
+|---|------|-----|----------|
+| 83 | **Funcional** | Com o Samuel na 5G e este notebook no Wi-Fi (CGNAT), a sessão do SSAdesk conectava (via 181.77.x, IP da 5G), mas a conexão separada da tela falhava ("HOLEPUNCH_ABORTED": furar o NAT aleatório da 5G de novo é instável) e o acesso desistia | Corrigido: se a conexão separada falha em 20 s, a tela vai por dentro da sessão já aberta (pacote tipo 5, multiplexado). Do lado acessado só liga no motor com sessão aceita e "Controlar a tela" permitido |
