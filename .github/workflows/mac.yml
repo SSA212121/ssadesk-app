@@ -1,0 +1,102 @@
+name: SSAdesk para Mac
+
+# Monta o SSAdesk.app (app Electron + motor do SSAdesk) para Mac Intel e Apple Silicon e gera o .dmg.
+# O motor vem da última compilação que deu certo no repositório público SSA212121/ssadesk-motor.
+on:
+  workflow_dispatch:
+
+jobs:
+  mac:
+    name: SSAdesk ${{ matrix.arch }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: arm64, motor: aarch64, os: macos-14 }
+          - { arch: x64, motor: x86_64, os: macos-15-intel }
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Baixa o motor do SSAdesk (última compilação Mac que deu certo)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          RUN=$(gh run list -R SSA212121/ssadesk-motor --workflow ssadesk-mac.yml --status success -L 1 --json databaseId -q '.[0].databaseId')
+          echo "Compilação do motor: $RUN"
+          test -n "$RUN"
+          gh run download "$RUN" -R SSA212121/ssadesk-motor -n "rustdesk-unsigned-macos-${{ matrix.motor }}" -D motor-dmg
+          ls -la motor-dmg
+
+      - name: Dependências do app
+        working-directory: app
+        run: npm ci --no-audit --no-fund
+
+      - name: Monta o SSAdesk.app
+        run: |
+          set -e
+          APP="build/SSAdesk.app"
+          mkdir -p build
+          # Electron oficial da plataforma (o npm baixa a versão do Mac)
+          cp -R app/node_modules/electron/dist/Electron.app "$APP"
+          mv "$APP/Contents/MacOS/Electron" "$APP/Contents/MacOS/SSAdesk"
+          R="$APP/Contents/Resources"
+          rm -f "$R/default_app.asar"
+          # Código do app
+          mkdir -p "$R/app" app/assets app/src/fonts
+          cp installer/assets/ssadesk-256.png app/assets/icon.png
+          cp app/node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2 app/src/fonts/inter.woff2
+          cp app/*.js app/package.json "$R/app/"
+          cp -R app/src app/assets "$R/app/"
+          # Dependências de produção (sem electron/rcedit, que são só de montagem)
+          rsync -a --exclude electron --exclude rcedit --exclude @types app/node_modules/ "$R/app/node_modules/"
+          # Motor: RustDesk.app de dentro do .dmg vai para Contents/Resources/motor
+          DMG=$(ls motor-dmg/*.dmg | head -1)
+          hdiutil attach "$DMG" -nobrowse -readonly -mountpoint /tmp/motor
+          mkdir -p "$R/motor"
+          cp -R /tmp/motor/RustDesk.app "$R/motor/"
+          hdiutil detach /tmp/motor
+          # Ícone
+          mkdir -p /tmp/ssa.iconset
+          for t in 16 32 128 256; do
+            sips -z $t $t installer/assets/ssadesk-256.png --out /tmp/ssa.iconset/icon_${t}x${t}.png >/dev/null
+            d=$((t*2)); sips -z $d $d installer/assets/ssadesk-256.png --out /tmp/ssa.iconset/icon_${t}x${t}@2x.png >/dev/null
+          done
+          iconutil -c icns /tmp/ssa.iconset -o "$R/electron.icns"
+          # Nome, identificador e permissões pedidas ao usuário (câmera e microfone da chamada)
+          P="$APP/Contents/Info.plist"
+          plutil -replace CFBundleName -string "SSAdesk" "$P"
+          plutil -replace CFBundleDisplayName -string "SSAdesk" "$P" || plutil -insert CFBundleDisplayName -string "SSAdesk" "$P"
+          plutil -replace CFBundleExecutable -string "SSAdesk" "$P"
+          plutil -replace CFBundleIdentifier -string "br.com.ssacomercio.ssadesk" "$P"
+          V=$(node -p "require('./app/package.json').version")
+          plutil -replace CFBundleShortVersionString -string "$V" "$P"
+          plutil -replace CFBundleVersion -string "$V" "$P"
+          plutil -replace NSCameraUsageDescription -string "O SSAdesk usa a câmera nas chamadas de vídeo." "$P" || plutil -insert NSCameraUsageDescription -string "O SSAdesk usa a câmera nas chamadas de vídeo." "$P"
+          plutil -replace NSMicrophoneUsageDescription -string "O SSAdesk usa o microfone nas chamadas." "$P" || plutil -insert NSMicrophoneUsageDescription -string "O SSAdesk usa o microfone nas chamadas." "$P"
+          # Assinatura local (ad-hoc): sem ela o Mac com Apple Silicon nem abre o app.
+          # Não é a assinatura da Apple: o Mac ainda avisa "desenvolvedor não identificado" (ver LEIA-ME).
+          codesign --force --deep --sign - "$R/motor/RustDesk.app"
+          codesign --force --deep --sign - "$APP"
+          codesign --verify --deep "$APP"
+
+      - name: Testa se o app carrega (sem janela)
+        run: |
+          ELECTRON_RUN_AS_NODE=1 build/SSAdesk.app/Contents/MacOS/SSAdesk -e "require('./build/SSAdesk.app/Contents/Resources/app/node_modules/hyperswarm'); console.log('módulos ok')"
+          test -x build/SSAdesk.app/Contents/Resources/motor/RustDesk.app/Contents/MacOS/RustDesk
+
+      - name: Gera o .dmg
+        run: |
+          V=$(node -p "require('./app/package.json').version")
+          hdiutil create -volname "SSAdesk" -srcfolder build/SSAdesk.app -ov -format UDZO "SSAdesk-$V-mac-${{ matrix.arch }}.dmg"
+          ls -la *.dmg
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SSAdesk-mac-${{ matrix.arch }}
+          path: SSAdesk-*.dmg
+          if-no-files-found: error
