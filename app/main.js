@@ -341,6 +341,7 @@ function iniciarCanal () {
 
   canal.on('conectado', ({ recebida }) => {
     sessao = { ativa: true, papel: recebida ? 'acessado' : 'acessando', nome: '', permissoes: { ...PERMISSOES_PADRAO } }
+    if (recebida) avisarPainel('conectar-status', '') // apaga o aviso da sessão anterior ("… encerrou a conexão")
     if (process.env.SSADESK_FOTO_CHAMADA) setTimeout(async () => { if (callWin) fs.writeFileSync(process.env.SSADESK_FOTO_CHAMADA, (await callWin.webContents.capturePage()).toPNG()) }, 15000)
     if (!recebida && modoAcordar) { canal.controle({ t: 'acordar', mac: modoAcordar.mac }); return }
     if (!recebida) {
@@ -1011,8 +1012,15 @@ function avisarVisibilidade () {
   if (barraWin && !barraWin.isDestroyed()) barraWin.webContents.send('chat-visivel', chatVisivel())
 }
 
+// A tela remota pega o foco de volta logo após o clique na barrinha: insiste por um instante
+function focarChat () {
+  for (const ms of [0, 150, 400]) setTimeout(() => {
+    if (!chatWin || chatWin.isDestroyed() || !chatWin.isVisible()) return
+    chatWin.moveTop(); chatWin.focus(); chatWin.webContents.focus()
+  }, ms)
+}
 function abrirChatJanela (semFoco = false) {
-  if (chatWin && !chatWin.isDestroyed()) { chatWin.show(); chatWin.focus(); avisarVisibilidade(); return }
+  if (chatWin && !chatWin.isDestroyed()) { chatWin.show(); focarChat(); avisarVisibilidade(); return }
   const W = 300; const H = 420
   const ref = callWin && !callWin.isDestroyed() ? callWin.getBounds() : null
   const area = require('electron').screen.getPrimaryDisplay().workArea
@@ -1028,7 +1036,7 @@ function abrirChatJanela (semFoco = false) {
   }))
   chatWin.setAlwaysOnTop(true, 'screen-saver', 1)
   chatWin.loadFile(path.join(__dirname, 'src', 'chat.html'))
-  chatWin.once('ready-to-show', () => { if (semFoco) chatWin.showInactive(); else { chatWin.show(); chatWin.focus(); chatWin.webContents.focus() } avisarVisibilidade() })
+  chatWin.once('ready-to-show', () => { if (semFoco) chatWin.showInactive(); else { chatWin.show(); focarChat() } avisarVisibilidade() })
   // Fechar = guardar (esconde, mantém a conversa)
   chatWin.on('close', e => { if (callWin && !callWin.isDestroyed()) { e.preventDefault(); chatWin.hide(); avisarVisibilidade() } })
   for (const ev of ['show', 'hide', 'minimize', 'restore']) chatWin.on(ev, avisarVisibilidade)

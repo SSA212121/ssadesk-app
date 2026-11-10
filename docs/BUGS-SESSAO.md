@@ -92,3 +92,6 @@ Teste feito no notebook SSA-Atendimento ("Augusto", 120 358 953) acessando o not
 | 69 | Funcional | Ao encerrar, o chat continuava aberto no outro computador | Corrigido: chat, ⋯ e ⓘ fecham junto ao encerrar (dos dois lados); testado do lado de quem acessa |
 | 70 | Usabilidade | Chat aberto pela barrinha vinha sem o cursor no campo (o texto ia para a tela remota) | Corrigido |
 | — | OK | X fecha tela remota, barrinha e chat de uma vez (motor novo) | Testado |
+| 71 | Visual | Painel de quem é acessado mantinha "Fulano encerrou a conexão" durante a sessão nova | Corrigido |
+| 72 | Funcional | Chat abria sem foco também na 2ª tentativa (a tela remota tomava o foco de volta) | Corrigido: o chat insiste no foco; testado digitando sem clicar |
+| — | OK (Samuel, confirmado no local) | Barrinha no topo, recolher/abinha, chat em tempo real (mensagem e resposta) e fechamento de tudo pelo X | Testado nos dois notebooks |
