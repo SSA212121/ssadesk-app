@@ -67,14 +67,14 @@ function savePrefs (p) {
 }
 
 // Janelas flutuantes do SSAdesk ficam fora da captura de tela: quem acessa não as vê repetidas dentro da tela remota
-function foraDaCaptura (w) { try { if (isWin || isMac) w.setContentProtection(true) } catch {} return w }
+function foraDaCaptura (w) { try { if ((isWin || isMac) && !process.env.SSADESK_SEM_PROTECAO) w.setContentProtection(true) } catch {} return w } // SSADESK_SEM_PROTECAO: só para testes (ver as janelas nos prints)
 let win
 let ajusteAutomatico = false
 // Painel: ajusta a altura ao conteúdo (sem passar da tela), a menos que a pessoa tenha escolhido um tamanho
 ipcMain.on('painel-altura', (_e, alturaConteudo) => {
-  if (!win || win.isDestroyed() || win.isMaximized() || loadPrefs().janelaManual) return
+  if (!win || win.isDestroyed() || win.isMaximized()) return // altura sempre automática: o conteúdo nunca fica escondido (da escolha manual vale só a largura)
   const area = require('electron').screen.getDisplayMatching(win.getBounds()).workArea
-  const h = Math.max(480, Math.min(Math.round(Number(alturaConteudo) || 0), area.height - 24))
+  const h = Math.max(360, Math.min(Math.round(Number(alturaConteudo) || 0), area.height - 24))
   const [w, atual] = win.getContentSize()
   if (Math.abs(atual - h) < 4) return
   ajusteAutomatico = true
@@ -91,8 +91,8 @@ function createWindow () {
     // Painel: redimensionável à vontade (lembra o último tamanho); instalação: tamanho fixo
     // Altura: a escolhida pela pessoa (se ela redimensionou) ou a do conteúdo, ajustada sozinha depois de abrir
     width: MODO === 'app' && prefs.janelaManual ? prefs.janelaManual.w : 400,
-    height: MODO === 'app' && prefs.janelaManual ? prefs.janelaManual.h : Math.min(640, require('electron').screen.getPrimaryDisplay().workArea.height - 40),
-    minWidth: 340, minHeight: 480,
+    height: Math.min(640, require('electron').screen.getPrimaryDisplay().workArea.height - 40), // a altura se ajusta ao conteúdo logo depois
+    minWidth: 340, minHeight: 360,
     resizable: MODO === 'app',
     maximizable: MODO === 'app',
     fullscreenable: false,
@@ -105,6 +105,7 @@ function createWindow () {
     ...(isMac ? { titleBarStyle: 'hiddenInset', vibrancy: 'under-window', visualEffectState: 'active', trafficLightPosition: { x: 18, y: 20 } } : {}),
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, spellcheck: false }
   })
+  if (process.env.SSADESK_LOG) win.webContents.on('console-message', (e) => { try { const m = e.message || ''; const n = e.level; fs.appendFileSync(process.env.SSADESK_LOG, 'painel[' + n + ']: ' + m + '\n') } catch {} })
   const pagina = MODO === 'app' ? 'index.html' : 'setup.html'
   const query = { platform: process.platform }
   if (process.env.SSADESK_PAGE) query.pagina = process.env.SSADESK_PAGE
@@ -286,6 +287,7 @@ let lan = null
 let ultimoDestino = ''
 let modoAcordar = null
 let encerradoPeloUsuario = false
+let encerradoPeloOutro = false // o outro lado apertou X: não reconecta
 // A sessão caiu (rede oscilou): tenta reconectar sozinho algumas vezes, sem reabrir a tela remota
 async function reconectar (codigo, nome) {
   avisarBarraEstado('Reconectando…')
@@ -347,7 +349,8 @@ function iniciarCanal () {
     }
   })
   canal.on('desconectado', () => {
-    const caiu = sessao.ativa && sessao.papel === 'acessando' && !encerradoPeloUsuario && sessao.codigo
+    const caiu = sessao.ativa && sessao.papel === 'acessando' && !encerradoPeloUsuario && !encerradoPeloOutro && sessao.codigo
+    if (encerradoPeloOutro && sessao.papel === 'acessando') comandoTela('fechar', '') // fecha a tela remota junto
     sessao.ativa = false
     if (caiu) setTimeout(() => reconectar(sessao.codigo, sessao.nome), 1000)
     if (arquivos) arquivos.sessaoEncerrada()
@@ -356,7 +359,7 @@ function iniciarCanal () {
     estadoChamada = { ...estadoChamada, fase: 'encerrada' }; enviarEstadoChamada()
     if (pendente) { pendente.reject(new Error('O outro computador encerrou a conexão.')); pendente = null }
     avisarPainel('sessao', { ativa: false })
-    avisarPainel('conectar-status', sessao.nome ? 'Conexão com ' + sessao.nome + ' encerrada.' : 'Conexão encerrada.')
+    avisarPainel('conectar-status', encerradoPeloOutro ? (sessao.nome || 'O outro computador') + ' encerrou a conexão.' : sessao.nome ? 'Conexão com ' + sessao.nome + ' encerrada.' : 'Conexão encerrada.')
     sessao.senha = ''
   })
   canal.on('controle', async msg => {
@@ -408,10 +411,12 @@ function iniciarCanal () {
       case 'chat': if (sessao.permissoes.chat) receberMensagem(msg.texto); break
       case 'estado': if (callWin && !callWin.isDestroyed()) callWin.webContents.send('chamada-remoto', { mic: !!msg.mic, cam: !!msg.cam, tela: !!msg.tela }); break
       case 'quadro-chave': if (callWin && !callWin.isDestroyed()) callWin.webContents.send('chamada-quadro-chave'); break
-      case 'tchau': estadoChamada = { ...estadoChamada, fase: 'encerrada' }; enviarEstadoChamada(); break
+      case 'tchau': encerradoPeloOutro = true; estadoChamada = { ...estadoChamada, fase: 'encerrada' }; enviarEstadoChamada(); break
       case 'lousa': // anotações do outro lado (a lousa abre sozinha aqui para mostrar)
         if (process.env.SSADESK_LOG) fs.appendFileSync(process.env.SSADESK_LOG, 'lousa recebida: ' + (msg.d && msg.d.acao) + '\n')
         if (sessao.permissoes.controlar === false) { if (process.env.SSADESK_LOG) fs.appendFileSync(process.env.SSADESK_LOG, 'lousa bloqueada pela permissão\n'); break }
+        if (msg.d && msg.d.acao === 'abrir') { abrirLousa(true); break } // o outro lado abriu a lousa: abre aqui também
+        if (msg.d && msg.d.acao === 'fechar') { if (lousaWin && !lousaWin.isDestroyed()) { lousaFechadaPeloOutro = true; lousaWin.close() } break }
         abrirLousa(true); if (lousaWin && !lousaWin.isDestroyed()) { if (lousaPronta) lousaWin.webContents.send('lousa-remoto', msg.d); else lousaFila.push(msg.d) }
         break
       // Painel ⓘ: latência (ida e volta pelo canal) e informações do outro computador
@@ -740,7 +745,9 @@ function abrirLousa (pelaOutraPonta = false) {
     lousaWin.webContents.on('render-process-gone', (_e, d) => reg('lousa caiu: ' + d.reason))
     lousaWin.webContents.on('dom-ready', () => reg('lousa dom pronto'))
   }
-  lousaWin.loadFile(path.join(__dirname, 'src', 'lousa.html'), { query: { mouse: pelaOutraPonta ? '1' : '' } })
+  lousaWin.loadFile(path.join(__dirname, 'src', 'lousa.html'), { query: { mouse: pelaOutraPonta ? '1' : '', barra: sessao.papel === 'acessado' ? 'topo' : 'baixo' } })
+  // Abriu aqui (pela barrinha): avisa o outro lado para abrir também
+  if (!pelaOutraPonta && canal && canal.conectado()) canal.controle({ t: 'lousa', d: { acao: 'abrir' } })
   lousaWin.webContents.once('dom-ready', () => {
     lousaPronta = true; while (lousaFila.length) lousaWin.webContents.send('lousa-remoto', lousaFila.shift())
     if (process.env.SSADESK_FOTO_LOUSA) setTimeout(async () => {
@@ -755,7 +762,11 @@ function abrirLousa (pelaOutraPonta = false) {
 }
 ipcMain.on('lousa-enviar', (_e, d) => { if (canal && canal.conectado() && d && typeof d === 'object') canal.controle({ t: 'lousa', d }) })
 ipcMain.on('lousa-atravessar', (_e, sim) => { if (lousaWin && !lousaWin.isDestroyed()) lousaWin.setIgnoreMouseEvents(!!sim, { forward: true }) })
-ipcMain.on('lousa-fechar', () => { if (lousaWin && !lousaWin.isDestroyed()) lousaWin.close() })
+let lousaFechadaPeloOutro = false
+ipcMain.on('lousa-fechar', () => {
+  if (lousaWin && !lousaWin.isDestroyed()) lousaWin.close()
+  if (canal && canal.conectado()) canal.controle({ t: 'lousa', d: { acao: 'fechar' } }) // fecha nos dois lados
+})
 
 // ---------- Túnel de acesso remoto dentro do app ----------
 // Usa o nó da rede P2P que o app mantém ligado em segundo plano: não precisa 'entrar' na rede a cada conexão.
@@ -900,7 +911,7 @@ async function acordarComputador (codigo) {
 // Conectar pelo código (9 dígitos), como no AnyDesk
 async function conectarPorCodigo (codigo, modo = 'acesso') {
   const { soDigitos } = require('./canal')
-  encerradoPeloUsuario = false
+  encerradoPeloOutro = false; encerradoPeloUsuario = false
   modoPedido = modo
   if (!canal) throw new Error('A rede P2P não iniciou. Reabra o SSAdesk.')
   if (soDigitos(codigo) === soDigitos(meuCodigo())) throw new Error('Este é o código deste computador.')
@@ -1112,6 +1123,7 @@ function apelidoNoMotor (destino, nome) {
   } catch {}
 }
 function abrirRustDesk (destino) {
+  if (process.env.SSADESK_SEM_MOTOR) return // só para testes com os dois lados no mesmo computador
   apelidoNoMotor(destino, sessao.nome)
   const exe = rustdeskPath()
   if (!exe || !fs.existsSync(exe)) throw new Error('SSAdesk não está instalado corretamente.')
@@ -1346,3 +1358,8 @@ if (process.env.SSADESK_FOTO_LIGACAO) app.whenReady().then(() => setTimeout(() =
   mostrarPedido({ nome: 'Samuel', codigo: '214941159', tipo: 'chamada' })
   setTimeout(async () => { try { fs.writeFileSync(process.env.SSADESK_FOTO_LIGACAO, (await pedidoWin.webContents.capturePage()).toPNG()) } catch {} app.exit(0) }, 3500)
 }, 1500))
+
+// Teste: grava o estado da lista do painel (SSADESK_DUMP=caminho.txt)
+if (process.env.SSADESK_DUMP) app.whenReady().then(() => setTimeout(async () => {
+  try { const r = await win.webContents.executeJavaScript("JSON.stringify({ recentesOculto: document.getElementById('recentes').hidden, itens: document.querySelectorAll('#lista li').length, lista: null })"); const b = await win.webContents.executeJavaScript("window.ssadesk.biblioteca.listar().then(l => JSON.stringify(l))"); fs.writeFileSync(process.env.SSADESK_DUMP, r + '\n' + b) } catch (e) { fs.writeFileSync(process.env.SSADESK_DUMP, 'erro: ' + e.message) }
+}, 6000))

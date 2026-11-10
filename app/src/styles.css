@@ -333,6 +333,9 @@ html.oculto .ambient i, html.oculto .status.ok .dot::after { animation-play-stat
 .senha-msg { font-size: 12px; color: var(--text-2); padding-top: 4px; }
 .senha-msg.ok { color: var(--green); } .senha-msg.err { color: #ff453a; }
 
+/* Atraso da animação de entrada (antes era style inline, bloqueado pela política de segurança) */
+[data-d="0"] { --d: 0; } [data-d="1"] { --d: 1; } [data-d="2"] { --d: 2; } [data-d="3"] { --d: 3; } [data-d="4"] { --d: 4; }
+
 /* SSAdesk: foco sem moldura quadrada */
 *:focus { outline: none; }
 :is(button, a, li, [tabindex]):focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(10, 132, 255, .55); }

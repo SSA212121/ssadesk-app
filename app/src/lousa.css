@@ -35,6 +35,9 @@ body:not(.desenhar)::after { opacity: .35; }
 
 body.borracha canvas { cursor: cell; }
 
+body.barra-topo .ferramentas { bottom: auto; top: 22px; }
+body.barra-topo .aviso { bottom: auto; top: 80px; }
+
 /* SSAdesk: foco sem moldura quadrada */
 *:focus { outline: none; }
 :is(button, a, li, [tabindex]):focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(10, 132, 255, .55); }

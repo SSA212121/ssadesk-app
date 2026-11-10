@@ -47,3 +47,16 @@ Teste feito no notebook SSA-Atendimento ("Augusto", 120 358 953) acessando o not
 | 39 | Funcional | Preferências (nome, lista) podiam ser apagadas se lidas no meio de uma gravação | Corrigido: gravação segura com cópia de reserva |
 | 40 | Visual | Painel abre em branco por alguns segundos logo após a instalação | Pendente |
 | 41 | Funcional | Instalador aberto pela tela remota pula as telas e já instala | Pendente: investigar |
+
+## Auditoria por simulação de dois usuários (10/11/2026, só neste notebook)
+
+| # | Tipo | Bug | Situação |
+|---|------|-----|----------|
+| 42 | Funcional | Lousa abria só para quem clicou; fechar também só fechava de um lado | Corrigido: abre e fecha nos dois lados (testado) |
+| 43 | Visual | Barra da lousa ficava por cima da barrinha da sessão de quem é acessado (as duas embaixo) | Corrigido: para quem é acessado a barra da lousa vai para o topo |
+| 44 | **Funcional** | Quem é acessado apertava X, mas quem acessa reconectava sozinho ("Reconectado ✓") | Corrigido: o X de qualquer lado encerra de vez, fecha a tela remota e avisa "Fulano encerrou a conexão." (testado) |
+| 45 | Visual | Anel azul de foco ficava preso no botão da câmera depois que a chamada fechava | Corrigido |
+| 46 | Visual | Painel com espaço vazio embaixo quando a lista de computadores está vazia (altura mínima 480) | Melhorado (mínimo 360); ainda sobra um vão pequeno |
+| — | OK | Chat nos dois sentidos, selo de não lida, HTML não é interpretado, mensagem vazia não envia | Testado |
+| — | OK | Chamada abre nos dois lados, encerrar de um lado fecha os dois | Testado |
+| — | OK | ⓘ e ⋯ Mais opções (clique duplo não trava o menu; clicar fora fecha) | Testado. ⋯ é só de quem acessa, por ser comando da tela remota |

@@ -19,7 +19,7 @@
   </header>
 
   <main>
-    <section class="hero glass reveal" style="--d:0">
+    <section class="hero glass reveal" data-d="0">
       <p class="eyebrow">Este computador</p>
       <button class="code" id="codigo" title="Copiar código">— — —</button>
       <div class="status" id="status"><span class="dot"></span><span id="statusTxt">Verificando rede</span></div>
@@ -27,7 +27,7 @@
     </section>
 
 
-    <section class="connect glass reveal" style="--d:2">
+    <section class="connect glass reveal" data-d="2">
       <p class="eyebrow">Conectar</p>
       <form id="form" class="field" autocomplete="off">
         <input id="destino" placeholder="Código do outro computador" spellcheck="false" inputmode="numeric" aria-label="Código do outro computador">
@@ -46,13 +46,13 @@
       <p class="hint" id="msg">Digite o código do outro computador.</p>
     </section>
 
-    <section class="recentes glass reveal" style="--d:3" id="recentes" hidden>
+    <section class="recentes glass reveal" data-d="3" id="recentes" hidden>
       <p class="eyebrow">Computadores</p>
       <ul class="lista" id="lista"></ul>
     </section>
   </main>
 
-  <footer class="reveal" style="--d:4">
+  <footer class="reveal" data-d="4">
     <div class="segmented" id="tema" role="radiogroup" aria-label="Aparência">
       <span class="thumb"></span>
       <button role="radio" data-tema="system">Automático</button>
