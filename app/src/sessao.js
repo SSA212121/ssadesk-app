@@ -15,6 +15,10 @@ if (params.get('papel') === 'acessado') {
   document.body.classList.add('acessado')
   for (const a of ['arquivos', 'tela', 'mais']) { const b = document.querySelector('[data-acao="' + a + '"]'); if (b) b.remove() }
 }
+// O outro computador não permitiu: o botão nem aparece
+const sem = (params.get('sem') || '').split(',').filter(Boolean)
+for (const a of sem) { const b = document.querySelector('[data-acao="' + a + '"]'); if (b) b.remove() }
+if (sem.includes('arquivos') && params.get('papel') !== 'acessado') $('estado').textContent = 'Conectado'
 api.sessao.onAtualizar(s => mostrarNome(s.nome))
 api.sessao.onEstado(t => estado(t, /✓/.test(t)))
 

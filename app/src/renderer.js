@@ -119,7 +119,15 @@ $('formAlterar').addEventListener('submit', async e => {
   $('salvarSenha').disabled = false
   if (r.ok) { $('cancelarAlterar').click(); msgSenha('Senha alterada ✓ Quem tinha a senha antiga salva precisa da nova.', 'ok') } else msgSenha(r.msg, 'err')
 })
+let confirmarRevogar = null
 $('revogar').addEventListener('click', async () => {
+  // Pede um segundo clique para confirmar (não tem como desfazer)
+  if (!confirmarRevogar) {
+    $('revogar').textContent = 'Clique de novo para confirmar'
+    confirmarRevogar = setTimeout(() => { $('revogar').textContent = 'Revogar acessos salvos'; confirmarRevogar = null }, 4000)
+    return
+  }
+  clearTimeout(confirmarRevogar); confirmarRevogar = null; $('revogar').textContent = 'Revogar acessos salvos'
   const r = await api.senha.revogar()
   msgSenha(r.n ? r.n + (r.n === 1 ? ' computador perdeu' : ' computadores perderam') + ' o "Permitir sempre". Para cortar também quem salvou a senha, altere a senha.' : 'Nenhum computador com "Permitir sempre". Para cortar quem salvou a senha, altere a senha.', 'ok')
 })

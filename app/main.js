@@ -360,7 +360,8 @@ function iniciarCanal () {
     estadoChamada = { ...estadoChamada, fase: 'encerrada' }; enviarEstadoChamada()
     if (pendente) { pendente.reject(new Error('O outro computador encerrou a conexão.')); pendente = null }
     avisarPainel('sessao', { ativa: false })
-    avisarPainel('conectar-status', encerradoPeloOutro ? (sessao.nome || 'O outro computador') + ' encerrou a conexão.' : sessao.nome ? 'Conexão com ' + sessao.nome + ' encerrada.' : 'Conexão encerrada.')
+    // Pedido negado/sem resposta: a mensagem certa já foi mostrada; não escreve "encerrou" por cima
+    if (sessao.aceita || encerradoPeloUsuario) avisarPainel('conectar-status', encerradoPeloOutro ? (sessao.nome || 'O outro computador') + ' encerrou a conexão.' : sessao.nome ? 'Conexão com ' + sessao.nome + ' encerrada.' : 'Conexão encerrada.')
     sessao.senha = ''
   })
   canal.on('controle', async msg => {
@@ -389,6 +390,7 @@ function iniciarCanal () {
         if (!canal.conectado()) return
         if (!r.permitir) { canal.controle({ t: 'negado' }); setTimeout(() => canal.encerrar(), 300); return }
         sessao.permissoes = { ...ajustes().permissoes, ...r.permissoes }
+        sessao.aceita = true
         const minhaRede = readJson(path.join(DIR, 'rede.json')) || {}
         canal.controle({
           t: 'aceito', nome: meuNome(), permissoes: sessao.permissoes, mac: minhaRede.mac || '', ipPublico: minhaRede.ip_publico || '',
@@ -402,7 +404,7 @@ function iniciarCanal () {
         abrirBarra() // quem é acessado também tem chamada, chat e informações à mão
         break
       }
-      case 'aceito': sessao.senha = typeof msg.senha === 'string' ? msg.senha.slice(0, 128) : ''; sessao.nome = String(msg.nome || '').slice(0, 40); sessao.remoto = { mac: String(msg.mac || '').slice(0, 17), ipPublico: String(msg.ipPublico || '').slice(0, 45) }; sessao.permissoes = { ...PERMISSOES_PADRAO, ...msg.permissoes }; if (pendente) { pendente.resolve(msg); pendente = null } break
+      case 'aceito': sessao.aceita = true; sessao.senha = typeof msg.senha === 'string' ? msg.senha.slice(0, 128) : ''; sessao.nome = String(msg.nome || '').slice(0, 40); sessao.remoto = { mac: String(msg.mac || '').slice(0, 17), ipPublico: String(msg.ipPublico || '').slice(0, 45) }; sessao.permissoes = { ...PERMISSOES_PADRAO, ...msg.permissoes }; if (pendente) { pendente.resolve(msg); pendente = null } break
       case 'ocupado': if (pendente) { pendente.reject(new Error('Esse computador já está em outra conexão agora. Tente de novo quando ela terminar.')); pendente = null } break
       case 'negado': if (pendente) { pendente.reject(new Error(msg.texto === 'Chamada recusada.' ? 'A chamada foi recusada.' : 'O outro computador negou o acesso.')); pendente = null } break
       case 'chamada':
@@ -542,7 +544,10 @@ function abrirBarra () {
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, spellcheck: false }
   }))
   barraWin.setAlwaysOnTop(true, 'screen-saver', 2) // acima da tela remota em tela cheia e da lousa
-  barraWin.loadFile(path.join(__dirname, 'src', 'sessao.html'), { query: { nome: sessao.nome || '', papel: sessao.papel || '' } })
+  // Botões do que o outro lado não permitiu ficam escondidos (só para quem acessa)
+  const p = sessao.permissoes || {}
+  const sem = acessado ? [] : [p.arquivos === false && 'arquivos', p.chat === false && 'chat', p.chamada === false && 'chamada', p.chamada === false && 'tela', p.controlar === false && 'mais', p.controlar === false && 'lousa'].filter(Boolean)
+  barraWin.loadFile(path.join(__dirname, 'src', 'sessao.html'), { query: { nome: sessao.nome || '', papel: sessao.papel || '', sem: sem.join(',') } })
   barraWin.once('ready-to-show', () => barraWin.showInactive())
   // Quem acessa: a barrinha fica presa ao topo da janela da tela remota (segue, some quando ela minimiza)
   if (!acessado && !process.env.SSADESK_SEM_MOTOR) {
@@ -577,7 +582,7 @@ async function enviarArquivos (caminhos) {
 }
 ipcMain.handle('arquivos-enviar', (_e, caminhos) => enviarArquivos(caminhos))
 ipcMain.handle('arquivos-escolher', async () => {
-  const r = await dialog.showOpenDialog(barraWin || win, { title: 'Enviar para ' + (sessao.nome || 'o outro computador'), properties: ['openFile', 'multiSelections'] })
+  const r = await dialog.showOpenDialog(barraWin || win, { title: 'Enviar para ' + (sessao.nome || 'o outro computador'), properties: ['openFile', 'multiSelections'], filters: [{ name: 'Todos os arquivos', extensions: ['*'] }] })
   return r.canceled ? { ok: false } : enviarArquivos(r.filePaths)
 })
 ipcMain.on('sessao-acao', (_e, acao) => {
@@ -681,7 +686,7 @@ function abrirInfo () {
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, spellcheck: false }
   }))
   infoWin.setAlwaysOnTop(true, 'screen-saver', 2)
-  infoWin.loadFile(path.join(__dirname, 'src', 'info.html'))
+  infoWin.loadFile(path.join(__dirname, 'src', 'info.html'), { query: { papel: sessao.papel || '' } })
   infoWin.once('ready-to-show', () => infoWin.show())
   const tique = () => {
     if (canal && canal.conectado() && sessao.ativa) { canal.controle({ t: 'ping', em: Date.now() }); canal.controle({ t: 'info-pedir' }) }

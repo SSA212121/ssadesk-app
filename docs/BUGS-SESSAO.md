@@ -97,3 +97,17 @@ Teste feito no notebook SSA-Atendimento ("Augusto", 120 358 953) acessando o not
 | — | OK (Samuel, confirmado no local) | Barrinha no topo, recolher/abinha, chat em tempo real (mensagem e resposta) e fechamento de tudo pelo X | Testado nos dois notebooks |
 | 73 | Funcional | "Aguardando permissão…" infinito: o limite de tempo de uma tentativa anterior apagava o pedido da tentativa nova sem avisar | Corrigido: cada tentativa tem o próprio limite; depois de achar o computador, 60 s para alguém permitir, com aviso claro ("Peça para clicarem em Permitir") |
 | 74 | Visual | ⓘ mostrava "Internet" com os dois na mesma rede (o túnel é sempre 127.0.0.1) | Corrigido: mostra "Rede local · P2P direto" quando o túnel passa pela rede local |
+
+## Rodada de refinamento: os dois lados simulados (10/11/2026)
+
+| # | Tipo | Bug | Situação |
+|---|------|-----|----------|
+| 75 | Usabilidade | Ao negar, quem acessa via "encerrou a conexão" em vez de "negou o acesso" | Corrigido e testado |
+| 76 | Usabilidade | Botões do que o outro lado não permitiu (ex.: arquivos) continuavam na barrinha e abriam a escolha de arquivos | Corrigido: somem da barrinha de quem acessa |
+| 77 | Visual | Escolha de arquivos com filtro em inglês ("All Files") | Corrigido: "Todos os arquivos" |
+| 78 | **Segurança/Usabilidade** | Contagem "Permitindo automaticamente em N s" ficava fora da janela do pedido: a pessoa não via que o acesso seria liberado sozinho | Corrigido: aparece acima dos botões; testado |
+| 79 | Usabilidade | ⓘ de quem é acessado mostrava a opção de FPS da tela remota | Corrigido: escondida para quem é acessado |
+| 80 | Usabilidade | "Revogar acessos salvos" apagava sem confirmar | Corrigido: pede um segundo clique |
+| 81 | Texto | Rodapé dos Ajustes dizia que a senha é sempre exigida (não é: Permitir entrega a senha) | Corrigido |
+| 82 | **Decisão** | Padrão "Perguntar" libera sozinho em 15 s se ninguém responder | Para decidir: manter (bom para computador sem ninguém) ou trocar o padrão para "Sempre perguntar" |
+| — | OK | Pedido (Negar/Permitir/permissões), Permitir sempre (entra sem perguntar), Ligação estilo FaceTime, Atender, acessar a tela pela ligação (pede permissão), transmitir tela, ⓘ, recolher dos dois lados, X dos dois lados, revogar | Testado |

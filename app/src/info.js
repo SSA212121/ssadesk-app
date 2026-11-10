@@ -34,6 +34,8 @@ api.painelInfo.onDados(d => {
   if (document.activeElement !== $('fps')) $('fps').checked = !!d.fps
 })
 
+// Quem é acessado não vê a tela remota: a opção de FPS não serve para ele
+if (new URLSearchParams(location.search).get('papel') === 'acessado') $('grupoFps').hidden = true
 $('fps').addEventListener('change', async e => { const r = await api.painelInfo.fps(e.target.checked); if (r && r.ok) e.target.checked = r.fps })
 $('fechar').addEventListener('click', () => api.painelInfo.fechar())
 addEventListener('keydown', e => { if (e.key === 'Escape') api.painelInfo.fechar() })
