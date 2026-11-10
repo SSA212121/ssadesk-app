@@ -46,3 +46,14 @@ body.tem-nao-lidas .selo { transform: scale(1); }
 *:focus { outline: none; }
 :is(button, a, li, [tabindex]):focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(10, 132, 255, .55); }
 button, a, li { -webkit-tap-highlight-color: transparent; }
+
+/* Barra recolhida: só uma abinha no centro do topo; clique traz a barra de volta */
+.aba { display: none; width: 60px; height: 20px; border-radius: 0 0 12px 12px; place-items: center; color: rgba(255, 255, 255, .9);
+  background: rgba(28, 28, 30, .78); backdrop-filter: blur(30px) saturate(180%); border: .5px solid rgba(255, 255, 255, .14); border-top: 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, .28); transition: background .2s var(--ease); }
+.aba:hover { background: rgba(10, 132, 255, .85); }
+.aba svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+body.recolhida { place-items: start center; }
+body.recolhida .pilula { display: none; }
+body.recolhida .aba { display: grid; }
+body.recolhida .selo-aba { display: block; }

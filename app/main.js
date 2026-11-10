@@ -509,12 +509,29 @@ ipcMain.on('pedido-resposta', (_e, r) => {
 
 // ---------- Barrinha da sessão (quem acessa): soltar arquivos, chamada, chat, encerrar ----------
 let barraWin = null
+// Barrinha recolhível: recolhida vira só uma abinha pequena no centro do topo (clique traz de volta)
+let barraRecolhida = false
+let barraGuia = null // { cx, topo, larg }: centro e topo onde a barrinha fica
+const BARRA_W = 588; const BARRA_H = 64; const ABA_W = 64; const ABA_H = 22
+function posicionarBarra () {
+  if (!barraWin || barraWin.isDestroyed() || !barraGuia) return
+  const g = barraGuia
+  if (barraRecolhida) barraWin.setBounds({ x: Math.round(g.cx - ABA_W / 2), y: Math.round(g.topo), width: ABA_W, height: ABA_H })
+  else barraWin.setBounds({ x: Math.round(g.cx - g.larg / 2), y: Math.round(g.topo + (g.folga || 0)), width: g.larg, height: BARRA_H })
+}
+function recolherBarra (sim) {
+  barraRecolhida = !!sim
+  if (barraWin && !barraWin.isDestroyed()) barraWin.webContents.send('barra-recolhida', barraRecolhida)
+  posicionarBarra()
+}
 function abrirBarra () {
   if (process.env.SSADESK_CODIGO_TESTE) return
   if (barraWin && !barraWin.isDestroyed()) { barraWin.showInactive(); barraWin.webContents.send('barra-sessao', { nome: sessao.nome }); return }
   const area = require('electron').screen.getPrimaryDisplay().workArea
-  const W = 588; const H = 64
+  const W = BARRA_W; const H = BARRA_H
   const acessado = sessao.papel === 'acessado'
+  barraRecolhida = false
+  barraGuia = { cx: area.x + area.width / 2, topo: area.y, folga: 12, larg: W }
   // Cada um vê só a própria barrinha: as duas ficam fora da captura e no mesmo lugar (topo, centro).
   // Assim a barrinha de quem acessa cobre exatamente o ponto onde está a do outro, e não há clique "invisível".
   barraWin = foraDaCaptura(new BrowserWindow({
@@ -535,15 +552,15 @@ function abrirBarra () {
       const b = isWin ? scr.screenToDipRect(null, r) : r
       const area = scr.getDisplayMatching({ x: Math.round(b.x), y: Math.round(b.y), width: Math.round(b.width), height: Math.round(b.height) }).bounds
       const telaCheia = b.width >= area.width - 2 && b.height >= area.height - 2
-      const larg = Math.min(W, Math.round(b.width) - 16)
-      bw.setBounds({ x: Math.round(b.x + (b.width - larg) / 2), y: Math.round(b.y + (telaCheia ? 12 : 44)), width: larg, height: H })
+      barraGuia = { cx: b.x + b.width / 2, topo: b.y + (telaCheia ? 0 : 32), folga: 12, larg: Math.min(W, Math.round(b.width) - 16) }
+      posicionarBarra()
       if (!bw.isVisible()) bw.showInactive()
     })
   }
   const estaBarra = barraWin
   barraWin.on('closed', () => { if (estaBarra.pararAcompanhar) estaBarra.pararAcompanhar(); if (barraWin === estaBarra) barraWin = null })
 }
-function fecharBarra () { if (barraWin && !barraWin.isDestroyed()) barraWin.destroy(); barraWin = null; if (infoWin && !infoWin.isDestroyed()) infoWin.close(); infoSessao.latencia = null; infoSessao.remoto = null }
+function fecharBarra () { if (barraWin && !barraWin.isDestroyed()) barraWin.destroy(); barraWin = null; if (infoWin && !infoWin.isDestroyed()) infoWin.close(); if (typeof maisWin !== 'undefined' && maisWin && !maisWin.isDestroyed()) maisWin.close(); if (chatWin && !chatWin.isDestroyed() && !(callWin && !callWin.isDestroyed())) { chatWin.destroy(); chatWin = null }; mensagens.length = 0; infoSessao.latencia = null; infoSessao.remoto = null }
 
 async function enviarArquivos (caminhos) {
   const { Notification } = require('electron')
@@ -566,6 +583,8 @@ ipcMain.on('sessao-acao', (_e, acao) => {
   if (acao === 'chamada') ipcMain.emit('abrir-chamada')
   if (acao === 'tela') ipcMain.emit('abrir-chamada', null, { tela: true }) // transmitir minha tela
   if (acao === 'lousa') abrirLousa()
+  if (acao === 'recolher') recolherBarra(true)
+  if (acao === 'expandir') recolherBarra(false)
   if (acao === 'chat') abrirChatJanela()
   if (acao === 'info') abrirInfo()
   if (acao === 'mais') abrirMais()
@@ -1009,7 +1028,7 @@ function abrirChatJanela (semFoco = false) {
   }))
   chatWin.setAlwaysOnTop(true, 'screen-saver', 1)
   chatWin.loadFile(path.join(__dirname, 'src', 'chat.html'))
-  chatWin.once('ready-to-show', () => { if (semFoco) chatWin.showInactive(); else chatWin.show(); avisarVisibilidade() })
+  chatWin.once('ready-to-show', () => { if (semFoco) chatWin.showInactive(); else { chatWin.show(); chatWin.focus(); chatWin.webContents.focus() } avisarVisibilidade() })
   // Fechar = guardar (esconde, mantém a conversa)
   chatWin.on('close', e => { if (callWin && !callWin.isDestroyed()) { e.preventDefault(); chatWin.hide(); avisarVisibilidade() } })
   for (const ev of ['show', 'hide', 'minimize', 'restore']) chatWin.on(ev, avisarVisibilidade)

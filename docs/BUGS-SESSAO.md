@@ -74,8 +74,8 @@ Teste feito no notebook SSA-Atendimento ("Augusto", 120 358 953) acessando o not
 | 53 | **Segurança** | A senha aparece na linha de comando do motor (--password), visível para outros programas do mesmo usuário | Pendente: passar por arquivo temporário/canal |
 | 54 | Teste | Cópias de teste gravavam comando-tela.json na pasta real do SSAdesk | Anotado |
 | 55 | **Funcional** | "Enviar para" pela versão de teste mandou a pasta do app inteira (o Electron reordena os argumentos e o "." entrou na lista) | Corrigido: só caminhos de arquivo; a pasta do próprio app nunca é enviada. Itens enviados por engano foram para a Lixeira do Samuel |
-| 56 | Funcional | Depois de instalar, o SSAdesk abre como administrador e não deixa ser fechado por um programa comum | Pendente |
-| 57 | Funcional | Duas cópias rodando ao mesmo tempo (administrador e normal): a trava de "uma cópia só" não vale entre as duas | Pendente |
+| 56 | — | (Engano) O processo "administrador" que não fechava era o túnel do SSAdesk, que roda como serviço do Windows | Não é bug |
+| 57 | — | (Engano) mesma causa do 56 | Não é bug |
 | 58 | Funcional | O nome do computador ("Augusto") sumiu das preferências | Pendente: investigar quem gravou sem o nome |
 | 59 | Usabilidade | "Aguardando permissão…" sem limite: mais de 1 min girando sem dizer que o outro lado precisa clicar Permitir | Pendente |
 | 60 | OK | Instalador aberto pela tela remota mostrou todas as telas (bug 41 não se repetiu) e "Manter a senha atual" funcionou | Testado |
@@ -87,3 +87,8 @@ Teste feito no notebook SSA-Atendimento ("Augusto", 120 358 953) acessando o not
 | 66 | Funcional | Pedido antigo preso em "Aguardando permissão…" depois de reinstalar o outro lado; só reabrindo o app | Pendente |
 | — | OK | Comandos do ⋯ (Tela cheia, Transferir arquivos) funcionam; a falha anterior era da cópia rodando como administrador | Testado |
 | — | OK | Chat, lousa, ⓘ e ⋯ abrem por cima da tela remota | Testado |
+| 67 | Usabilidade | Barrinha de quem acessa ficava solta no topo da tela, fora da janela da tela remota | Corrigido: presa ao topo da janela remota (segue e some ao minimizar); testado |
+| 68 | Usabilidade | Barrinha não podia ser recolhida | Feito: botão ^ recolhe para cima; fica uma abinha no centro do topo que traz de volta; testado |
+| 69 | Funcional | Ao encerrar, o chat continuava aberto no outro computador | Corrigido: chat, ⋯ e ⓘ fecham junto ao encerrar (dos dois lados); testado do lado de quem acessa |
+| 70 | Usabilidade | Chat aberto pela barrinha vinha sem o cursor no campo (o texto ia para a tela remota) | Corrigido |
+| — | OK | X fecha tela remota, barrinha e chat de uma vez (motor novo) | Testado |

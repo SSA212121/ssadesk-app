@@ -85,3 +85,5 @@ api.sessao.onChatVisivel(v => { if (v) { naoLidas = 0; atualizarSelo() } })
 
 // Botão clicado com o mouse não fica com anel de foco preso quando a janela volta a ter foco
 document.addEventListener('click', e => { const b = e.target.closest('button'); if (b && e.detail > 0) setTimeout(() => b.blur(), 0) })
+// Barra recolhida (a janela vira só a abinha)
+api.sessao.onRecolhida(v => document.body.classList.toggle('recolhida', !!v))

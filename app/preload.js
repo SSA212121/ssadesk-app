@@ -25,6 +25,7 @@ contextBridge.exposeInMainWorld('ssadesk', {
     acao: a => ipcRenderer.send('sessao-acao', a),
     onAtualizar: cb => ipcRenderer.on('barra-sessao', (_e, s) => cb(s)),
     onEstado: cb => ipcRenderer.on('barra-estado', (_e, t) => cb(t)),
+    onRecolhida: cb => ipcRenderer.on('barra-recolhida', (_e, v) => cb(v)),
     onChat: cb => ipcRenderer.on('chat-recebida', (_e, d) => cb(d)),
     onChatVisivel: cb => ipcRenderer.on('chat-visivel', (_e, v) => cb(v))
   },
