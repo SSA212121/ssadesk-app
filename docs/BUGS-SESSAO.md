@@ -60,3 +60,5 @@ Teste feito no notebook SSA-Atendimento ("Augusto", 120 358 953) acessando o not
 | — | OK | Chat nos dois sentidos, selo de não lida, HTML não é interpretado, mensagem vazia não envia | Testado |
 | — | OK | Chamada abre nos dois lados, encerrar de um lado fecha os dois | Testado |
 | — | OK | ⓘ e ⋯ Mais opções (clique duplo não trava o menu; clicar fora fecha) | Testado. ⋯ é só de quem acessa, por ser comando da tela remota |
+| 47 | Usabilidade | Barrinha de quem acessa no topo e de quem é acessado embaixo; cada um via a barrinha do outro na tela | Corrigido: cada um vê só a própria, as duas no topo e no mesmo lugar (não há clique "invisível") |
+| 48 | Funcional | Chat não aparecia em tempo real (só selo; era preciso abrir) | Corrigido: mensagem nova abre a conversa na hora, sem roubar o foco |

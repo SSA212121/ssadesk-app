@@ -515,8 +515,10 @@ function abrirBarra () {
   const area = require('electron').screen.getPrimaryDisplay().workArea
   const W = 588; const H = 64
   const acessado = sessao.papel === 'acessado'
-  barraWin = (acessado ? (w => w) : foraDaCaptura)(new BrowserWindow({
-    width: W, height: H, x: Math.round(area.x + (area.width - W) / 2), y: acessado ? area.y + area.height - H - 10 : area.y + 12,
+  // Cada um vê só a própria barrinha: as duas ficam fora da captura e no mesmo lugar (topo, centro).
+  // Assim a barrinha de quem acessa cobre exatamente o ponto onde está a do outro, e não há clique "invisível".
+  barraWin = foraDaCaptura(new BrowserWindow({
+    width: W, height: H, x: Math.round(area.x + (area.width - W) / 2), y: area.y + 12,
     frame: false, transparent: true, resizable: false, maximizable: false, minimizable: false, skipTaskbar: true,
     alwaysOnTop: true, show: false, title: 'SSAdesk', hasShadow: false,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, spellcheck: false }
@@ -745,7 +747,7 @@ function abrirLousa (pelaOutraPonta = false) {
     lousaWin.webContents.on('render-process-gone', (_e, d) => reg('lousa caiu: ' + d.reason))
     lousaWin.webContents.on('dom-ready', () => reg('lousa dom pronto'))
   }
-  lousaWin.loadFile(path.join(__dirname, 'src', 'lousa.html'), { query: { mouse: pelaOutraPonta ? '1' : '', barra: sessao.papel === 'acessado' ? 'topo' : 'baixo' } })
+  lousaWin.loadFile(path.join(__dirname, 'src', 'lousa.html'), { query: { mouse: pelaOutraPonta ? '1' : '', barra: 'baixo' } })
   // Abriu aqui (pela barrinha): avisa o outro lado para abrir também
   if (!pelaOutraPonta && canal && canal.conectado()) canal.controle({ t: 'lousa', d: { acao: 'abrir' } })
   lousaWin.webContents.once('dom-ready', () => {
@@ -972,7 +974,7 @@ function avisarVisibilidade () {
   if (barraWin && !barraWin.isDestroyed()) barraWin.webContents.send('chat-visivel', chatVisivel())
 }
 
-function abrirChatJanela () {
+function abrirChatJanela (semFoco = false) {
   if (chatWin && !chatWin.isDestroyed()) { chatWin.show(); chatWin.focus(); avisarVisibilidade(); return }
   const W = 300; const H = 420
   const ref = callWin && !callWin.isDestroyed() ? callWin.getBounds() : null
@@ -989,12 +991,16 @@ function abrirChatJanela () {
   }))
   chatWin.setAlwaysOnTop(true, 'floating')
   chatWin.loadFile(path.join(__dirname, 'src', 'chat.html'))
-  chatWin.once('ready-to-show', () => { chatWin.show(); avisarVisibilidade() })
+  chatWin.once('ready-to-show', () => { if (semFoco) chatWin.showInactive(); else chatWin.show(); avisarVisibilidade() })
   // Fechar = guardar (esconde, mantém a conversa)
   chatWin.on('close', e => { if (callWin && !callWin.isDestroyed()) { e.preventDefault(); chatWin.hide(); avisarVisibilidade() } })
   for (const ev of ['show', 'hide', 'minimize', 'restore']) chatWin.on(ev, avisarVisibilidade)
 }
 
+function mostrarChatSemFoco () {
+  if (chatWin && !chatWin.isDestroyed()) { if (chatWin.isMinimized()) chatWin.restore(); chatWin.showInactive(); avisarVisibilidade(); return }
+  abrirChatJanela(true)
+}
 function registrar (texto, quem) {
   const m = { texto: String(texto).slice(0, 2000), quem, hora: Date.now() }
   mensagens.push(m)
@@ -1010,6 +1016,8 @@ function receberMensagem (texto) {
   if (temChamada) callWin.webContents.send('chat-recebida', { visivel: chatVisivel() })
   // Acesso remoto sem chamada aberta: a barrinha da sessão toca o som e mostra o selo de não lidas
   if (temBarra) barraWin.webContents.send('chat-recebida', { visivel: chatVisivel(), som: !temChamada })
+  // Tempo real: em sessão, a conversa aparece na hora (abre sem roubar o foco de quem está digitando em outro lugar)
+  if ((temBarra || temChamada) && !chatVisivel()) mostrarChatSemFoco()
   // Nenhuma janela do SSAdesk à vista: notificação do Windows (clicar abre o chat)
   if (!chatVisivel() && !temChamada && !temBarra) {
     try {
