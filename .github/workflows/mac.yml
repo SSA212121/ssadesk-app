@@ -13,7 +13,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { arch: arm64, motor: aarch64, os: macos-14 }
+          - { arch: arm64, motor: aarch64, os: macos-15 }
           - { arch: x64, motor: x86_64, os: macos-15-intel }
     steps:
       - uses: actions/checkout@v4
