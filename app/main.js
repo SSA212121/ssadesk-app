@@ -526,7 +526,22 @@ function abrirBarra () {
   barraWin.setAlwaysOnTop(true, 'screen-saver', 2) // acima da tela remota em tela cheia e da lousa
   barraWin.loadFile(path.join(__dirname, 'src', 'sessao.html'), { query: { nome: sessao.nome || '', papel: sessao.papel || '' } })
   barraWin.once('ready-to-show', () => barraWin.showInactive())
-  barraWin.on('closed', () => { barraWin = null })
+  // Quem acessa: a barrinha fica presa ao topo da janela da tela remota (segue, some quando ela minimiza)
+  if (!acessado && !process.env.SSADESK_SEM_MOTOR) {
+    const bw = barraWin; const scr = require('electron').screen
+    bw.pararAcompanhar = require('./janela-remota').acompanharJanelaRemota(r => {
+      if (bw.isDestroyed()) return
+      if (!r) { bw.hide(); return }
+      const b = isWin ? scr.screenToDipRect(null, r) : r
+      const area = scr.getDisplayMatching({ x: Math.round(b.x), y: Math.round(b.y), width: Math.round(b.width), height: Math.round(b.height) }).bounds
+      const telaCheia = b.width >= area.width - 2 && b.height >= area.height - 2
+      const larg = Math.min(W, Math.round(b.width) - 16)
+      bw.setBounds({ x: Math.round(b.x + (b.width - larg) / 2), y: Math.round(b.y + (telaCheia ? 12 : 44)), width: larg, height: H })
+      if (!bw.isVisible()) bw.showInactive()
+    })
+  }
+  const estaBarra = barraWin
+  barraWin.on('closed', () => { if (estaBarra.pararAcompanhar) estaBarra.pararAcompanhar(); if (barraWin === estaBarra) barraWin = null })
 }
 function fecharBarra () { if (barraWin && !barraWin.isDestroyed()) barraWin.destroy(); barraWin = null; if (infoWin && !infoWin.isDestroyed()) infoWin.close(); infoSessao.latencia = null; infoSessao.remoto = null }
 
