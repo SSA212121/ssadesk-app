@@ -601,10 +601,13 @@ ipcMain.on('sessao-acao', (_e, acao) => {
 let infoWin = null
 let infoTimer = null
 const infoSessao = { latencia: null, remoto: null }
+let tunelHost = ''
+const ehRedeLocal = ip => /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.|fe80:)/i.test(String(ip || ''))
 function caminhoDaConexao () {
   const d = String(ultimoDestino || '')
   if (!d) return { tipo: 'Sessão SSAdesk (P2P)', detalhe: '' }
   if (d.startsWith('127.0.0.1:')) {
+    if (!precisaRetransmissao.size && ehRedeLocal(tunelHost)) return { tipo: 'Rede local · P2P direto', detalhe: 'Criptografado de ponta a ponta' }
     return precisaRetransmissao.size ? { tipo: 'Internet · retransmissão cega', detalhe: 'Criptografado de ponta a ponta' } : { tipo: 'Internet · P2P direto', detalhe: 'Criptografado de ponta a ponta' }
   }
   const ip = d.replace(/^\[|\]$/g, '')
@@ -845,6 +848,7 @@ function abrirSocket (remoto, relay, ms) {
     s.on('error', e => { clearTimeout(t); reject(e) })
     s.once('open', () => {
       clearTimeout(t)
+      setTimeout(() => { const rs = s.rawStream; if (rs && rs.remoteHost) tunelHost = rs.remoteHost }, 1000) // para o ⓘ dizer se é rede local
       if (process.env.SSADESK_LOG) setTimeout(() => { const rs = s.rawStream; fs.appendFileSync(process.env.SSADESK_LOG, 'caminho da tela via ' + (rs ? rs.remoteHost + ':' + rs.remotePort : '?') + (relay ? ' (pedido pela retransmissão)' : ' (direto)') + '\n') }, 1000)
       resolve(s)
     })
@@ -965,10 +969,20 @@ async function conectarPorCodigo (codigo, modo = 'acesso') {
     resposta = await new Promise((resolve, reject) => {
     // Achou na rede local: espera a sessão completa só mais um pouco; senão abre a tela direto pela rede local
     // (Sem atalho direto pela rede local: a porta do motor fica fechada; espera a resposta do pedido normalmente)
-    const t = setTimeout(() => { if (pendente) { pendente = null; canal.pararProcura(); reject(new Error('Computador não encontrado. Ele está ligado, com internet e com o SSAdesk aberto?')) } }, 45000)
-    pendente = { resolve: v => { clearTimeout(t); resolve(v) }, reject: e => { clearTimeout(t); reject(e) } }
+    // Cada tentativa cuida só do próprio pedido (uma tentativa nova não fica presa pelo tempo da anterior)
+    let t = null; const meu = {}
+    const desistir = msg => { if (pendente === meu) { pendente = null; canal.pararProcura(); if (canal.conectado()) canal.encerrar() } reject(new Error(msg)) }
+    t = setTimeout(() => desistir('Computador não encontrado. Ele está ligado, com internet e com o SSAdesk aberto?'), 45000)
+    meu.resolve = v => { clearTimeout(t); resolve(v) }; meu.reject = e => { clearTimeout(t); reject(e) }
+    pendente = meu
     canal.procurar({ codigo })
-    canal.once('conectado', () => avisarPainel('conectar-status', modo === 'chamada' ? 'Chamando…' : 'Aguardando permissão…'))
+    canal.once('conectado', () => {
+      if (pendente !== meu) return
+      avisarPainel('conectar-status', modo === 'chamada' ? 'Chamando…' : 'Aguardando permissão do outro computador…')
+      // Achou: agora o limite é a pessoa do outro lado responder
+      clearTimeout(t)
+      t = setTimeout(() => desistir(modo === 'chamada' ? 'Ninguém atendeu a ligação.' : 'Ninguém respondeu no outro computador. Peça para clicarem em Permitir e tente de novo.'), 60000)
+    })
   })
   } catch (e) {
     if (!(e.local && naRede)) throw e

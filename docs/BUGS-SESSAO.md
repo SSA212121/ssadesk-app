@@ -95,3 +95,5 @@ Teste feito no notebook SSA-Atendimento ("Augusto", 120 358 953) acessando o not
 | 71 | Visual | Painel de quem é acessado mantinha "Fulano encerrou a conexão" durante a sessão nova | Corrigido |
 | 72 | Funcional | Chat abria sem foco também na 2ª tentativa (a tela remota tomava o foco de volta) | Corrigido: o chat insiste no foco; testado digitando sem clicar |
 | — | OK (Samuel, confirmado no local) | Barrinha no topo, recolher/abinha, chat em tempo real (mensagem e resposta) e fechamento de tudo pelo X | Testado nos dois notebooks |
+| 73 | Funcional | "Aguardando permissão…" infinito: o limite de tempo de uma tentativa anterior apagava o pedido da tentativa nova sem avisar | Corrigido: cada tentativa tem o próprio limite; depois de achar o computador, 60 s para alguém permitir, com aviso claro ("Peça para clicarem em Permitir") |
+| 74 | Visual | ⓘ mostrava "Internet" com os dois na mesma rede (o túnel é sempre 127.0.0.1) | Corrigido: mostra "Rede local · P2P direto" quando o túnel passa pela rede local |
