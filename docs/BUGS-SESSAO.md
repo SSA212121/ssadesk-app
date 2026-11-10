@@ -62,3 +62,14 @@ Teste feito no notebook SSA-Atendimento ("Augusto", 120 358 953) acessando o not
 | — | OK | ⓘ e ⋯ Mais opções (clique duplo não trava o menu; clicar fora fecha) | Testado. ⋯ é só de quem acessa, por ser comando da tela remota |
 | 47 | Usabilidade | Barrinha de quem acessa no topo e de quem é acessado embaixo; cada um via a barrinha do outro na tela | Corrigido: cada um vê só a própria, as duas no topo e no mesmo lugar (não há clique "invisível") |
 | 48 | Funcional | Chat não aparecia em tempo real (só selo; era preciso abrir) | Corrigido: mensagem nova abre a conversa na hora, sem roubar o foco |
+
+## Teste real nos dois notebooks (10/11/2026)
+
+| # | Tipo | Bug | Situação |
+|---|------|-----|----------|
+| 49 | **Funcional** | Versão nova derrubava a sessão do SSAdesk após 30 s quando o outro lado é de versão anterior (sem "sinal de vida"); a imagem continuava, mas chat/arquivos/barrinha morriam ("Conexão encerrada" no outro lado) | Corrigido: o limite de 30 s só vale se o outro lado também manda sinal de vida |
+| 50 | **Funcional** | Comandos da barrinha para a tela remota (⋯ Mais opções, X fecha a tela) não chegam ao motor na versão instalada: "fechar", "tela-cheia" e "arquivos" ignorados | Pendente: investigar no motor (observador de comando-tela.json) |
+| 51 | Funcional | "Enviar para > SSAdesk" falha sem o arquivo chegar quando a sessão do SSAdesk já caiu (só a imagem continuava) | Consequência do 49 |
+| 52 | Usabilidade | Conectar fica girando mais de 2 min sem mensagem nem limite de tempo; o texto antigo ("Conexão encerrada") continua embaixo | Pendente |
+| 53 | **Segurança** | A senha aparece na linha de comando do motor (--password), visível para outros programas do mesmo usuário | Pendente: passar por arquivo temporário/canal |
+| 54 | Teste | Cópias de teste gravavam comando-tela.json na pasta real do SSAdesk | Anotado |
