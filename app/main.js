@@ -713,7 +713,10 @@ function registrarEnviarPara () {
 }
 function arquivosDaLinha (argv) {
   const i = argv.indexOf('--enviar')
-  return i < 0 ? [] : argv.slice(i + 1).filter(a => !a.startsWith('--'))
+  if (i < 0) return []
+  // Só arquivos de verdade: o Electron pode reordenar os argumentos e pôr a pasta do próprio app (".") depois de --enviar
+  const proprio = path.resolve(app.getAppPath())
+  return argv.slice(i + 1).filter(a => !a.startsWith('--') && a !== '.' && path.resolve(a) !== proprio && path.resolve(a) !== path.resolve(process.execPath))
 }
 
 // ---------- Lousa digital (Modo My): camada transparente sobre a tela inteira, nos dois computadores ----------

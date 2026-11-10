@@ -73,3 +73,9 @@ Teste feito no notebook SSA-Atendimento ("Augusto", 120 358 953) acessando o not
 | 52 | Usabilidade | Conectar fica girando mais de 2 min sem mensagem nem limite de tempo; o texto antigo ("Conexão encerrada") continua embaixo | Pendente |
 | 53 | **Segurança** | A senha aparece na linha de comando do motor (--password), visível para outros programas do mesmo usuário | Pendente: passar por arquivo temporário/canal |
 | 54 | Teste | Cópias de teste gravavam comando-tela.json na pasta real do SSAdesk | Anotado |
+| 55 | **Funcional** | "Enviar para" pela versão de teste mandou a pasta do app inteira (o Electron reordena os argumentos e o "." entrou na lista) | Corrigido: só caminhos de arquivo; a pasta do próprio app nunca é enviada. Itens enviados por engano foram para a Lixeira do Samuel |
+| 56 | Funcional | Depois de instalar, o SSAdesk abre como administrador e não deixa ser fechado por um programa comum | Pendente |
+| 57 | Funcional | Duas cópias rodando ao mesmo tempo (administrador e normal): a trava de "uma cópia só" não vale entre as duas | Pendente |
+| 58 | Funcional | O nome do computador ("Augusto") sumiu das preferências | Pendente: investigar quem gravou sem o nome |
+| 59 | Usabilidade | "Aguardando permissão…" sem limite: mais de 1 min girando sem dizer que o outro lado precisa clicar Permitir | Pendente |
+| 60 | OK | Instalador aberto pela tela remota mostrou todas as telas (bug 41 não se repetiu) e "Manter a senha atual" funcionou | Testado |
