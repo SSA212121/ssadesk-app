@@ -1491,6 +1491,38 @@ if (process.env.SSADESK_FOTO_LIGACAO) app.whenReady().then(() => setTimeout(() =
   setTimeout(async () => { try { fs.writeFileSync(process.env.SSADESK_FOTO_LIGACAO, (await pedidoWin.webContents.capturePage()).toPNG()) } catch {} app.exit(0) }, 3500)
 }, 1500))
 
+// Teste: painel principal, sem mexer no mouse (SSADESK_FOTO_PAINEL=caminho.png)
+if (process.env.SSADESK_FOTO_PAINEL) app.whenReady().then(() => setTimeout(async () => {
+  try { fs.writeFileSync(process.env.SSADESK_FOTO_PAINEL, (await win.webContents.capturePage()).toPNG()) } catch {}
+  app.exit(0)
+}, 5000))
+
+// Teste: pedido de acesso (SSADESK_FOTO_PEDIDO=caminho.png)
+if (process.env.SSADESK_FOTO_PEDIDO) app.whenReady().then(() => setTimeout(() => {
+  mostrarPedido({ nome: 'Augusto', codigo: '120358953' })
+  setTimeout(async () => { try { fs.writeFileSync(process.env.SSADESK_FOTO_PEDIDO, (await pedidoWin.webContents.capturePage()).toPNG()) } catch {} app.exit(0) }, 3500)
+}, 1500))
+
+// Teste: janela de mensagens com conversa (SSADESK_FOTO_CHAT=caminho.png)
+if (process.env.SSADESK_FOTO_CHAT) app.whenReady().then(() => setTimeout(() => {
+  sessao = { ...sessao, ativa: true, papel: 'acessando', nome: 'Samuel' }
+  abrirChatJanela()
+  setTimeout(() => {
+    registrar('Pode dar uma olhada na impressora?', 'outro')
+    registrar('Já estou acessando', 'eu')
+    registrar('Era o driver. Resolvido!', 'eu')
+  }, 1800)
+  setTimeout(async () => { try { fs.writeFileSync(process.env.SSADESK_FOTO_CHAT, (await chatWin.webContents.capturePage()).toPNG()) } catch {} app.exit(0) }, 3800)
+}, 1500))
+
+// Teste: barrinha da sessão (SSADESK_FOTO_BARRA=caminho.png)
+if (process.env.SSADESK_FOTO_BARRA) app.whenReady().then(() => setTimeout(() => {
+  sessao = { ...sessao, ativa: true, papel: 'acessando', nome: 'Samuel', permissoes: { ...PERMISSOES_PADRAO } }
+  const salva = process.env.SSADESK_CODIGO_TESTE; delete process.env.SSADESK_CODIGO_TESTE
+  abrirBarra(); if (salva) process.env.SSADESK_CODIGO_TESTE = salva
+  setTimeout(async () => { try { fs.writeFileSync(process.env.SSADESK_FOTO_BARRA, (await barraWin.webContents.capturePage()).toPNG()) } catch {} app.exit(0) }, 3000)
+}, 1500))
+
 // Teste: grava o estado da lista do painel (SSADESK_DUMP=caminho.txt)
 if (process.env.SSADESK_DUMP) app.whenReady().then(() => setTimeout(async () => {
   try { const r = await win.webContents.executeJavaScript("JSON.stringify({ recentesOculto: document.getElementById('recentes').hidden, itens: document.querySelectorAll('#lista li').length, lista: null })"); const b = await win.webContents.executeJavaScript("window.ssadesk.biblioteca.listar().then(l => JSON.stringify(l))"); fs.writeFileSync(process.env.SSADESK_DUMP, r + '\n' + b) } catch (e) { fs.writeFileSync(process.env.SSADESK_DUMP, 'erro: ' + e.message) }
