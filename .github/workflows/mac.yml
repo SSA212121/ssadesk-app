@@ -21,8 +21,8 @@ jobs:
         include:
           # As duas montagens rodam em máquina Intel: aqui só juntamos arquivos,
           # e as máquinas de chip Apple do GitHub vivem lotadas.
-          - { arch: arm64, motor: aarch64, os: macos-15-intel }
-          - { arch: x64, motor: x86_64, os: macos-15-intel }
+          - { arch: arm64, motor: aarch64, lipo: arm64, os: macos-15-intel }
+          - { arch: x64, motor: x86_64, lipo: x86_64, os: macos-15-intel }
     steps:
       - name: Pular quando só um processador foi pedido
         id: filtro
@@ -132,13 +132,13 @@ jobs:
           # O app e o motor têm de ser do processador de destino
           for b in build/SSAdesk.app/Contents/MacOS/SSAdesk build/SSAdesk.app/Contents/Resources/motor/RustDesk.app/Contents/MacOS/RustDesk; do
             lipo -info "$b"
-            lipo -info "$b" | grep -q "${{ matrix.motor }}"
+            lipo -info "$b" | grep -q "${{ matrix.lipo }}"
           done
           # Rodar só dá para testar quando o processador bate com o da máquina
-          if [ "$(uname -m)" = "${{ matrix.motor }}" ]; then
+          if [ "$(uname -m)" = "${{ matrix.lipo }}" ]; then
             ELECTRON_RUN_AS_NODE=1 build/SSAdesk.app/Contents/MacOS/SSAdesk -e "require('./build/SSAdesk.app/Contents/Resources/app/node_modules/hyperswarm'); console.log('módulos ok')"
           else
-            echo "montado para ${{ matrix.motor }} numa máquina $(uname -m): só conferência de arquitetura"
+            echo "montado para ${{ matrix.lipo }} numa máquina $(uname -m): só conferência de arquitetura"
           fi
 
       - name: Gera o .dmg
