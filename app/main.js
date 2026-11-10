@@ -310,6 +310,16 @@ function enviarEstadoChamada () { if (callWin && !callWin.isDestroyed()) callWin
 function avisarPainel (canalNome, dados) { if (win && !win.isDestroyed()) win.webContents.send(canalNome, dados) }
 
 const meuCodigo = () => readText(path.join(DIR, 'codigo.txt'))
+// Mac (sem instalador): na primeira abertura, pega o código deste computador com o próprio motor
+function prepararMac () {
+  if (!isMac || readText(path.join(DIR, 'codigo.txt'))) return
+  const exe = rustdeskPath(); if (!exe) return
+  try {
+    fs.mkdirSync(DIR, { recursive: true })
+    const id = String(require('child_process').execFileSync(exe, ['--get-id'], { timeout: 20000 }) || '').replace(/\D/g, '')
+    if (id) fs.writeFileSync(path.join(DIR, 'codigo.txt'), id.replace(/(\d{3})(?=\d)/g, '$1 ').trim())
+  } catch {}
+}
 const minhaChave = () => readText(path.join(DIR, 'chave-internet.txt'))
 const meuNome = () => (loadPrefs().nome || '').trim() || require('os').hostname()
 // Endereços diretos que o outro lado pode tentar: rede local (só se estiver na mesma rede) e IPv6 público
@@ -1160,7 +1170,12 @@ ipcMain.on('janela', (_e, acao) => {
 
 // ---------- Conectar ----------
 function rustdeskPath () {
-  if (isMac) return '/Applications/RustDesk.app/Contents/MacOS/RustDesk'
+  if (isMac) {
+    // Mac: o motor vai dentro do próprio SSAdesk.app (Contents/Resources/motor), ou instalado à parte em Aplicativos
+    const dentro = path.join(process.resourcesPath || '', 'motor', 'RustDesk.app', 'Contents', 'MacOS', 'RustDesk')
+    for (const p of [dentro, '/Applications/RustDesk.app/Contents/MacOS/RustDesk']) if (fs.existsSync(p)) return p
+    return null
+  }
   // Motor próprio na raiz da instalação; versões antigas tinham o RustDesk numa subpasta
   for (const p of [path.join(DIR, 'SSAdesk.exe'), path.join(DIR, 'RustDesk', 'rustdesk.exe')]) if (fs.existsSync(p)) return p
   return null
@@ -1318,7 +1333,7 @@ app.commandLine.appendSwitch('disable-features', 'SpareRendererForSitePerProcess
 // A voz do outro lado toca sem precisar de clique
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
 app.whenReady().then(() => {
-  if (MODO === 'app') padroesDoMotor()
+  if (MODO === 'app') { prepararMac(); padroesDoMotor() }
   const { session } = require('electron')
   const proprio = url => String(url || '').startsWith('file://')
   session.defaultSession.setPermissionRequestHandler((wc, perm, cb) => cb(['media', 'display-capture', 'clipboard-sanitized-write'].includes(perm) && proprio(wc.getURL())))
