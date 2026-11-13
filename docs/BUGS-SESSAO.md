@@ -128,3 +128,18 @@ Teste feito no notebook SSA-Atendimento ("Augusto", 120 358 953) acessando o not
 | Repositórios | ssadesk-motor e ssadesk-app públicos; o app deixou de ser privado, o que dispensou o remendo de anexar o motor à página de downloads |
 | Publicado | SSAdesk-mac-arm64.dmg e SSAdesk-mac-x64.dmg na página de downloads; botões do site ativos |
 | Pendente | Testar num Mac de verdade; assinatura da Apple (US$ 99/ano) para tirar o aviso da primeira abertura |
+
+## Rodada de correções (13/11/2026)
+
+| # | Tipo | Bug | Situação |
+|---|------|-----|----------|
+| 84 | **Funcional** | Print do menu não colava com Ctrl+V: o motor abria "Salvar como / Copiar / Cancelar" e a pessoa não via | Corrigido: o print pedido pela barrinha copia direto e avisa "Print copiado. Use Ctrl+V para colar." |
+| 85 | **Usabilidade** | Quem acessa não via as janelas do SSAdesk do outro lado (chat, menu, pedido), mas os cliques iam para elas ("clique fantasma") | Corrigido: enquanto o computador está sendo acessado, as janelas dele aparecem na captura |
+| 86 | Usabilidade | Faltava minimizar e sair da tela cheia na janela da tela remota | Feito: no ⋯ Mais opções, grupo "Janela da tela remota" |
+| 87 | **Usabilidade** | Disputa pelo mouse: os dois moviam ao mesmo tempo e o cursor brigava | Corrigido no motor: quando a pessoa que está na frente mexe, o acesso remoto para de mover por 1,2 s. Os dois cursores continuam visíveis |
+| 88 | Usabilidade | Ícone de câmera na barrinha: o comum é só querer falar | Feito: virou microfone e já liga o áudio (câmera fica desligada) |
+| 89 | **Funcional** | Eco e som ruim com o microfone durante o acesso remoto | Melhorado: o microfone daqui abaixa enquanto o outro fala (o cancelador do navegador não enxergava o som do nosso reprodutor) |
+| 90 | Usabilidade | Computadores que conectaram aqui não viravam contatos | Feito: entram na lista como contato de ligação, só com o botão de ligar |
+| 91 | **Funcional (Mac)** | Mac não recebia ligação nem acesso: sem o código gerado, ele não era anunciado na rede e ninguém o achava | Corrigido: o código é criado antes de anunciar, com novas tentativas e registro do erro |
+| 92 | **Funcional (Mac)** | Às vezes não fechava e segurava o desligamento do computador | Corrigido: ao sair, solta túnel, rede e motor; sai à força após 2,5 s; responde ao desligamento do sistema |
+| 93 | — | Mac **ser acessado** (receber controle da tela) | Não implementado: exige permissões de tela e acessibilidade do macOS. O Mac só acessa |

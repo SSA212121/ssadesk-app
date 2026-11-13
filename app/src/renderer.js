@@ -174,8 +174,16 @@ async function montarBiblioteca () {
     const chamar = document.createElement('button'); chamar.className = 'chamar acao-item'; chamar.title = 'Ligação'; chamar.setAttribute('aria-label', 'Ligar para ' + (c.nome || fmt(c.codigo)))
     chamar.innerHTML = '<svg viewBox="0 0 24 24"><path d="M5 4.5h3.2l1.6 4-2 1.3a10.5 10.5 0 0 0 6.4 6.4l1.3-2 4 1.6V19a1.5 1.5 0 0 1-1.6 1.5A15.5 15.5 0 0 1 3.5 6.1 1.5 1.5 0 0 1 5 4.5z"/></svg>'
     chamar.addEventListener('click', e => { e.stopPropagation(); $('destino').value = fmt(c.codigo); ligarPara(c.codigo) })
-    li.append(av, tx, acessar, chamar, ligar, x)
-    li.addEventListener('click', () => { $('destino').value = fmt(c.codigo); $('form').requestSubmit() })
+    // Contato de ligação: entrou na lista porque ligou/acessou este computador.
+    // Não temos acesso à tela dele, então só mostramos a ligação.
+    if (c.soLigacao) {
+      acessar.remove(); ligar.remove()
+      li.append(av, tx, chamar, x)
+      li.addEventListener('click', () => ligarPara(c.codigo))
+    } else {
+      li.append(av, tx, acessar, chamar, ligar, x)
+      li.addEventListener('click', () => { $('destino').value = fmt(c.codigo); $('form').requestSubmit() })
+    }
     ul.appendChild(li)
     // Bolinha verde (online) ou vermelha (offline), verificada na rede P2P
     api.biblioteca.online(c.codigo).then(on => { li.classList.toggle('on', on); li.classList.toggle('off', !on); cd.textContent = fmt(c.codigo) + (on ? ' · online' : ' · offline') })

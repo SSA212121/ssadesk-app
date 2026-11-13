@@ -204,6 +204,8 @@ function aplicarEstado (s) {
   document.body.dataset.fase = s.fase
   if (s.fase === 'conectado') {
     informarEstado(); window.ssadeskMidia.pedirQuadroChave()
+    // Veio do botão "Falar" da barrinha: já liga o microfone (câmera continua desligada)
+    if (params.get('mic') === '1' && !aplicarEstado.micLigado) { aplicarEstado.micLigado = true; setTimeout(() => $('mic').click(), 400) }
     if (params.get('autoteste') === '1' && !aplicarEstado.testado) { aplicarEstado.testado = true; setTimeout(() => { $('cam').click(); $('mic').click() }, 1500) }
     if (!inicio) { inicio = Date.now(); relogio = setInterval(() => { const s = Math.floor((Date.now() - inicio) / 1000); $('tempo').textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') }, 1000) }
     clearTimeout(aplicarEstado.fechar) // voltou a conectar: não fecha

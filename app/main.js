@@ -67,7 +67,20 @@ function savePrefs (p) {
 }
 
 // Janelas flutuantes do SSAdesk ficam fora da captura de tela: quem acessa não as vê repetidas dentro da tela remota
-function foraDaCaptura (w) { try { if ((isWin || isMac) && !process.env.SSADESK_SEM_PROTECAO) w.setContentProtection(true) } catch {} return w } // SSADESK_SEM_PROTECAO: só para testes (ver as janelas nos prints)
+// Janelas do SSAdesk ficam fora da captura de tela — MENOS quando este computador está sendo acessado.
+// Escondê-las de quem acessa criava "cliques fantasma": ele não via a janela, mas o clique ia para ela.
+// SSADESK_SEM_PROTECAO: só para testes (ver as janelas nos prints).
+const janelasOcultas = new Set()
+const souAcessado = () => !!(typeof sessao !== 'undefined' && sessao && sessao.ativa && sessao.papel === 'acessado')
+function aplicarProtecao (w) { try { if (!w.isDestroyed()) w.setContentProtection(!souAcessado()) } catch {} }
+function atualizarProtecao () { for (const w of janelasOcultas) aplicarProtecao(w) }
+function foraDaCaptura (w) {
+  if (!(isWin || isMac) || process.env.SSADESK_SEM_PROTECAO) return w
+  janelasOcultas.add(w)
+  w.on('closed', () => janelasOcultas.delete(w))
+  aplicarProtecao(w)
+  return w
+}
 let win
 let ajusteAutomatico = false
 // Painel: ajusta a altura ao conteúdo (sem passar da tela), a menos que a pessoa tenha escolhido um tamanho
@@ -145,7 +158,7 @@ function abrirChamada (dados = {}) {
     ...(isMac ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 16, y: 16 } } : {}),
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, spellcheck: false }
   }))
-  callWin.loadFile(path.join(__dirname, 'src', 'chamada.html'), { query: { platform: process.platform, nome: dados.nome || '', demo: process.env.SSADESK_DEMO ? '1' : '', autoteste: process.env.SSADESK_AUTOTESTE ? '1' : '', tela: dados.tela ? '1' : '' } })
+  callWin.loadFile(path.join(__dirname, 'src', 'chamada.html'), { query: { platform: process.platform, nome: dados.nome || '', demo: process.env.SSADESK_DEMO ? '1' : '', autoteste: process.env.SSADESK_AUTOTESTE ? '1' : '', tela: dados.tela ? '1' : '', mic: dados.mic ? '1' : '' } })
   callWin.once('ready-to-show', () => {
     if (process.env.SSADESK_SNAPSHOT && process.env.SSADESK_CALL) return snapshot(callWin)
     callWin.showInactive() // aparece sem roubar o foco de quem está trabalhando
@@ -164,7 +177,7 @@ ipcMain.on('abrir-chamada', (_e, extra) => {
   // A chamada usa a sessão já aberta com o outro computador (conectado pelo código)
   const ativa = !!(canal && canal.conectado() && sessao.ativa)
   estadoChamada = ativa ? { fase: 'conectado', nome: sessao.nome } : { fase: 'sem-sessao', nome: '' }
-  abrirChamada({ nome: sessao.nome || 'Chamada de vídeo', tela: !!(extra && extra.tela) })
+  abrirChamada({ nome: sessao.nome || 'Chamada de vídeo', tela: !!(extra && extra.tela), mic: !!(extra && extra.mic) })
   if (ativa) canal.controle({ t: 'chamada' })
   enviarEstadoChamada()
 })
@@ -306,19 +319,39 @@ async function reconectar (codigo, nome) {
 }
 function avisarBarraEstado (texto) { if (barraWin && !barraWin.isDestroyed()) barraWin.webContents.send('barra-estado', texto) }
 let ultimoDespertar = 0
+let motorAberto = null // motor aberto por nós: fechado junto com o app
 function enviarEstadoChamada () { if (callWin && !callWin.isDestroyed()) callWin.webContents.send('chamada-estado', estadoChamada) }
 function avisarPainel (canalNome, dados) { if (win && !win.isDestroyed()) win.webContents.send(canalNome, dados) }
 
 const meuCodigo = () => readText(path.join(DIR, 'codigo.txt'))
 // Mac (sem instalador): na primeira abertura, pega o código deste computador com o próprio motor
+// Mac: sem instalador, o código deste computador é pedido ao motor na primeira abertura.
+// Sem código, o computador NÃO é anunciado na rede e ninguém consegue achá-lo — nem para ligar.
+// Por isso tentamos de novo enquanto não conseguir, e o erro vai para o registro de rede.
 function prepararMac () {
-  if (!isMac || readText(path.join(DIR, 'codigo.txt'))) return
-  const exe = rustdeskPath(); if (!exe) return
+  if (!isMac || readText(path.join(DIR, 'codigo.txt'))) return true
+  const exe = rustdeskPath()
+  if (!exe) { registrarErroRede('motor do Mac', new Error('motor não encontrado dentro do SSAdesk.app')); return false }
   try {
     fs.mkdirSync(DIR, { recursive: true })
     const id = String(require('child_process').execFileSync(exe, ['--get-id'], { timeout: 20000 }) || '').replace(/\D/g, '')
-    if (id) fs.writeFileSync(path.join(DIR, 'codigo.txt'), id.replace(/(\d{3})(?=\d)/g, '$1 ').trim())
-  } catch {}
+    if (!id) throw new Error('o motor não devolveu o código')
+    fs.writeFileSync(path.join(DIR, 'codigo.txt'), id.replace(/(\d{3})(?=\d)/g, '$1 ').trim())
+    return true
+  } catch (e) { registrarErroRede('código do Mac', e); return false }
+}
+// Enquanto não houver código, tenta de novo e anuncia assim que conseguir
+function insistirCodigoMac () {
+  if (!isMac || readText(path.join(DIR, 'codigo.txt'))) return
+  let tentativas = 0
+  const t = setInterval(() => {
+    if (++tentativas > 20 || readText(path.join(DIR, 'codigo.txt'))) return clearInterval(t)
+    if (!prepararMac()) return
+    clearInterval(t)
+    avisarPainel('info-mudou')
+    if (canal) canal.escutar({ codigo: meuCodigo(), chave: minhaChave() }).catch(e => registrarErroRede('anúncio', e))
+  }, 15000)
+  t.unref && t.unref()
 }
 const minhaChave = () => readText(path.join(DIR, 'chave-internet.txt'))
 const meuNome = () => (loadPrefs().nome || '').trim() || require('os').hostname()
@@ -351,6 +384,7 @@ function iniciarCanal () {
 
   canal.on('conectado', ({ recebida }) => {
     sessao = { ativa: true, papel: recebida ? 'acessado' : 'acessando', nome: '', permissoes: { ...PERMISSOES_PADRAO } }
+    atualizarProtecao() // sendo acessado: as janelas daqui passam a aparecer para quem acessa
     if (recebida) avisarPainel('conectar-status', '') // apaga o aviso da sessão anterior ("… encerrou a conexão")
     if (process.env.SSADESK_FOTO_CHAMADA) setTimeout(async () => { if (callWin) fs.writeFileSync(process.env.SSADESK_FOTO_CHAMADA, (await callWin.webContents.capturePage()).toPNG()) }, 15000)
     if (!recebida && modoAcordar) { canal.controle({ t: 'acordar', mac: modoAcordar.mac }); return }
@@ -363,6 +397,7 @@ function iniciarCanal () {
   canal.on('escoou', () => { for (const c of tunelSessao.locais.values()) c.resume() })
   canal.on('desconectado', () => {
     fecharTunelSessao()
+    setTimeout(atualizarProtecao, 0) // sessão acabou: volta a esconder
     const caiu = sessao.ativa && sessao.papel === 'acessando' && !encerradoPeloUsuario && !encerradoPeloOutro && sessao.codigo
     if (encerradoPeloOutro && sessao.papel === 'acessando') comandoTela('fechar', '') // fecha a tela remota junto
     sessao.ativa = false
@@ -389,6 +424,8 @@ function iniciarCanal () {
       case 'acordado': if (modoAcordar) { modoAcordar.ok(); modoAcordar = null; canal.encerrar() } break
       case 'ola': { // alguém quer acessar este computador (ou só ligar)
         sessao.nome = String(msg.nome || msg.codigo || 'Alguém').slice(0, 40)
+        // Quem conecta aqui entra na lista como contato de ligação (não dá acesso à tela deste lado)
+        if (msg.codigo) salvarNaBiblioteca(String(msg.codigo).replace(/\D/g, ''), sessao.nome, { ...sessao.remoto, soLigacao: true })
         if (msg.quer === 'chamada') {
           const r = await mostrarPedido({ nome: sessao.nome, codigo: msg.codigo || '', tipo: 'chamada' })
           if (!canal.conectado()) return
@@ -474,7 +511,10 @@ function ligarRede () {
     lan = new DescobertaLan({ meuCodigo, meuNome })
     lan.iniciar()
   } catch (e) { registrarErroRede('rede local', e) }
+  prepararMac() // garante o código antes de anunciar
+  if (!meuCodigo()) registrarErroRede('anúncio', new Error('sem código: este computador não será encontrado'))
   canal.escutar({ codigo: meuCodigo(), chave: minhaChave() }).catch(e => registrarErroRede('anúncio', e))
+  insistirCodigoMac()
 }
 ipcMain.handle('chamada-estado-atual', () => estadoChamada)
 // Tela principal para transmitir (captura direta: funciona mesmo quando a transmissão começa pela barrinha)
@@ -599,7 +639,7 @@ ipcMain.handle('arquivos-escolher', async () => {
   return r.canceled ? { ok: false } : enviarArquivos(r.filePaths)
 })
 ipcMain.on('sessao-acao', (_e, acao) => {
-  if (acao === 'chamada') ipcMain.emit('abrir-chamada')
+  if (acao === 'chamada') ipcMain.emit('abrir-chamada', null, { mic: true }) // botão da barrinha: abre o microfone
   if (acao === 'tela') ipcMain.emit('abrir-chamada', null, { tela: true }) // transmitir minha tela
   if (acao === 'lousa') abrirLousa()
   if (acao === 'recolher') recolherBarra(true)
@@ -736,7 +776,7 @@ function comandoTela (acao, valor) {
   fs.mkdirSync(path.dirname(f), { recursive: true })
   fs.writeFileSync(f, JSON.stringify({ id: Date.now() + '-' + Math.random().toString(36).slice(2, 7), em: Date.now(), acao, valor }))
 }
-const ACOES_TELA = ['arquivos', 'print', 'gravar', 'tela-cheia', 'escala', 'qualidade', 'cursor', 'ctrl-alt-del', 'bloquear', 'bloquear-entrada', 'atualizar', 'reiniciar']
+const ACOES_TELA = ['arquivos', 'print', 'gravar', 'tela-cheia', 'minimizar', 'restaurar', 'escala', 'qualidade', 'cursor', 'ctrl-alt-del', 'bloquear', 'bloquear-entrada', 'atualizar', 'reiniciar']
 ipcMain.on('mais-comando', (_e, acao, valor) => {
   if (!ACOES_TELA.includes(acao)) return
   if (acao === 'escala' || acao === 'qualidade') estadoMais[acao] = String(valor)
@@ -961,7 +1001,10 @@ function biblioteca () { return (loadPrefs().biblioteca || []).slice(0, 30) }
 function salvarNaBiblioteca (codigo, nome, extra) {
   const antigo = biblioteca().find(c => c.codigo === codigo) || {}
   const lista = biblioteca().filter(c => c.codigo !== codigo)
-  lista.unshift({ ...antigo, codigo, nome: nome || antigo.nome || '', ultima: Date.now(), mac: (extra && extra.mac) || antigo.mac || '', ipPublico: (extra && extra.ipPublico) || antigo.ipPublico || '' })
+  // soLigacao: entrou na lista porque ligou/acessou daqui, e não porque nós o acessamos.
+  // Basta nós acessarmos uma vez para ele virar um computador comum da lista.
+  const soLigacao = extra && extra.soLigacao ? (antigo.soLigacao !== false) : false
+  lista.unshift({ ...antigo, codigo, nome: nome || antigo.nome || '', ultima: Date.now(), soLigacao, mac: (extra && extra.mac) || antigo.mac || '', ipPublico: (extra && extra.ipPublico) || antigo.ipPublico || '' })
   savePrefs({ ...loadPrefs(), biblioteca: lista.slice(0, 30), ultimoCodigo: codigo })
   avisarPainel('biblioteca-mudou')
 }
@@ -1261,7 +1304,7 @@ function abrirRustDesk (destino) {
   if (!exe || !fs.existsSync(exe)) throw new Error('SSAdesk não está instalado corretamente.')
   const args = ['--connect', destino]
   if (sessao.senha) args.push('--password', sessao.senha) // entregue pelo outro lado após o Permitir
-  spawn(exe, args, { detached: true, stdio: 'ignore' }).unref()
+  motorAberto = spawn(exe, args, { detached: true, stdio: 'ignore' }); motorAberto.unref()
 }
 
 ipcMain.handle('ligar', async (_e, bruto) => {
@@ -1443,7 +1486,7 @@ function criarBandeja () {
     { label: 'Abrir SSAdesk', click: mostrarPainel },
     { label: 'Chamada de vídeo', click: () => ipcMain.emit('abrir-chamada') },
     { type: 'separator' },
-    { label: 'Sair do SSAdesk', click: () => { app.saindo = true; app.exit(0) } }
+    { label: 'Sair do SSAdesk', click: () => { app.saindo = true; app.quit(); setTimeout(() => app.exit(0), 2000) } }
   ]))
   bandeja.on('click', mostrarPainel)
 }
@@ -1454,7 +1497,25 @@ app.on('second-instance', (_e, argv) => {
 })
 // Fechar o painel não encerra o app: ele segue no ícone perto do relógio para receber chamadas
 app.on('window-all-closed', () => { if (MODO !== 'app' || !bandeja) app.quit() })
-app.on('before-quit', () => { if (canal) canal.destruir() })
+
+// Encerramento: solta tudo o que pode segurar o app aberto (e, no Mac, o desligamento do computador)
+let encerrando = false
+function encerrarTudo () {
+  if (encerrando) return
+  encerrando = true
+  try { fecharTunelSessao() } catch {}
+  try { if (lan && lan.parar) lan.parar() } catch {}
+  try { if (canal) canal.destruir() } catch {}
+  try { if (motorAberto && !motorAberto.killed) motorAberto.kill() } catch {}
+  try { for (const w of require('electron').BrowserWindow.getAllWindows()) if (!w.isDestroyed()) w.destroy() } catch {}
+}
+app.on('before-quit', () => {
+  encerrarTudo()
+  // Rede P2P pode demorar a soltar: passado o limite, sai de qualquer jeito
+  const t = setTimeout(() => app.exit(0), 2500); t.unref && t.unref()
+})
+// O sistema vai desligar ou reiniciar: sai na hora, sem segurar
+app.on('session-end', () => { encerrarTudo(); app.exit(0) })
 
 // Teste: abre o painel ⓘ e salva uma foto dele (SSADESK_FOTO_INFO=caminho.png)
 if (process.env.SSADESK_FOTO_INFO) app.whenReady().then(() => setTimeout(() => {

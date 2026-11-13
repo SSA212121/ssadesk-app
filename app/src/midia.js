@@ -72,7 +72,21 @@
   }
 
   // --- Áudio ---
-  let aEnc = null; let aFonte = null; let aNo = null; let aTs = 0
+  // Eco: o cancelador do navegador não enxerga o som que sai pelo nosso próprio reprodutor.
+  // Enquanto o outro lado fala, abaixamos o microfone daqui (o alto-falante não volta pelo mic).
+  let aEnc = null; let aFonte = null; let aNo = null; let aTs = 0; let aGanho = null
+  let falandoAte = 0
+  const ECO_MS = 220 // quanto tempo o microfone fica baixo depois do último som recebido
+  function marcarQueOOutroFala () {
+    falandoAte = Date.now() + ECO_MS
+    if (!aGanho) return
+    try { aGanho.gain.setTargetAtTime(0.06, aGanho.context.currentTime, 0.02) } catch {}
+    clearTimeout(marcarQueOOutroFala.t)
+    marcarQueOOutroFala.t = setTimeout(() => {
+      if (Date.now() < falandoAte || !aGanho) return
+      try { aGanho.gain.setTargetAtTime(1, aGanho.context.currentTime, 0.08) } catch {}
+    }, ECO_MS)
+  }
   async function iniciarAudio (stream) {
     pararAudio()
     const c = await contexto()
@@ -82,6 +96,7 @@
     })
     aEnc.configure({ codec: 'opus', sampleRate: TAXA, numberOfChannels: 1, bitrate: 32000 })
     aFonte = c.createMediaStreamSource(stream)
+    aGanho = c.createGain() // volume do microfone, abaixado enquanto o outro fala
     aNo = new AudioWorkletNode(c, 'ssadesk-captura', { numberOfInputs: 1, numberOfOutputs: 0, channelCount: 1, channelCountMode: 'explicit' })
     aNo.port.onmessage = e => {
       if (!aEnc || aEnc.state !== 'configured') return
@@ -89,12 +104,13 @@
       aTs += 20000
       aEnc.encode(data); data.close()
     }
-    aFonte.connect(aNo)
+    aFonte.connect(aGanho); aGanho.connect(aNo)
   }
   function pararAudio () {
-    try { if (aFonte) aFonte.disconnect(); if (aNo) aNo.disconnect() } catch {}
+    try { if (aFonte) aFonte.disconnect(); if (aGanho) aGanho.disconnect(); if (aNo) aNo.disconnect() } catch {}
     if (aEnc && aEnc.state !== 'closed') aEnc.close()
-    aEnc = null; aFonte = null; aNo = null
+    clearTimeout(marcarQueOOutroFala.t)
+    aEnc = null; aFonte = null; aNo = null; aGanho = null
   }
 
   // ================= RECEBIMENTO =================
@@ -133,6 +149,7 @@
         output: data => {
           const amostras = new Float32Array(data.numberOfFrames)
           data.copyTo(amostras, { planeIndex: 0, format: 'f32-planar' }); data.close()
+          marcarQueOOutroFala()
           saida.port.postMessage(amostras, [amostras.buffer])
         },
         error: () => { aDec = null }
