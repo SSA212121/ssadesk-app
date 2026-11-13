@@ -30,7 +30,10 @@ class Canal extends EventEmitter {
     this.Hyperswarm = Hyperswarm
     this.opcoes = opcoes
     this.swarm = null
-    this.conexao = null // uma sessão por vez
+    this.conexao = null // sessão principal (acesso remoto)
+    // Segunda conexão, só para ligação: dá para estar acessando um computador e falar com outra pessoa.
+    this.extra = null
+    this.procurandoExtra = null
     this.escutas = new Set()
     this.procurando = null
     this.destruido = false
@@ -148,9 +151,19 @@ class Canal extends EventEmitter {
       const velha = this.conexao; this.conexao = null; try { velha.destroy() } catch {}
       this.emit('desconectado')
     }
-    if (this.conexao) { // já em sessão: avisa quem tentou (em vez de só derrubar) e fecha
-      try { const j = Buffer.from(JSON.stringify({ t: 'ocupado' }), 'utf8'); const h = Buffer.alloc(5); h[0] = TIPO.CONTROLE; h.writeUInt32BE(j.length, 1); sock.write(Buffer.concat([h, j])) } catch {}
-      setTimeout(() => sock.destroy(), 400); return
+    if (this.conexao) {
+      // Já estamos em sessão. Se o outro lado só quer ligar, aceitamos como segunda conexão;
+      // se quer a tela, aí sim avisamos que este computador está ocupado.
+      // Fomos nós que ligamos: aceita direto (quem liga é quem manda o "olá")
+      if (!this.extra && info.client && this.procurandoExtra) {
+        this.extra = sock
+        this._lerFrames(sock, 'extra')
+        sock.on('close', () => { if (this.extra === sock) { this.extra = null; this.emit('extra-desconectado') } })
+        this.emit('extra-conectado', { recebida: false })
+        return
+      }
+      if (!this.extra) { this._talvezLigacao(sock); return }
+      this._recusar(sock); return
     }
     this.conexao = sock
     sock._ultimoSinal = Date.now()
@@ -162,27 +175,7 @@ class Canal extends EventEmitter {
     }, 10000)
     this.cheio = false
     sock.on('drain', () => { this.cheio = false; this.emit('escoou') })
-    let buf = Buffer.alloc(0)
-    sock.on('data', d => {
-      if (!sock._temVivo && d.includes('"t":"vivo"')) sock._temVivo = true // o outro lado manda sinal de vida (versão nova)
-      sock._ultimoSinal = Date.now()
-      buf = buf.length ? Buffer.concat([buf, d]) : d
-      while (buf.length >= 5) {
-        const tipo = buf[0]; const n = buf.readUInt32BE(1)
-        if (n > 8 * 1024 * 1024) { sock.destroy(); return } // proteção contra quadros absurdos
-        if (buf.length < 5 + n) break
-        const dados = buf.subarray(5, 5 + n); buf = buf.subarray(5 + n)
-        if (tipo === TIPO.CONTROLE) {
-          try { this.emit('controle', JSON.parse(dados.toString('utf8'))) } catch {}
-        } else if (tipo === TIPO.AUDIO || tipo === TIPO.VIDEO) {
-          this.emit('midia', tipo === TIPO.AUDIO ? 'audio' : 'video', Buffer.from(dados))
-        } else if (tipo === TIPO.ARQUIVO) {
-          this.emit('arquivo', Buffer.from(dados))
-        } else if (tipo === TIPO.TUNEL && dados.length >= 5) {
-          this.emit('tunel', dados.readUInt32BE(0), dados[4], Buffer.from(dados.subarray(5)))
-        }
-      }
-    })
+    this._lerFrames(sock, '')
     const fim = () => {
       clearInterval(sock._vivo)
       if (this.conexao !== sock) return
@@ -194,6 +187,93 @@ class Canal extends EventEmitter {
     const quemChamou = !!info.client
     this.emit('conectado', { recebida: !quemChamou })
     if (quemChamou) this.pararProcura()
+  }
+
+  // Lê os pacotes de uma conexão. prefixo '' = sessão principal; 'extra' = a segunda (ligação).
+  _lerFrames (sock, prefixo) {
+    const nome = n => (prefixo ? prefixo + '-' + n : n)
+    let buf = Buffer.alloc(0)
+    sock.on('data', d => {
+      if (!sock._temVivo && d.includes('"t":"vivo"')) sock._temVivo = true
+      sock._ultimoSinal = Date.now()
+      buf = buf.length ? Buffer.concat([buf, d]) : d
+      while (buf.length >= 5) {
+        const tipo = buf[0]; const n = buf.readUInt32BE(1)
+        if (n > 8 * 1024 * 1024) { sock.destroy(); return }
+        if (buf.length < 5 + n) break
+        const dados = buf.subarray(5, 5 + n); buf = buf.subarray(5 + n)
+        if (tipo === TIPO.CONTROLE) {
+          try { this.emit(nome('controle'), JSON.parse(dados.toString('utf8'))) } catch {}
+        } else if (tipo === TIPO.AUDIO || tipo === TIPO.VIDEO) {
+          this.emit(nome('midia'), tipo === TIPO.AUDIO ? 'audio' : 'video', Buffer.from(dados))
+        } else if (tipo === TIPO.ARQUIVO) {
+          this.emit(nome('arquivo'), Buffer.from(dados))
+        } else if (tipo === TIPO.TUNEL && dados.length >= 5) {
+          this.emit(nome('tunel'), dados.readUInt32BE(0), dados[4], Buffer.from(dados.subarray(5)))
+        }
+      }
+    })
+  }
+
+  _recusar (sock) {
+    try { const j = Buffer.from(JSON.stringify({ t: 'ocupado' }), 'utf8'); const h = Buffer.alloc(5); h[0] = TIPO.CONTROLE; h.writeUInt32BE(j.length, 1); sock.write(Buffer.concat([h, j])) } catch {}
+    setTimeout(() => { try { sock.destroy() } catch {} }, 400)
+  }
+
+  // Lê o primeiro "olá": só vira segunda conexão quem quer apenas ligar
+  _talvezLigacao (sock) {
+    let buf = Buffer.alloc(0)
+    const t = setTimeout(() => { try { sock.destroy() } catch {} }, 8000)
+    const aoChegar = d => {
+      buf = buf.length ? Buffer.concat([buf, d]) : d
+      while (buf.length >= 5) {
+        const tipo = buf[0]; const n = buf.readUInt32BE(1)
+        if (n > 1024 * 64) { clearTimeout(t); try { sock.destroy() } catch {}; return }
+        if (buf.length < 5 + n) return
+        const dados = buf.subarray(5, 5 + n); buf = buf.subarray(5 + n)
+        if (tipo !== TIPO.CONTROLE) continue
+        clearTimeout(t)
+        sock.off('data', aoChegar)
+        let msg = null
+        try { msg = JSON.parse(dados.toString('utf8')) } catch {}
+        if (!msg || msg.t !== 'ola' || msg.quer !== 'chamada') { this._recusar(sock); return }
+        this._aceitarExtra(sock, msg)
+        return
+      }
+    }
+    sock.on('data', aoChegar)
+  }
+
+  _aceitarExtra (sock, ola) {
+    this.extra = sock
+    this._lerFrames(sock, 'extra')
+    sock.on('close', () => { if (this.extra === sock) { this.extra = null; this.emit('extra-desconectado') } })
+    this.emit('extra-conectado', { recebida: true })
+    this.emit('extra-controle', ola) // o "olá" que já tínhamos lido
+  }
+
+  // Ligar para alguém enquanto a sessão principal está ocupada
+  async procurarExtra ({ codigo }) {
+    if (this.extra) return
+    const topico = topicoCodigo(codigo)
+    this.procurandoExtra = topico
+    this._swarm().join(topico, { server: false, client: true })
+  }
+  async pararProcuraExtra () {
+    if (this.procurandoExtra) { const t = this.procurandoExtra; this.procurandoExtra = null; await this._swarm().leave(t).catch(() => {}) }
+  }
+  extraConectado () { return !!(this.extra && !this.extra.destroyed) }
+  _enviarPor (sock, tipo, dados) {
+    if (!sock || sock.destroyed) return false
+    const cab = Buffer.alloc(5); cab[0] = tipo; cab.writeUInt32BE(dados.length, 1)
+    sock.write(Buffer.concat([cab, dados]))
+    return true
+  }
+  controleExtra (obj) { return this._enviarPor(this.extra, TIPO.CONTROLE, Buffer.from(JSON.stringify(obj), 'utf8')) }
+  midiaExtra (tipo, dados) { return this._enviarPor(this.extra, tipo === 'audio' ? TIPO.AUDIO : TIPO.VIDEO, Buffer.from(dados)) }
+  encerrarExtra () {
+    this.pararProcuraExtra()
+    if (this.extra) { this.controleExtra({ t: 'tchau' }); const s = this.extra; setTimeout(() => { try { s.destroy() } catch {} }, 200) }
   }
 
   conectado () { return !!(this.conexao && !this.conexao.destroyed) }

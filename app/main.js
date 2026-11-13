@@ -176,7 +176,11 @@ function abrirChamada (dados = {}) {
   callWin.setAlwaysOnTop(true, 'screen-saver', 1) // acima da tela remota em tela cheia
   callWin.on('closed', () => {
     callWin = null
-    if (canal && canal.conectado()) canal.controle({ t: 'chamada-fim' })
+    // Ligação em paralelo: fechar a janela encerra só a ligação, não o acesso remoto
+    if (canal && canal.extraConectado() && sessaoExtra.ativa) {
+      sessaoExtra = { ativa: false, nome: '' }
+      canal.encerrarExtra()
+    } else if (canal && canal.conectado()) canal.controle({ t: 'chamada-fim' })
     if (chatWin && !chatWin.isDestroyed()) chatWin.destroy()
     chatWin = null
   })
@@ -302,6 +306,10 @@ let canal = null
 let sessao = { ativa: false, papel: null, nome: '', permissoes: { ...PERMISSOES_PADRAO } }
 let estadoChamada = { fase: 'aguardando', nome: '' }
 let pendente = null // conexão pelo código esperando a resposta do outro lado
+// Ligação em paralelo: dá para estar num acesso remoto e falar com outra pessoa.
+// Essa conversa anda por uma segunda conexão, separada da sessão de acesso.
+let sessaoExtra = { ativa: false, nome: '' }
+let pendenteExtra = null // ligação em paralelo esperando resposta
 let modoPedido = 'acesso' // o que pedimos ao outro lado: 'acesso' (tela) ou 'chamada' (só vídeo)
 let arquivos = null
 let lan = null
@@ -492,6 +500,46 @@ function iniciarCanal () {
     if (callWin && !callWin.isDestroyed()) callWin.webContents.send('chamada-midia', tipo, dados)
   })
   canal.on('arquivo', dados => { if (arquivos) arquivos.pedaco(dados) })
+
+  // ---- Segunda conexão: só ligação ----
+  canal.on('extra-midia', (tipo, dados) => {
+    if (callWin && !callWin.isDestroyed()) callWin.webContents.send('chamada-midia', tipo, dados)
+  })
+  canal.on('extra-desconectado', () => {
+    sessaoExtra = { ativa: false, nome: '' }
+    estadoChamada = { ...estadoChamada, fase: 'encerrada' }; enviarEstadoChamada()
+  })
+  canal.on('extra-controle', async msg => {
+    if (!msg || typeof msg !== 'object') return
+    switch (msg.t) {
+      case 'ola': { // alguém está ligando enquanto usamos o SSAdesk em outra coisa
+        sessaoExtra.nome = String(msg.nome || msg.codigo || 'Alguém').slice(0, 40)
+        const r = await mostrarPedido({ nome: sessaoExtra.nome, codigo: msg.codigo || '', tipo: 'chamada' })
+        if (!canal.extraConectado()) return
+        if (!r.permitir) { canal.controleExtra({ t: 'negado', texto: 'Chamada recusada.' }); setTimeout(() => canal.encerrarExtra(), 300); return }
+        sessaoExtra.ativa = true
+        if (msg.codigo) salvarNaBiblioteca(String(msg.codigo).replace(/\D/g, ''), sessaoExtra.nome, { soLigacao: true })
+        canal.controleExtra({ t: 'aceito', nome: meuNome(), tipo: 'chamada', permissoes: { controlar: false, arquivos: false, chamada: true, chat: true } })
+        estadoChamada = { fase: 'conectado', nome: sessaoExtra.nome }; abrirChamada({ nome: sessaoExtra.nome }); enviarEstadoChamada()
+        break
+      }
+      case 'aceito':
+        sessaoExtra.ativa = true
+        sessaoExtra.nome = String(msg.nome || '').slice(0, 40)
+        if (pendenteExtra) { pendenteExtra.resolve(msg); pendenteExtra = null }
+        break
+      case 'negado':
+        if (pendenteExtra) { pendenteExtra.reject(new Error('A chamada foi recusada.')); pendenteExtra = null }
+        break
+      case 'ocupado':
+        if (pendenteExtra) { pendenteExtra.reject(new Error('Esse computador já está em outra conexão agora.')); pendenteExtra = null }
+        break
+      case 'chat': if (msg.texto) receberMensagem(msg.texto); break
+      case 'estado': if (callWin && !callWin.isDestroyed()) callWin.webContents.send('chamada-remoto', { mic: !!msg.mic, cam: !!msg.cam, tela: !!msg.tela }); break
+      case 'quadro-chave': if (callWin && !callWin.isDestroyed()) callWin.webContents.send('chamada-quadro-chave'); break
+      case 'tchau': estadoChamada = { ...estadoChamada, fase: 'encerrada' }; enviarEstadoChamada(); break
+    }
+  })
   // Arquivos: quem acessa envia; chegam na Área de Trabalho de quem foi acessado (se a permissão estiver ligada)
   try {
   const { criarArquivos } = require('./arquivos')
@@ -1124,10 +1172,11 @@ async function concluirAcesso (resposta, naRede) {
   return sessao.nome
 }
 
-ipcMain.on('chamada-midia', (_e, tipo, dados) => { if (canal) canal.midia(tipo, Buffer.from(dados)) })
+const chamadaPelaExtra = () => !!(canal && canal.extraConectado() && sessaoExtra.ativa)
+ipcMain.on('chamada-midia', (_e, tipo, dados) => { if (!canal) return; if (chamadaPelaExtra()) canal.midiaExtra(tipo, Buffer.from(dados)); else canal.midia(tipo, Buffer.from(dados)) })
 let audioMotorDesligado = false
 ipcMain.on('chamada-controle', (_e, obj) => {
-  if (canal && obj && typeof obj === 'object') canal.controle(obj)
+  if (canal && obj && typeof obj === 'object') { if (chamadaPelaExtra()) canal.controleExtra(obj); else canal.controle(obj) }
   // Eco: com o microfone aberto durante o acesso remoto, o som do computador acessado
   // sai pelo alto-falante daqui e volta pelo microfone. Enquanto o microfone estiver
   // aberto, calamos o som que vem da tela remota (a conversa continua pelo SSAdesk).
@@ -1331,8 +1380,39 @@ function abrirRustDesk (destino) {
 ipcMain.handle('ligar', async (_e, bruto) => {
   const codigo = String(bruto || '').replace(/\D/g, '')
   if (!/^\d{6,12}$/.test(codigo)) return { ok: false, msg: 'Digite o código do outro computador.' }
+  // Já estamos numa sessão (acesso remoto): a ligação vai por uma segunda conexão
+  if (canal && canal.conectado() && sessao.ativa) {
+    try { const nome = await ligarEmParalelo(codigo); return { ok: true, msg: 'Em chamada com ' + (nome || codigo) + '.' } } catch (e) { return { ok: false, msg: e.message } }
+  }
   try { const nome = await conectarPorCodigo(codigo, 'chamada'); return { ok: true, msg: 'Em chamada com ' + (nome || codigo) + '.' } } catch (e) { return { ok: false, msg: e.message } }
 })
+
+// Ligar para alguém sem largar o acesso remoto que já está aberto
+async function ligarEmParalelo (codigo) {
+  const reg = t => { if (process.env.SSADESK_LOG) fs.appendFileSync(process.env.SSADESK_LOG, 'ligação paralela: ' + t + '\n') }
+  if (canal.extraConectado()) throw new Error('Já existe uma ligação em andamento.')
+  const rede = readJson(path.join(DIR, 'rede.json')) || {}
+  const resposta = await new Promise((resolve, reject) => {
+    const meu = {}
+    const t = setTimeout(() => {
+      if (pendenteExtra === meu) { pendenteExtra = null; canal.pararProcuraExtra(); canal.encerrarExtra() }
+      reject(new Error('Ninguém atendeu a ligação.'))
+    }, 60000)
+    meu.resolve = v => { clearTimeout(t); resolve(v) }
+    meu.reject = e => { clearTimeout(t); reject(e) }
+    pendenteExtra = meu
+    canal.once('extra-conectado', () => {
+      if (pendenteExtra !== meu) return
+      canal.controleExtra({ t: 'ola', nome: meuNome(), codigo: meuCodigo(), quer: 'chamada', ipPublico: rede.ip_publico || '' })
+    })
+    canal.procurarExtra({ codigo }).catch(() => {})
+  })
+  canal.pararProcuraExtra()
+  salvarNaBiblioteca(codigo, resposta.nome || '', { soLigacao: true })
+  estadoChamada = { fase: 'conectado', nome: sessaoExtra.nome }
+  abrirChamada({ nome: sessaoExtra.nome }); enviarEstadoChamada()
+  return sessaoExtra.nome
+}
 // Dentro de uma chamada: pede o acesso à tela do outro computador (atalho)
 ipcMain.handle('chamada-acessar', async () => {
   if (!(canal && canal.conectado() && sessao.ativa)) return { ok: false, msg: 'A chamada não está ativa.' }
@@ -1526,6 +1606,7 @@ function encerrarTudo () {
   encerrando = true
   try { fecharTunelSessao() } catch {}
   try { if (lan && lan.parar) lan.parar() } catch {}
+  try { if (canal) canal.encerrarExtra() } catch {}
   try { if (canal) canal.destruir() } catch {}
   try { if (motorAberto && !motorAberto.killed) motorAberto.kill() } catch {}
   try { for (const w of require('electron').BrowserWindow.getAllWindows()) if (!w.isDestroyed()) w.destroy() } catch {}
