@@ -33,6 +33,7 @@ class Canal extends EventEmitter {
     this.conexao = null // uma sessão por vez
     this.escutas = new Set()
     this.procurando = null
+    this.destruido = false
     this.retransmissores = new Set((opcoes.retransmissoresExtra || []).filter(k => /^[0-9a-f]{64}$/i.test(k)))
     this.meuRetransmissor = null
   }
@@ -65,6 +66,7 @@ class Canal extends EventEmitter {
     await dht.ready()
     // Descobre retransmissores já existentes (e atualiza a cada 10 min)
     const descobrir = async () => {
+      if (this.destruido) return
       try {
         for await (const d of dht.lookup(TOPICO_RETRANSMISSORES)) {
           for (const p of (d.peers || [])) if (p.publicKey) this.retransmissores.add(p.publicKey.toString('hex'))
@@ -89,8 +91,14 @@ class Canal extends EventEmitter {
     })
     await servidor.listen(par)
     this.meuRetransmissor = par.publicKey.toString('hex')
-    const anunciar = () => dht.announce(TOPICO_RETRANSMISSORES, par).finished().catch(() => {})
-    anunciar(); setInterval(anunciar, 10 * 60 * 1000).unref()
+    // Depois que a rede é encerrada, o announce lança na hora ("Node destroyed") e isso
+    // derrubava o app inteiro. Agora o erro é contido e o aviso periódico para.
+    let tAnuncio = null
+    const anunciar = () => {
+      if (this.destruido) { if (tAnuncio) clearInterval(tAnuncio); return }
+      try { dht.announce(TOPICO_RETRANSMISSORES, par).finished().catch(() => {}) } catch { if (tAnuncio) clearInterval(tAnuncio) }
+    }
+    anunciar(); tAnuncio = setInterval(anunciar, 10 * 60 * 1000); tAnuncio.unref()
     this.emit('retransmissor', this.meuRetransmissor)
   }
 
@@ -228,7 +236,10 @@ class Canal extends EventEmitter {
     this.pararProcura()
   }
 
-  async destruir () { if (this.swarm) await this.swarm.destroy().catch(() => {}) }
+  async destruir () {
+    this.destruido = true
+    if (this.swarm) await this.swarm.destroy().catch(() => {})
+  }
 }
 
 module.exports = { Canal, soDigitos, nomeComputador: () => os.hostname(), PORTA_P2P }

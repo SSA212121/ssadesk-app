@@ -29,6 +29,14 @@ async function esperarPacote () {
 // --segundo-plano: inicia com o Windows, sem janela, só com o ícone perto do relógio (para receber chamadas)
 const SEGUNDO_PLANO = !!arg('segundo-plano')
 
+// Rede de segurança: um erro solto (rede P2P encerrando, por exemplo) não pode derrubar o app
+// nem abrir a janela de erro do Electron, que no Mac chega a travar o desligamento do computador.
+process.on('uncaughtException', e => {
+  try { registrarErroRede('erro não tratado', e) } catch {}
+  try { console.error('erro não tratado:', e && e.message) } catch {}
+})
+process.on('unhandledRejection', e => { try { registrarErroRede('promessa não tratada', e) } catch {} })
+
 // Perfil separado (só para testes automáticos com duas cópias do app na mesma máquina)
 if (process.env.SSADESK_PERFIL) app.setPath('userData', process.env.SSADESK_PERFIL)
 // Uma única instância do app: abrir de novo só mostra o painel
@@ -776,7 +784,7 @@ function comandoTela (acao, valor) {
   fs.mkdirSync(path.dirname(f), { recursive: true })
   fs.writeFileSync(f, JSON.stringify({ id: Date.now() + '-' + Math.random().toString(36).slice(2, 7), em: Date.now(), acao, valor }))
 }
-const ACOES_TELA = ['arquivos', 'print', 'gravar', 'tela-cheia', 'minimizar', 'restaurar', 'escala', 'qualidade', 'cursor', 'ctrl-alt-del', 'bloquear', 'bloquear-entrada', 'atualizar', 'reiniciar']
+const ACOES_TELA = ['arquivos', 'print', 'gravar', 'tela-cheia', 'minimizar', 'restaurar', 'audio-remoto', 'escala', 'qualidade', 'cursor', 'ctrl-alt-del', 'bloquear', 'bloquear-entrada', 'atualizar', 'reiniciar']
 ipcMain.on('mais-comando', (_e, acao, valor) => {
   if (!ACOES_TELA.includes(acao)) return
   if (acao === 'escala' || acao === 'qualidade') estadoMais[acao] = String(valor)
@@ -1117,7 +1125,20 @@ async function concluirAcesso (resposta, naRede) {
 }
 
 ipcMain.on('chamada-midia', (_e, tipo, dados) => { if (canal) canal.midia(tipo, Buffer.from(dados)) })
-ipcMain.on('chamada-controle', (_e, obj) => { if (canal && obj && typeof obj === 'object') canal.controle(obj) })
+let audioMotorDesligado = false
+ipcMain.on('chamada-controle', (_e, obj) => {
+  if (canal && obj && typeof obj === 'object') canal.controle(obj)
+  // Eco: com o microfone aberto durante o acesso remoto, o som do computador acessado
+  // sai pelo alto-falante daqui e volta pelo microfone. Enquanto o microfone estiver
+  // aberto, calamos o som que vem da tela remota (a conversa continua pelo SSAdesk).
+  if (obj && obj.t === 'estado' && sessao.papel === 'acessando' && sessao.tipo === 'acesso') {
+    const querDesligar = !!obj.mic
+    if (querDesligar !== audioMotorDesligado) {
+      audioMotorDesligado = querDesligar
+      comandoTela('audio-remoto', querDesligar ? 'off' : 'on')
+    }
+  }
+})
 
 // ---------- Chat de texto (janela própria, flutuante e redimensionável) ----------
 // A conversa fica aqui no processo principal: guardar a janela não apaga nada.
@@ -1512,7 +1533,7 @@ function encerrarTudo () {
 app.on('before-quit', () => {
   encerrarTudo()
   // Rede P2P pode demorar a soltar: passado o limite, sai de qualquer jeito
-  const t = setTimeout(() => app.exit(0), 2500); t.unref && t.unref()
+  const t = setTimeout(() => app.exit(0), isMac ? 1200 : 2500); t.unref && t.unref()
 })
 // O sistema vai desligar ou reiniciar: sai na hora, sem segurar
 app.on('session-end', () => { encerrarTudo(); app.exit(0) })
