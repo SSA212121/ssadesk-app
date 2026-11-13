@@ -141,8 +141,12 @@ jobs:
       - name: Gera o .dmg
         if: steps.filtro.outputs.pular == 'nao'
         run: |
-          V=$(node -p "require('./app/package.json').version")
-          hdiutil create -volname "SSAdesk" -srcfolder build/SSAdesk.app -ov -format UDZO "SSAdesk-mac-${{ matrix.arch }}.dmg"
+          # A janela que abre precisa ter o SSAdesk e um atalho para Aplicativos lado a lado:
+          # sem o atalho, a pessoa não tem para onde arrastar e o app acaba rodando de dentro do .dmg.
+          rm -rf dmg && mkdir -p dmg
+          cp -R build/SSAdesk.app dmg/
+          ln -s /Applications "dmg/Aplicativos"
+          hdiutil create -volname "SSAdesk" -srcfolder dmg -ov -format UDZO "SSAdesk-mac-${{ matrix.arch }}.dmg"
           ls -la *.dmg
 
       - uses: actions/upload-artifact@v4
